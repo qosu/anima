@@ -1,0 +1,45 @@
+"""rawos runtime configuration — all values from environment, never hardcoded."""
+from __future__ import annotations
+from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # Server
+    host: str   = "0.0.0.0"
+    port: int   = 8001
+    debug: bool = False
+
+    # Database
+    db_path: str = "/root/rawos/data/rawos.db"
+
+    # Auth
+    jwt_secret: str   = "CHANGE_ME_IN_PRODUCTION"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int  = 15
+    refresh_token_expire_days:   int  = 7
+
+    # AI — DeepSeek only (one provider)
+    deepseek_key:        str = ""
+    deepseek_base_url:   str = "https://api.deepseek.com/v1"
+    deepseek_model_pro:  str = "deepseek-chat"
+    deepseek_model_fast: str = "deepseek-chat"  # same model, future: deepseek-v3-fast
+
+    # Internal compression (Groq — system-only, never user-facing)
+    groq_keys: list[str] = []
+
+    # Workspaces root — each user project gets an isolated subdirectory
+    workspaces_root: str = "/root/rawos/workspaces"
+
+    # Token budgets
+    free_tier_daily_tokens: int       = 50_000
+    pro_tier_daily_tokens:  int       = 500_000
+
+
+settings = Settings()
