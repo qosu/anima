@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Awaitable
@@ -389,6 +390,125 @@ async def _targets_rawos_own_repo(workdir: str) -> bool:
     """
     res: BashResult = await run_bash("git rev-parse --show-toplevel", workdir)
     return res.exit_code == 0 and res.stdout.strip() == "/root/rawos"
+
+
+# ---------------------------------------------------------------------------
+# Pass 2 — TIER enforcement helpers (self-modification of /root/rawos)
+#
+# Not yet wired into execute(). These are git-introspection helpers that the
+# execute() wrapper (Pass 2 step b) will use to detect and revert any tool
+# call's side effect that touches a TIER 0 path inside rawos's own source
+# tree. See PLAN.md "Phase 16 — Pass 2 — implementation design".
+# ---------------------------------------------------------------------------
+
+_RAWOS_GIT_COMMON_DIR = "/root/rawos/.git"
+
+_TIER1_PREFIXES: tuple[str, ...] = (
+    "tests/",
+    "rawos/evaluation/",
+    "rawos/dataset/",
+    "rawos/study/",
+    "rawos/timing/",
+    "rawos/manifester/",
+    "docs/",
+)
+
+
+async def _is_rawos_source_tree(workdir: str) -> bool:
+    """True if `workdir` is rawos's own source tree — /root/rawos itself,
+    or any git worktree linked to it.
+
+    Linked worktrees report a different `--show-toplevel` (their own path)
+    but share the SAME `--git-common-dir` as the main repo (/root/rawos/.git).
+    A self-probe operating in an isolated worktree must still be subject to
+    TIER enforcement, so this check (unlike `_targets_rawos_own_repo`, which
+    is specifically about the live working tree's HEAD) follows common-dir,
+    not toplevel.
+    """
+    res: BashResult = await run_bash(
+        "git rev-parse --path-format=absolute --git-common-dir", workdir,
+    )
+    return res.exit_code == 0 and res.stdout.strip() == _RAWOS_GIT_COMMON_DIR
+
+
+async def _git_status_porcelain(workdir: str) -> dict[str, str]:
+    """Snapshot of `git status --porcelain=v1 -z -uall` as {path: "XY"}.
+
+    Renames/copies are split into two synthetic entries: the new path keeps
+    its real XY code, and the old path is recorded as "D " so a rename out
+    of a TIER 1 directory is visible as a deletion at the old location.
+    Returns {} if `workdir` is not inside a git repo.
+    """
+    res: BashResult = await run_bash("git status --porcelain=v1 -z -uall", workdir)
+    if res.exit_code != 0:
+        return {}
+
+    entries: dict[str, str] = {}
+    tokens = res.stdout.split("\0")
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if not tok:
+            i += 1
+            continue
+        code, path = tok[:2], tok[3:]
+        entries[path] = code
+        if code[0] in ("R", "C") and i + 1 < len(tokens):
+            i += 1
+            orig_path = tokens[i]
+            if orig_path:
+                entries.setdefault(orig_path, "D ")
+        i += 1
+    return entries
+
+
+def _diff_paths(before: dict[str, str], after: dict[str, str]) -> set[str]:
+    """Paths whose `_git_status_porcelain` entry changed between two snapshots.
+
+    A path with the same status code in both snapshots is treated as
+    untouched by the most recent tool call — even if it was already dirty.
+    This is intentional, not a shortcut: files like `data/rawos.db` and
+    `data/chroma/**` are continuously rewritten by the live service itself
+    and are already permanently dirty in /root/rawos's working tree. If the
+    wrapper instead diffed by content hash, it would (a) flag the live
+    service's own writes as "tool violations" on every cycle, and (b) risk
+    `git checkout`-reverting the live SQLite DB mid-write. Status-code
+    equality is the safe, correct signal: "no NEW dirt appeared here".
+    """
+    paths = set(before) | set(after)
+    return {p for p in paths if before.get(p) != after.get(p)}
+
+
+def _in_tier1_allowlist(path: str) -> bool:
+    """True if `path` (repo-relative) is under a TIER 1 directory.
+
+    TIER 1 = tests/, rawos/evaluation/, rawos/dataset/, rawos/study/,
+    rawos/timing/, rawos/manifester/, docs/ — see PLAN.md "THE HARD
+    BOUNDARY". Everything else is TIER 0 (default-deny).
+
+    This is the STATIC directory check only. Pass 2's execute() wrapper
+    additionally enforces the bootstrap rule from PLAN.md Pass 1 item 2:
+    a TIER 1 module's existing .py source files stay read-only until that
+    module has its own passing tests (new test files are always writable
+    under tests/).
+    """
+    return any(path == prefix.rstrip("/") or path.startswith(prefix) for prefix in _TIER1_PREFIXES)
+
+
+async def _git_checkout_restore(workdir: str, path: str) -> BashResult:
+    """Revert `path` to its HEAD state, undoing a TIER 0 violation.
+
+    If `path` has no HEAD version (newly created file — status "??" or "A "),
+    there is nothing to check out back to; instead it is unstaged and
+    deleted entirely.
+    """
+    quoted = shlex.quote(path)
+    head_has_path = await run_bash(f"git cat-file -e HEAD:{quoted}", workdir)
+    if head_has_path.exit_code == 0:
+        return await run_bash(f"git checkout HEAD -- {quoted}", workdir)
+
+    await run_bash(f"git rm -f -r --cached -- {quoted}", workdir)
+    return await run_bash(f"rm -rf -- {quoted}", workdir)
 
 
 async def _git_branch(params: dict[str, Any], workdir: str) -> ToolResult:
