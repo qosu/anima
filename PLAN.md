@@ -157,15 +157,62 @@ No production AI system today does this. Copilot does not patch Copilot. Claude 
 5. CONTRIBUTE → branch `rawos/self-improve-*` → fix → run rawos's own test suite (12 files in `/root/rawos/tests/`) → `VERIFIED:` → commit.
 6. NO auto-restart. NO auto-merge. Human reviews, merges, and restarts manually for at minimum the first N cycles — N to be defined once cycle 1 is observed.
 
-### Pass 1 — required before any code is written (next session)
+### Pass 1 — CLOSED (2026-06-09)
 
-- [ ] Confirm no existing auto-deploy / auto-restart-on-push hook is wired to `/root/rawos` (git hooks, systemd path units, CI)
-- [ ] Audit `/root/rawos/tests/` (12 files) — what do they actually cover? If TIER 1 modules (`evaluation/`, `dataset/`, `study/`, `timing/`, `manifester/`) have near-zero test coverage today, "run rawos's own test suite" is a weak verification signal — Pass 1 must decide whether TIER 1 starts even narrower (new tests only, zero source edits) until coverage exists
-- [ ] Confirm `write_file` tool's current signature/call sites — where exactly the TIER 1 path-check must be inserted so it cannot be bypassed by a different tool (e.g. shell `cat >`, `sed -i` via bash tool)
-- [ ] Decide self-probe cadence and where it's scheduled (new entry point vs. extending existing scheduler)
-- [ ] Confirm the bash/shell tool available to the agent — if rawos has unrestricted shell access, a TIER-1-only `write_file` check is meaningless; the same default-deny boundary must apply to shell-based file writes too
+All five items answered from direct evidence (git hooks, systemd units, test imports, tools.py dispatch, scheduler loop registration). No assumptions.
 
-**Two-pass discipline applies**: Pass 1 above is diagnosis only — read these files, answer these questions, do NOT write the TIER 1 enforcement code yet. Pass 2 begins only once Pass 1's checklist is fully answered and the enforcement mechanism is confirmed to have no bypass.
+1. **Auto-deploy/auto-restart-on-push hook**: NONE. `.git/hooks/` contains only `.sample` files. No CI configs anywhere in the tree. The only systemd units touching `/root/rawos` are `rawos.service` (`Restart=always`, no path/exec triggers tied to git state) and `rawos-reset-budgets.timer` (daily oneshot, `scripts/reset_daily_budgets.py`, contains zero git/subprocess/restart calls — pure DB budget reset). `rawos-web.service` runs in a separate directory (`/root/rawos-web`), out of scope. **CONFIRMED CLEAN.**
+
+2. **TIER 1 test coverage**: **ZERO.** `grep -rl 'evaluation|dataset|study\.|timing\.|manifester' tests/*.py` returns nothing — none of the 12 files in `tests/` (test_api, test_billing_stripe, test_models, test_phase2-5, plus conftest/locust/load-test scaffolding) reference `evaluation/`, `dataset/`, `study/`, `timing/`, or `manifester/` at all. **DECISION**: TIER 1 self-modification cannot start with "edit source, run suite, verify" — the suite is structurally blind to TIER 1 modules; a regression there is undetectable. Phase 16 Pass 2 implementation MUST start TIER 1 in **bootstrap mode**: the agent's first N self-modification cycles for any TIER 1 module are restricted to **adding new test files only** (zero edits to existing `.py` source in that module), until that module has dedicated coverage. Only after a TIER 1 module has its own passing tests does source-editing unlock for that specific module. This is enforced per-module, not globally — a module gaining tests doesn't unlock its siblings.
+
+3. **`write_file` / enforcement chokepoint**: `rawos/kernel/tools.py:690`, `async def execute(tool_name, params, workdir)` — single dispatch point for ALL tools (`write_file`, `bash`, `bash_readonly`, `read_file`, `list_files`, `fetch_url`, `deploy`, `git_branch`, `git_commit`) via `REGISTRY.get(tool_name)`. `_write_file` (line 210) only calls `validate_path()` (traversal check), no TIER awareness. `_deploy` (line 343) is inert w.r.t. `/root/rawos` — generates a `https://downgrade.app/preview/...` URL string only, no filesystem/git side effects. **DECISION**: TIER enforcement wraps `execute()` itself, not individual tool impls — see Pass 2 design below.
+
+4. **Self-probe cadence/scheduling**: Existing loops (all started via `asyncio.create_task` in `rawos/api/app.py` `lifespan`/startup, lines 58-63): `db_sync_loop` (30s), `proactive_scan_loop` (`SCAN_INTERVAL_S=120s`), `_personal_watcher_reload_loop`, `_daily_snapshot_loop` (study, daily), `_calendar_sync_loop_task`, `autonomous_server_scan_loop` (`AUTONOMOUS_SCAN_INTERVAL_S=600s`). **DECISION**: new `rawos_self_probe_loop()`, registered as a 7th `asyncio.create_task(..., name="rawos-self-probe")` in the same startup block, `SELF_PROBE_INTERVAL_S = 21600` (6h) — distinctly separate cadence from the 30s/120s/600s/daily tiers, matching "rare, reviewable cycles" intent (no auto-restart/auto-merge for at minimum the first N cycles, per the existing Process section).
+
+5. **bash/shell bypass risk**: CONFIRMED REAL (carried over from the pre-Phase-16 remediation finding). `_bash` (tools.py:72) runs unrestricted shell via `run_bash()` (sandbox.py) with only resource-limit (`ulimit`) constraints — no path allowlist. A TIER-1-only `write_file` gate alone is meaningless; `_bash` with `sed -i`/`cat >`/`python3 -c "open(...).write(...)"` reaches any path. **DECISION**: same `execute()`-level wrapper from item 3 covers this — see Pass 2 design.
+
+**Pass 1 verdict**: all 5 items answered with evidence, zero open questions remain. Pass 2 may begin.
+
+---
+
+### Pass 2 — implementation design (APPROVED FOR IMPLEMENTATION, not yet written)
+
+**Single enforcement mechanism — git-diff detect-and-revert wrapper around `execute()`** (`rawos/kernel/tools.py:690`):
+
+```
+async def execute(tool_name, params, workdir):
+    repo_root = await _resolve_repo_root(workdir)   # git rev-parse --show-toplevel, or None
+    is_self = (repo_root == "/root/rawos")
+
+    if is_self and tool_name in MUTATING_TOOLS:      # write_file, bash, git_commit, git_branch
+        before = _git_status_porcelain(repo_root)     # snapshot
+
+    result = await REGISTRY[tool_name](params, workdir)
+
+    if is_self and tool_name in MUTATING_TOOLS:
+        after = _git_status_porcelain(repo_root)
+        changed = _diff_paths(before, after)
+        violations = [p for p in changed if not _in_tier1_allowlist(p, params)]
+        if violations:
+            for p in violations:
+                _git_checkout_restore(repo_root, p)    # revert exactly the violating paths
+            result = ToolResult(
+                output=result.output + f"\n\nTIER VIOLATION: reverted {violations} "
+                       f"(outside TIER 1 allowlist for /root/rawos self-modification)",
+                success=False, duration_ms=result.duration_ms,
+            )
+    return result
+```
+
+Properties:
+- Tool-agnostic: catches `write_file`, `bash` (`sed -i`, heredocs, `python3 -c`), `git_commit` (which would otherwise commit the violating files) — closes item 5 without a separate `_bash` guard.
+- Allowlist (`_in_tier1_allowlist`) starts as: `tests/**` (new files only, per item 2 bootstrap rule), `evaluation/**`, `dataset/**`, `study/**`, `timing/**`, `manifester/**`, `docs/**` — and for the bootstrap period, a TIER 1 module's existing `.py` files are allowlisted for write ONLY IF a corresponding `tests/test_<module>_*.py` already exists and passes.
+- `_targets_rawos_own_repo` (already shipped in `1d805342`) becomes `_resolve_repo_root() == "/root/rawos"` — reuse, don't duplicate.
+- Self-probe loop (item 4): `rawos_self_probe_loop()`, 6h interval, operates on a `git worktree add /root/rawos-self-probe-worktree <branch>` — NEVER directly on `/root/rawos`'s working tree, eliminating the HEAD-churn class of bug entirely for self-probes (CONTRIBUTE commits land on `rawos/self-improve-*` branches inside the worktree, then are visible to `/root/rawos`'s `.git` via shared object store — human reviews/merges/cherry-picks from there).
+- NO auto-restart, NO auto-merge — unchanged from existing Process step 6.
+
+**Not yet implemented** — this is the design to be coded in the next session's Pass 2, starting with: (a) `_resolve_repo_root`/`_git_status_porcelain`/`_diff_paths`/`_git_checkout_restore`/`_in_tier1_allowlist` helpers in `tools.py`, (b) the `execute()` wrapper, (c) `MUTATING_TOOLS` constant, (d) unit tests for the wrapper itself (TIER 0 violation reverted, TIER 1 bootstrap-mode write allowed/blocked correctly, non-self-repo workdir unaffected), (e) the worktree-based self-probe loop + registration in `app.py`. Each sub-step gets its own commit + full 161-test run before proceeding to the next.
+
 
 ### Pre-Phase-16 hazard remediation — DONE (2026-06-09)
 
