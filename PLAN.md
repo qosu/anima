@@ -87,106 +87,82 @@ SERVER_SCAN / NEEDS_ATTENTION → bypass probe → agent loop with specific targ
 - `validate_path` in write_file restricted to workdir
 - `sandbox_docker=False` in `.env`
 
----
+### Added for Phase 16 (self-modification) — non-negotiable from this point forward
 
-## Phase 16 — Under analysis (not decided)
-
-### What Phase 15 closes — and what it opens
-
-Phase 15 solves the vague-goal problem for one specific metric: test failures. After Phase 15:
-
-- `has_failures=True` → rawos has a precise target → fixes it
-- `has_failures=False` → rawos SILENCEs
-
-`sovereign-research-kernel` now has 493 green tests. The probe will return `has_failures=False` until someone pushes broken code again. **rawos SILENCEs indefinitely.**
-
-This is correct behavior. But it surfaces a deeper question: **when there are no test failures, rawos has no target. Is that the right steady state?**
-
-Two positions:
-1. **Yes** — rawos is a responder. It acts when there is a real problem. Silence is not failure; it is discipline.
-2. **No** — rawos should find the next layer of problems without waiting for someone to create them. A janitor waits for a mess. rawos should be the entity that prevents messes.
-
-Position 2 is the revolutionary one. Position 1 is safe but static.
+- When the probe target is `/root/rawos` itself: **default-deny**. rawos may write ONLY to paths in the TIER 1 allowlist (Phase 16 below). Every other path in `/root/rawos` is TIER 0 — read-only, even for rawos.
+- TIER 0 is enforced in code at the `write_file` layer (path check against the allowlist), not by prompt instruction alone. A prompt instruction is a request; a path check is a wall.
+- rawos NEVER auto-restarts the rawos service.
+- rawos NEVER merges its own `rawos/self-improve-*` branches.
+- rawos NEVER edits the TIER 0/1/2 definition itself (this section + the code that enforces it) — that boundary can only be changed by a human-authored commit.
 
 ---
 
-### Direction 1 — Full-spectrum probe (depth)
+## Phase 16 — DECIDED (2026-06-09): Self-Modification — rawos maintains rawos
 
-Extend the probe beyond pytest to a full static analysis pipeline:
+### The decision
 
-```
-pytest -x --tb=line -q          (test failures — already done)
-mypy --ignore-missing-imports    (type errors)
-ruff check                       (lint / code quality)
-bandit -r . -q                  (security)
-pytest --cov --cov-report=term-missing (coverage gaps)
-```
+Three directions were analysed: full-spectrum probe (depth), consequence loop (accountability), ecosystem expansion (breadth). All three are evolutionary — they make rawos better at a thing rawos already does (find and fix issues in OTHER repos). CI pipelines already do static analysis sweeps; watch-list expansion is a config change; a consequence loop depends on a review signal that does not exist in this ecosystem (no human reviews `rawos/*` branches today).
 
-Probe returns the highest-severity finding across all layers. Agent gets a concrete `file:line` target regardless of test status.
+**Phase 16 = self-modification.** rawos probes its own source tree (`/root/rawos`), identifies real issues within an explicit allowlist, and submits verified patches to itself via `rawos/self-improve-*` branches.
 
-**Implication**: rawos never runs out of work. Green tests → rawos finds type errors. Green types → lint. Green lint → security. Green security → coverage. The quality ceiling rises continuously.
+### The claim
 
-**Risk**: Static analysis produces noise. `mypy` on a project that wasn't typed from the start will surface hundreds of `Any` annotations that aren't worth fixing. rawos needs a signal-quality filter — not just "any finding" but "a finding worth fixing" (i.e., one that changes behavior, not one that appease a type checker).
+> rawos is the first continuously-operating AI entity that reads its own source code, forms its own improvement targets, and submits verified patches to itself — without ever touching its own decision model, security enforcement, or probe-targeting logic.
 
-**Open question**: what is the filtering criterion? Options: severity threshold, file exclusion list, only findings in code rawos has previously touched, only findings in files changed in the last 7d.
+No production AI system today does this. Copilot does not patch Copilot. Claude Code does not patch Claude Code. The boundary below is what makes this safe enough to attempt: rawos can improve its own *capabilities and coverage* but can never rewrite the *rules that constrain it*.
 
----
+### Rejected directions (kept for traceability)
 
-### Direction 2 — Consequence loop (accountability depth)
-
-Currently: rawos commits to `rawos/*` → records in episodic log → never revisits.
-
-The three commits to `sovereign-research-kernel` are unreviewed. rawos does not know if they will be merged, rejected, or ignored. It has no feedback signal from its own actions.
-
-Phase 16 alternative: rawos tracks the fate of its own branches.
-
-```
-CONTRIBUTE → record branch name + commit hash in episodic DB
-Next cycle → for each open rawos/* branch in watched repos:
-  - is it merged into main? → outcome=MERGED, close record
-  - still open > 7d? → re-run tests on that branch, check correctness, optionally improve
-  - upstream moved? → detect divergence, rebase, re-verify
-```
-
-**Implication**: rawos is accountable not just at commit time but at outcome time. The episodic log becomes a record of long-running actions, not just point-in-time decisions.
-
-**Risk**: In this ecosystem there is no human reviewer. A branch open for 7 days does not mean rejection — it means no one looked. The consequence loop may have no meaningful signal to learn from until there is a human review workflow or CI integration on those branches.
-
-**Prerequisite**: this direction is most valuable if rawos's branches are actually being evaluated somewhere. If they are silently accumulating on the server with no review process, the consequence loop is noise.
+| Direction | Why rejected |
+|---|---|
+| Full-spectrum probe (mypy/ruff/bandit/coverage on watched repos) | Evolutionary — same shape as Phase 15, just more linters. Does not change what rawos *is*. Can be folded into the self-probe (below) instead, applied first to rawos's own code. |
+| Consequence loop (track fate of `rawos/*` branches) | No review process exists on this server for those branches. An open branch after 7 days carries no signal — "rejected" and "unseen" are indistinguishable. Revisit only if/when a review workflow exists. |
+| Ecosystem expansion (self-register new watch targets) | Low complexity but low leverage — adds breadth to a system whose depth is still shallow (Phase 15 only checks pytest). Self-modification subsumes this: once rawos can safely improve itself, expanding its own watch-list logic becomes a TIER 1 change it can propose. |
 
 ---
 
-### Direction 3 — Ecosystem expansion (breadth)
+### THE HARD BOUNDARY — must exist in code before Pass 2 (implementation) begins
 
-rawos watches 23 repos. Some have never received a CONTRIBUTE. Some may not have test suites. Some may be dead.
+**Default-deny model.** TIER 1 is an explicit allowlist. Anything not on it is TIER 0 (read-only). This is inverted from a denylist deliberately: a denylist fails open if something is forgotten; an allowlist fails closed.
 
-Phase 16 alternative: rawos expands its own watch list autonomously.
+**TIER 0 — read-only, even for rawos** (everything not explicitly listed in TIER 1, including but not limited to):
+- `rawos/scheduler/proactive.py` — decision model, probe-firing logic, CONTRIBUTE/SIGNAL/SILENCE parsing
+- `rawos/kernel/agent_loop.py` — MAX_TOOL_ROUNDS, verification parsing
+- `rawos/kernel/context_reader.py` — probe / test-detection logic (the thing being used to probe itself)
+- `rawos/kernel/sandbox.py`, `rawos/auth.py`, `rawos/config.py`, `rawos/middleware/rate_limiter.py` — security enforcement, `_DESTRUCTIVE_PATTERNS`, `validate_path`, `sandbox_docker`
+- `rawos/api/**` — production service surface (auth, billing, routes)
+- `PLAN.md` — rawos does not rewrite its own constraints document
+- this TIER 0/1/2 definition and its enforcement code
+- everything outside `/root/rawos` (systemd units, `.env`, deploy scripts, other repos)
 
-```
-scan /root/ for git repos not currently watched
-for each candidate:
-  - does it have a test suite?
-  - run probe: how many failures?
-  - does it have recent commits (active)?
-  - is it owned by the entity user?
-rank candidates → self-register top-N as new watch targets
-```
+**TIER 1 — self-improvable (initial allowlist, additive-only)**:
+- `/root/rawos/tests/*.py` — new test files, or new test functions added to existing files (raising coverage; not weakening existing assertions)
+- `/root/rawos/rawos/evaluation/*.py`
+- `/root/rawos/rawos/dataset/*.py`
+- `/root/rawos/rawos/study/*.py`
+- `/root/rawos/rawos/timing/*.py`
+- `/root/rawos/rawos/manifester/*.py`
+- `/root/rawos/docs/**` (if/when this directory exists)
 
-**Implication**: rawos grows its own territory without being told to. The ecosystem it maintains expands autonomously.
+**TIER 2 — never read, never probed, excluded entirely**:
+- `.env`, `*.pem`, `*.key`, anything matching `*credential*` or `*secret*`
+- systemd unit files, deploy scripts
 
-**Risk**: rawos may watch repos it shouldn't touch — system configs, third-party mirrors, archived projects. Needs hard exclusion criteria: only repos under `/root/` owned by entity user, only repos with existing test suites, no repos where `rawos/*` branch already exists with unresolved commits.
+### Process (Pass 2 implementation outline — not started)
 
----
+1. **Dedicated self-probe path**, separate from `_select_entity_probe_target`. `/root/rawos` must NOT compete with watched repos for "most recently active" — it is always most active (it's the live codebase). Fixed low-frequency cadence (e.g. once per 6h), independent scheduler entry.
+2. Self-probe runs `_probe_repo_for_issues('/root/rawos')` but results are filtered: only findings whose file path matches the TIER 1 allowlist are surfaced to the agent. TIER 0 findings are logged for human visibility but never become agent targets.
+3. Agent runs under `_ENTITY_SYSTEM_PROMPT` plus an additional hard constraint in the prompt: "You are modifying your own source. You may write ONLY to TIER 1 paths listed below. If the correct fix requires touching any other path, SIGNAL — do not attempt, do not work around the restriction."
+4. `write_file` tool itself enforces the TIER 1 allowlist when `workdir == /root/rawos` — this is the wall, not the prompt. Any write attempt outside TIER 1 is rejected at the tool layer regardless of what the agent decided.
+5. CONTRIBUTE → branch `rawos/self-improve-*` → fix → run rawos's own test suite (12 files in `/root/rawos/tests/`) → `VERIFIED:` → commit.
+6. NO auto-restart. NO auto-merge. Human reviews, merges, and restarts manually for at minimum the first N cycles — N to be defined once cycle 1 is observed.
 
-### Decision matrix
+### Pass 1 — required before any code is written (next session)
 
-| Criterion | Direction 1: Depth | Direction 2: Consequence | Direction 3: Breadth |
-|---|---|---|---|
-| Advances autonomous thesis | ✓✓ high | ✓ medium | ✓ medium |
-| Produces observable output immediately | yes | no (7d lag) | yes |
-| Depends on external signal | no | yes (merge status) | no |
-| Risk of low-quality actions | high (noise) | low | medium |
-| Implementation complexity | medium | low | low |
-| Revolutionary claim added | "never runs out of targets" | "accountable over time" | "self-expanding territory" |
+- [ ] Confirm no existing auto-deploy / auto-restart-on-push hook is wired to `/root/rawos` (git hooks, systemd path units, CI)
+- [ ] Audit `/root/rawos/tests/` (12 files) — what do they actually cover? If TIER 1 modules (`evaluation/`, `dataset/`, `study/`, `timing/`, `manifester/`) have near-zero test coverage today, "run rawos's own test suite" is a weak verification signal — Pass 1 must decide whether TIER 1 starts even narrower (new tests only, zero source edits) until coverage exists
+- [ ] Confirm `write_file` tool's current signature/call sites — where exactly the TIER 1 path-check must be inserted so it cannot be bypassed by a different tool (e.g. shell `cat >`, `sed -i` via bash tool)
+- [ ] Decide self-probe cadence and where it's scheduled (new entry point vs. extending existing scheduler)
+- [ ] Confirm the bash/shell tool available to the agent — if rawos has unrestricted shell access, a TIER-1-only `write_file` check is meaningless; the same default-deny boundary must apply to shell-based file writes too
 
-**Decision**: not made. Analyse which direction addresses the most critical gap before committing.
+**Two-pass discipline applies**: Pass 1 above is diagnosis only — read these files, answer these questions, do NOT write the TIER 1 enforcement code yet. Pass 2 begins only once Pass 1's checklist is fully answered and the enforcement mechanism is confirmed to have no bypass.
