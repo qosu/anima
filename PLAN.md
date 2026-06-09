@@ -166,3 +166,14 @@ No production AI system today does this. Copilot does not patch Copilot. Claude 
 - [ ] Confirm the bash/shell tool available to the agent — if rawos has unrestricted shell access, a TIER-1-only `write_file` check is meaningless; the same default-deny boundary must apply to shell-based file writes too
 
 **Two-pass discipline applies**: Pass 1 above is diagnosis only — read these files, answer these questions, do NOT write the TIER 1 enforcement code yet. Pass 2 begins only once Pass 1's checklist is fully answered and the enforcement mechanism is confirmed to have no bypass.
+
+### Pre-Phase-16 hazard remediation — DONE (2026-06-09)
+
+Pass 1 diagnosis surfaced an active production hazard unrelated to but blocking Phase 16: `/root/rawos`'s own working tree (== `rawos.service` `WorkingDirectory`, `Restart=always`) was being repeatedly `git checkout -b`'d by the live scheduler, because SERVER_SCAN/NEEDS_ATTENTION triggers bypass `_select_entity_probe_target` via `workdir_override=anomaly.affected_path` and `_git_branch`/`_git_commit` had no repo-root awareness. Resolved:
+
+- **A** `2fddcb2b` — committed verified Phase 14/15 production fixes (context_reader.py, proactive.py: python3 test runner, -x --tb=line, 90s timeout)
+- **B** `769ce9ef` — recovered 425-line uncommitted md_reporter CLI work (--test-results/--discover/--coverage)
+- **C** `master` fast-forwarded to `1d805342` (was 7 commits behind, clean ff, no checkout)
+- **D** `1d805342` — root-cause fix: new `_targets_rawos_own_repo(workdir)` helper in `rawos/kernel/tools.py`, checked at top of `_git_branch` and `_git_commit`; either returns `error: refusing to ... — SIGNAL instead` if `git rev-parse --show-toplevel == /root/rawos`. Verified: `ast.parse` OK, full suite 161 passed, service restart confirmed healthy (port 8002 listening, /metrics 200).
+
+This also answers Pass 1 checklist item 5 partially: the bash/shell tool (`run_bash`, sandbox.py) has no repo-root guard yet — `_targets_rawos_own_repo` only covers the `_git_branch`/`_git_commit` tool calls. A `sed -i`/`cat >` via `run_bash` against `/root/rawos` source files is still possible. This remains open for Pass 2's TIER enforcement design (must be git-diff-based detect-and-revert after every tool round, not just write_file allowlist, and self-probe must run in an isolated `git worktree`, never `/root/rawos` directly).
