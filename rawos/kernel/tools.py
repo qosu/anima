@@ -807,13 +807,145 @@ TOOL_DEFINITIONS: list[dict] = [
 ]
 
 
-async def execute(tool_name: str, params: dict[str, Any], workdir: str) -> ToolResult:
-    """Execute a tool by name. Returns ToolResult; never raises."""
-    impl = REGISTRY.get(tool_name)
-    if impl is None:
-        return ToolResult(output=f"unknown tool: {tool_name}", success=False, duration_ms=0)
+# ---------------------------------------------------------------------------
+# Pass 2 step b — TIER enforcement wrapper around execute()
+#
+# Wires the helpers above into the single tool dispatch chokepoint. Two
+# distinct rawos source-tree contexts are handled differently:
+#
+#   - LIVE (/root/rawos itself, rawos.service's WorkingDirectory,
+#     Restart=always, continuously written by the running process): any
+#     mutating tool is HARD-REFUSED. Detect-and-revert is unsafe here — it
+#     could `git checkout`/`rm` a file the live service just wrote to
+#     (data/rawos.db, data/chroma/**). SIGNAL only.
+#
+#   - WORKTREE (a linked git worktree of /root/rawos, e.g. an isolated
+#     self-probe checkout — same --git-common-dir, different
+#     --show-toplevel, no concurrent writer): mutating tools run normally,
+#     then any change outside the TIER 1 allowlist (including changes
+#     smuggled into a commit via `git reset --soft` + revert) is detected
+#     and reverted.
+#
+# See PLAN.md "Phase 16 — Pass 2 — implementation design".
+# ---------------------------------------------------------------------------
+
+MUTATING_TOOLS: frozenset[str] = frozenset({"write_file", "bash", "git_branch", "git_commit"})
+
+_TIER1_MODULE_DIRS: tuple[str, ...] = (
+    "rawos/evaluation/",
+    "rawos/dataset/",
+    "rawos/study/",
+    "rawos/timing/",
+    "rawos/manifester/",
+)
+
+
+async def _is_bootstrap_blocked(path: str, workdir: str) -> bool:
+    """True if `path` is an existing TIER 1 module's .py source file whose
+    module has no dedicated tests yet (PLAN.md Pass 1 item 2 bootstrap rule:
+    TIER 1 modules currently have ZERO test coverage, so editing their
+    source is unverifiable until each module gets its own tests).
+
+    New files are never bootstrap-blocked — only edits to pre-existing
+    source files within a TIER 1 module directory. The caller is
+    responsible for distinguishing new vs. pre-existing via the path's
+    git status.
+    """
+    for module_dir in _TIER1_MODULE_DIRS:
+        if path.startswith(module_dir) and path.endswith(".py"):
+            module_name = module_dir.rstrip("/").rsplit("/", 1)[-1]
+            res: BashResult = await run_bash(f"ls tests/test_{module_name}*.py", workdir)
+            return not res.stdout.strip()
+    return False
+
+
+async def _tier_violations(workdir: str, before: dict[str, str], after: dict[str, str]) -> set[str]:
+    """Paths changed between two `_git_status_porcelain` snapshots that
+    violate the TIER boundary: not in `_in_tier1_allowlist`, or a
+    bootstrap-blocked TIER 1 module source edit.
+    """
+    violations: set[str] = set()
+    for path in _diff_paths(before, after):
+        if not _in_tier1_allowlist(path):
+            violations.add(path)
+            continue
+        status = after.get(path) or before.get(path) or ""
+        is_new = status.startswith("?") or status.startswith("A")
+        if not is_new and await _is_bootstrap_blocked(path, workdir):
+            violations.add(path)
+    return violations
+
+
+async def _run_impl(impl: ToolFn, tool_name: str, params: dict[str, Any], workdir: str) -> ToolResult:
     try:
         return await impl(params, workdir)
     except Exception as e:
         log.exception("tool %s raised unexpectedly", tool_name)
         return ToolResult(output=f"tool error: {e}", success=False, duration_ms=0)
+
+
+async def _execute_with_tier_enforcement(
+    impl: ToolFn, tool_name: str, params: dict[str, Any], workdir: str,
+) -> ToolResult:
+    """Run a mutating tool inside a rawos source-tree worktree, then detect
+    and revert any TIER 0 violation — including violations smuggled into a
+    commit (undone via `git reset --soft` before the working-tree diff).
+    """
+    before_status = await _git_status_porcelain(workdir)
+    before_head = (await run_bash("git rev-parse HEAD", workdir)).stdout.strip()
+
+    result = await _run_impl(impl, tool_name, params, workdir)
+
+    after_head = (await run_bash("git rev-parse HEAD", workdir)).stdout.strip()
+    if before_head and after_head != before_head:
+        await run_bash(f"git reset --soft {before_head}", workdir)
+
+    after_status = await _git_status_porcelain(workdir)
+    violations = await _tier_violations(workdir, before_status, after_status)
+    if not violations:
+        return result
+
+    for path in sorted(violations):
+        await _git_checkout_restore(workdir, path)
+
+    return ToolResult(
+        output=(
+            result.output
+            + f"\n\nTIER VIOLATION: reverted {sorted(violations)} — outside the "
+            "TIER 1 allowlist for rawos self-modification, or a TIER 1 module "
+            "without its own test coverage yet (PLAN.md Pass 1 item 2)."
+        ),
+        success=False,
+        duration_ms=result.duration_ms,
+    )
+
+
+async def execute(tool_name: str, params: dict[str, Any], workdir: str) -> ToolResult:
+    """Execute a tool by name. Returns ToolResult; never raises.
+
+    For tools in MUTATING_TOOLS operating inside rawos's own source tree
+    (the live /root/rawos working tree, or any linked git worktree of it),
+    this also enforces the Phase 16 TIER boundary — see PLAN.md "THE HARD
+    BOUNDARY" and "Pass 2 — implementation design".
+    """
+    impl = REGISTRY.get(tool_name)
+    if impl is None:
+        return ToolResult(output=f"unknown tool: {tool_name}", success=False, duration_ms=0)
+
+    if tool_name in MUTATING_TOOLS:
+        if await _targets_rawos_own_repo(workdir):
+            return ToolResult(
+                output=(
+                    f"error: refusing to run '{tool_name}' inside /root/rawos — "
+                    "this is rawos's own live working tree (rawos.service runs "
+                    "from here with Restart=always, and is continuously writing "
+                    "data/rawos.db and data/chroma/**, so detect-and-revert is "
+                    "unsafe here). Self-modification must happen in an isolated "
+                    "git worktree. SIGNAL instead."
+                ),
+                success=False, duration_ms=0,
+            )
+        if await _is_rawos_source_tree(workdir):
+            return await _execute_with_tier_enforcement(impl, tool_name, params, workdir)
+
+    return await _run_impl(impl, tool_name, params, workdir)
