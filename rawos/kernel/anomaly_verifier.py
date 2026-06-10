@@ -64,6 +64,7 @@ VERIFIABLE_ANOMALY_KINDS: frozenset[str] = frozenset({"service_failed", "service
 _TEST_RUN_TIMEOUT_S = 180
 _OUTPUT_LIMIT = 20_000  # chars of combined stdout+stderr retained, tail-truncated
 _GIT_TIMEOUT_S = 30
+_PYTEST_CHECK_TIMEOUT_S = 15
 
 
 @dataclass(frozen=True)
@@ -164,6 +165,24 @@ def _build_env(worktree: Path) -> dict[str, str]:
     return env
 
 
+async def _pytest_available(interpreter: str, env: dict[str, str]) -> bool:
+    """Return True iff `interpreter -c "import pytest"` succeeds.
+
+    _discover_python_interpreter() picks the affected repo's own venv when
+    present, but that venv may not have pytest installed (it is the repo's
+    *runtime* environment, not necessarily its *test* environment). Running
+    `-m pytest` on such an interpreter fails with "No module named pytest" —
+    exit code 1, the SAME exit code as "one test failed". Without this check,
+    that failure-to-launch would be misread as a real pre-fix/post-fix test
+    result and could produce a false NOT RESOLVED / REGRESSION verdict.
+    """
+    code, _ = await _run_command(
+        [interpreter, "-c", "import pytest"], cwd=Path.cwd(), env=env,
+        timeout=_PYTEST_CHECK_TIMEOUT_S,
+    )
+    return code == 0
+
+
 async def verify_fix(
     anomaly: "ServerAnomaly",
     worktree_path: str,
@@ -202,6 +221,18 @@ async def verify_fix(
                 f"(checked tests/ and test/ for test_*.py / *_test.py) — "
                 f"rawos cannot independently verify this fix; a human must "
                 f"review {fix_branch} manually"
+            ),
+        )
+
+    if not await _pytest_available(interpreter, env):
+        return VerificationResult(
+            resolved=None,
+            method="pytest-unavailable",
+            evidence=(
+                f"interpreter {interpreter!r} cannot import pytest — rawos "
+                f"cannot independently run {worktree}'s test suite (pytest is "
+                f"not installed in this repo's environment). A human must "
+                f"review {fix_branch} manually."
             ),
         )
 

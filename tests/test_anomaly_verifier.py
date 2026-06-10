@@ -226,3 +226,70 @@ class TestInterpreterDiscovery:
         repo = tmp_path / "repo-no-venv"
         repo.mkdir()
         assert _discover_python_interpreter(repo) == "python3"
+
+
+
+class TestPytestAvailability:
+    @pytest.mark.asyncio
+    async def test_pytest_available_with_rawos_venv(self):
+        from rawos.kernel.anomaly_verifier import _pytest_available
+
+        assert await _pytest_available("/root/rawos/venv/bin/python3", dict(os.environ)) is True
+
+    @pytest.mark.asyncio
+    async def test_pytest_unavailable_with_broken_interpreter(self):
+        from rawos.kernel.anomaly_verifier import _pytest_available
+
+        assert await _pytest_available("/usr/bin/false", dict(os.environ)) is False
+
+
+class TestVerifyFixPytestUnavailable:
+    @pytest.mark.asyncio
+    async def test_repo_venv_without_pytest_returns_pytest_unavailable(self, tmp_path):
+        """A repo whose venv/bin/python3 cannot import pytest must report
+        method="pytest-unavailable", resolved=None — NOT a false
+        NOT RESOLVED/REGRESSION verdict (both pre/post runs would otherwise
+        fail identically with "No module named pytest", exit code 1, which
+        is indistinguishable from a real failing test by exit code alone).
+        """
+        from rawos.kernel.anomaly_verifier import verify_fix
+
+        repo = tmp_path / "repo-broken-venv"
+        repo.mkdir()
+        _git("init", "-q", cwd=str(repo))
+        _git("config", "user.email", "test@rawos.local", cwd=str(repo))
+        _git("config", "user.name", "rawos-test", cwd=str(repo))
+        (repo / "toy.py").write_text("def add(a, b):\n    return a + b\n")
+        (repo / "tests").mkdir()
+        (repo / "tests" / "test_toy.py").write_text(
+            "from toy import add\n\ndef test_add():\n    assert add(2, 2) == 4\n"
+        )
+        _git("add", ".", cwd=str(repo))
+        _git("commit", "-q", "-m", "init", cwd=str(repo))
+        sha0 = _git_out("rev-parse", "HEAD", cwd=str(repo))
+
+        # venv/bin/python3 that runs but has pytest's site-packages hidden via -S.
+        venv_bin = repo / "venv" / "bin"
+        venv_bin.mkdir(parents=True)
+        wrapper = venv_bin / "python3"
+        wrapper.write_text(
+            "#!/bin/sh\nexec /root/rawos/venv/bin/python3 -S \"$@\"\n"
+        )
+        wrapper.chmod(0o755)
+
+        worktree_path = await create_worktree(str(repo))
+        assert worktree_path is not None
+        try:
+            _git("checkout", "-q", "-b", "rawos/fix-noop", cwd=worktree_path)
+            (Path(worktree_path) / "README.md").write_text("noop\n")
+            _git("add", "README.md", cwd=worktree_path)
+            _git("commit", "-q", "-m", "rawos: noop", cwd=worktree_path)
+
+            anomaly = _make_anomaly(str(repo))
+            result = await verify_fix(anomaly, worktree_path, "rawos/fix-noop", base_ref=sha0)
+
+            assert result.resolved is None
+            assert result.method == "pytest-unavailable"
+            assert "cannot import pytest" in result.evidence
+        finally:
+            await remove_worktree(worktree_path)
