@@ -175,9 +175,63 @@ All five items answered from direct evidence (git hooks, systemd units, test imp
 
 ---
 
-### Pass 2 — implementation design (APPROVED FOR IMPLEMENTATION, not yet written)
+### Pass 2 — IMPLEMENTED (2026-06-09)
 
-**Single enforcement mechanism — git-diff detect-and-revert wrapper around `execute()`** (`rawos/kernel/tools.py:690`):
+All four implementation steps (a-d) are committed and verified. Final design refined two
+points from the original sketch below, based on evidence gathered during implementation:
+
+- **Live-tree concurrency hazard.** `/root/rawos`'s working tree is permanently dirty and
+  continuously written by the running service (`data/rawos.db`, `data/chroma/**`,
+  `__pycache__`). Detect-and-revert there could `git checkout`/`rm` a file the live service
+  just wrote. So enforcement **hard-refuses** any `MUTATING_TOOLS` call when
+  `_targets_rawos_own_repo(workdir)` is true (live tree, `--show-toplevel == /root/rawos`) —
+  no revert attempted, SIGNAL instead. Detect-and-revert runs only when
+  `_is_rawos_source_tree(workdir)` is true (same `--git-common-dir` as `/root/rawos/.git`,
+  different `--show-toplevel` — i.e. a linked self-probe worktree, no concurrent writer).
+- **Commit smuggling.** `git_commit` runs `git add -A`, so a single `bash` call can
+  mutate-and-commit atomically, bypassing a working-tree-only diff. The wrapper snapshots
+  `HEAD` before/after; if it changed, `git reset --soft <before_head>` first, then runs the
+  same working-tree diff/revert — unifying commit violations and working-tree violations
+  into one check.
+
+**Implementation** (`rawos/kernel/tools.py`):
+- Helpers (commit `ffab93e0`): `_is_rawos_source_tree` (git-common-dir based, catches linked
+  worktrees), `_git_status_porcelain` (`--porcelain=v1 -z -uall`, renames split into two
+  entries), `_diff_paths` (status-CODE equality — not content, the defense against the
+  live-tree concurrency hazard), `_in_tier1_allowlist`, `_git_checkout_restore`.
+- `execute()` wrapper + `MUTATING_TOOLS` + bootstrap gating (commit `31864421`):
+  `MUTATING_TOOLS = frozenset({"write_file", "bash", "git_branch", "git_commit"})`.
+  `execute()` now: live tree + mutating tool → hard refuse; rawos source tree (incl.
+  worktrees) + mutating tool → `_execute_with_tier_enforcement` (snapshot status+HEAD, run
+  tool, soft-reset if HEAD moved, diff status, revert any path outside
+  `_in_tier1_allowlist` or bootstrap-blocked via `_is_bootstrap_blocked` — Pass 1 item 2);
+  everything else → unchanged passthrough.
+- Wrapper integration tests (commit `568efa28`, +8 tests, 30 total in
+  `tests/test_tier_enforcement.py`): live-tree refusal, TIER 0 write reverted, TIER 1
+  `tests/` write allowed, commit smuggling reverted with HEAD restored, mixed
+  TIER0+TIER1 commit (TIER 0 reverted, TIER 1 survives), bootstrap block/unlock, non-rawos
+  repo passthrough unchanged.
+
+**Self-probe loop — shipped DORMANT (commit `552b752e`, user decision: "Dormant + manual
+enable")**:
+- `rawos/config.py`: `self_probe_enabled: bool = False` (next to `sandbox_docker`).
+- `rawos/scheduler/proactive.py`: `SELF_PROBE_INTERVAL_S = 21600` (6h),
+  `rawos_self_probe_loop()` — while `settings.self_probe_enabled` is False, logs once and
+  returns immediately (no loop, no sleep, no worktree side effects).
+  `_run_self_probe_cycle()` raises `NotImplementedError` — the worktree-based cycle (`git
+  worktree add /root/rawos-self-probe-worktree <branch>`, entity agent run with
+  workdir=worktree, `rawos/self-improve-*` branches, NO auto-merge/auto-restart) is left
+  for implementation after a human manually drives and observes one cycle, then flips the
+  flag.
+- `rawos/api/app.py`: registered as a 7th `asyncio.create_task(_start_self_probe_loop(),
+  name="rawos-self-probe")` in startup, cancelled+gathered in shutdown, mirroring
+  `_start_autonomous_scan()`.
+- `tests/test_self_probe.py` (2 new tests): flag defaults False; loop returns within 2s
+  when disabled.
+
+Full suite: **193 passed** (191 + 2 new), zero regressions across all four commits.
+
+**Original design sketch (superseded by the above; kept for history)**:
 
 ```
 async def execute(tool_name, params, workdir):
@@ -204,14 +258,16 @@ async def execute(tool_name, params, workdir):
     return result
 ```
 
-Properties:
-- Tool-agnostic: catches `write_file`, `bash` (`sed -i`, heredocs, `python3 -c`), `git_commit` (which would otherwise commit the violating files) — closes item 5 without a separate `_bash` guard.
-- Allowlist (`_in_tier1_allowlist`) starts as: `tests/**` (new files only, per item 2 bootstrap rule), `evaluation/**`, `dataset/**`, `study/**`, `timing/**`, `manifester/**`, `docs/**` — and for the bootstrap period, a TIER 1 module's existing `.py` files are allowlisted for write ONLY IF a corresponding `tests/test_<module>_*.py` already exists and passes.
-- `_targets_rawos_own_repo` (already shipped in `1d805342`) becomes `_resolve_repo_root() == "/root/rawos"` — reuse, don't duplicate.
-- Self-probe loop (item 4): `rawos_self_probe_loop()`, 6h interval, operates on a `git worktree add /root/rawos-self-probe-worktree <branch>` — NEVER directly on `/root/rawos`'s working tree, eliminating the HEAD-churn class of bug entirely for self-probes (CONTRIBUTE commits land on `rawos/self-improve-*` branches inside the worktree, then are visible to `/root/rawos`'s `.git` via shared object store — human reviews/merges/cherry-picks from there).
-- NO auto-restart, NO auto-merge — unchanged from existing Process step 6.
+This sketch's single `is_self` flag was split into `_targets_rawos_own_repo` (live tree,
+hard refuse) vs `_is_rawos_source_tree` (worktree, detect-and-revert) for the live-tree
+concurrency reason above; `_resolve_repo_root() == "/root/rawos"` was replaced by the
+git-common-dir check so linked self-probe worktrees are still covered.
 
-**Not yet implemented** — this is the design to be coded in the next session's Pass 2, starting with: (a) `_resolve_repo_root`/`_git_status_porcelain`/`_diff_paths`/`_git_checkout_restore`/`_in_tier1_allowlist` helpers in `tools.py`, (b) the `execute()` wrapper, (c) `MUTATING_TOOLS` constant, (d) unit tests for the wrapper itself (TIER 0 violation reverted, TIER 1 bootstrap-mode write allowed/blocked correctly, non-self-repo workdir unaffected), (e) the worktree-based self-probe loop + registration in `app.py`. Each sub-step gets its own commit + full 161-test run before proceeding to the next.
+### Step e — docs + deploy verification (this step)
+- PLAN.md updated (this section).
+- `DELTA.md` updated to reflect Pass 2 closure.
+- `systemctl restart rawos` → confirm `is-active`, port 8002 listening, `/metrics` 200
+  (dormant self-probe loop must not break startup).
 
 
 ### Pre-Phase-16 hazard remediation — DONE (2026-06-09)
