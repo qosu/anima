@@ -45,6 +45,11 @@ class ServerAnomaly:
     last_log: str       # relevant log lines for agent context
     severity: int       # 1-10
 
+    @property
+    def domain(self) -> str:
+        """Canonical (kind[:service]) key for autonomy_track_record / cooldown lookups."""
+        return f"{self.kind}:{self.service}" if self.service else self.kind
+
     def to_trigger_ctx(self) -> dict:
         return {
             "repo_root":       self.affected_path,  # _resolve_proactive_workdir uses this
@@ -53,6 +58,7 @@ class ServerAnomaly:
             "service":         self.service,
             "last_log":        self.last_log[:800],
             "severity":        self.severity,
+            "domain":          self.domain,
         }
 
     def to_context_summary(self) -> str:

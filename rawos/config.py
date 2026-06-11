@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     # Phase 16 — self-modification
     self_probe_enabled: bool = False   # dormant until a human enables it after a manual worktree cycle
 
+    # Stage 3 ("Earned, Reversible Autonomy") — graduated auto-apply
+    autonomy_auto_apply_enabled: bool = False   # dormant until a (repo, anomaly_domain)
+    # class graduates (>=3 verified human-merged successes, see
+    # kernel.track_record) AND an operator flips this flag
+
     # Phase 4 — multi-agent orchestration
     max_sub_agent_tokens:    int = 15_000
     max_orchestrator_tokens: int = 10_000

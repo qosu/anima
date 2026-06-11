@@ -15,13 +15,16 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 import rawos.db as db
 from rawos.kernel import agent_loop
 from rawos.kernel.tools import TOOL_DEFINITIONS
 from rawos.kernel.worktree import create_worktree, get_head_sha, remove_worktree
 from rawos.kernel.anomaly_verifier import VERIFIABLE_ANOMALY_KINDS, verify_fix
+from rawos.kernel.track_record import get_track_record, is_branch_merged, update_track_record
+from rawos.kernel.reversible_apply import ApplyResult, reversible_apply
+from rawos.kernel.sandbox import run_bash
 from rawos.context.server_scanner import ServerAnomaly
 from rawos.config import settings
 from rawos.inference.intent_engine import InferredIntent, infer_intent
@@ -116,6 +119,7 @@ VERIFICATION_TIMEOUT_S = 300
 # Autonomous server scan — runs independently of human activity
 AUTONOMOUS_SCAN_INTERVAL_S  = 600   # 10 minutes between full server scans
 AUTONOMOUS_SCAN_THRESHOLD   = 6     # minimum severity to act (1-10 scale)
+AUTO_APPLY_MAX_DIFF_LINES   = 50    # Stage 3 graduated auto-apply: max total diff lines
 AUTONOMOUS_SCAN_COOLDOWN_S  = 1800  # 30 min cooldown per anomaly type
 
 # Phase 16 self-modification probe — dormant until settings.self_probe_enabled
@@ -826,15 +830,96 @@ def _extract_commit_branch(output: str) -> str | None:
     return m.group(1) if m else None
 
 
+_DIFF_SHORTSTAT_RE = re.compile(r"(\d+) insertions?\(\+\)|(\d+) deletions?\(-\)")
+
+
+def _parse_diff_shortstat_total(shortstat: str) -> int:
+    """Sum insertions + deletions from a git diff --shortstat line.
+
+    Returns 0 for an empty/no-op diff.
+    """
+    total = 0
+    for inserted, deleted in _DIFF_SHORTSTAT_RE.findall(shortstat):
+        total += int(inserted or deleted)
+    return total
+
+
+def _live_health_check(
+    repo_root: str, anomaly_domain: str, service_name: str,
+) -> Callable[[], Awaitable[bool]]:
+    """Build the health_check closure passed to reversible_apply.
+
+    anomaly_domain is accepted (not yet used beyond future logging) so the
+    closure signature can grow to re-run the original symptom check
+    (rawos.context.server_scanner) without changing call sites.
+    """
+
+    async def _check() -> bool:
+        result = await run_bash(f"systemctl is-active {service_name}", repo_root)
+        return result.exit_code == 0 and result.stdout.strip() == "active"
+
+    return _check
+
+
+async def _maybe_auto_apply(
+    anomaly: ServerAnomaly,
+    trigger_ctx: dict[str, Any],
+    fix_branch: str,
+    base_sha: str,
+) -> ApplyResult | None:
+    """Stage 3 final gate: graduated + small diff + has-a-service -> reversible_apply.
+
+    Returns None (propose-only, unchanged Stage 1/2 behaviour) unless ALL of:
+      1. settings.autonomy_auto_apply_enabled (operator opt-in, default False)
+      2. anomaly.service is non-empty (nothing to restart/health-gate otherwise)
+      3. (repo_root, anomaly.domain) has graduated (>=3 verified human-merged successes)
+      4. the fix_branch diff vs base_sha is <= AUTO_APPLY_MAX_DIFF_LINES
+    """
+    if not settings.autonomy_auto_apply_enabled:
+        return None
+    if not anomaly.service:
+        return None
+
+    repo_root = trigger_ctx["repo_root"]
+    track = get_track_record(RAWOS_ENTITY_USER_ID, repo_root, anomaly.domain)
+    if not track.graduated:
+        return None
+
+    diff_result = await run_bash(
+        f"git diff --shortstat {base_sha}..{fix_branch}", repo_root,
+    )
+    if diff_result.exit_code != 0:
+        log.warning(
+            "autonomy: git diff --shortstat failed for repo=%s branch=%s: %s",
+            repo_root, fix_branch, diff_result.stderr,
+        )
+        return None
+    if _parse_diff_shortstat_total(diff_result.stdout) > AUTO_APPLY_MAX_DIFF_LINES:
+        return None
+
+    return await reversible_apply(
+        repo_root, fix_branch, anomaly.service,
+        health_check=_live_health_check(repo_root, anomaly.domain, anomaly.service),
+    )
+
+
 def _record_git_commits(
     user_id: str,
     project_id: str,
     workdir: str,
     tool_events: list[dict],
+    *,
+    repo_root: str | None = None,
+    anomaly_domain: str | None = None,
 ) -> None:
     """Record successful git_commit tool calls to rawos_commits audit table.
 
     Parses the git output to extract branch name and short commit hash.
+    repo_root/anomaly_domain are populated only for SERVER_SCAN commits
+    (the origin repo path and ServerAnomaly.domain) so Stage 3's
+    _update_earned_autonomy_track_records can later find this commit by
+    (repo, anomaly_domain) — workdir alone is a disposable worktree path
+    that no longer exists once the run ends.
     """
     import re as _re
 
@@ -859,9 +944,11 @@ def _record_git_commits(
             message = m_msg.group(1).strip() if m_msg else "rawos: autonomous fix"
             conn.execute(
                 "INSERT INTO rawos_commits "
-                "(user_id, project_id, branch, commit_hash, message, workdir) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, project_id, branch_name, commit_hash, message, workdir),
+                "(user_id, project_id, branch, commit_hash, message, workdir, "
+                " repo_root, anomaly_domain) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (user_id, project_id, branch_name, commit_hash, message, workdir,
+                 repo_root, anomaly_domain),
             )
     log.info(
         "rawos_commits: recorded %d autonomous commit(s) for user=%s",
@@ -967,7 +1054,13 @@ async def _run_proactive_loop(
 
         if tool_events:
             _log_proactive_tool_calls(user_id, agent_rec.id, tool_events)
-            _record_git_commits(user_id, intent_rec.project_id, workdir, tool_events)
+            _record_git_commits(
+                user_id, intent_rec.project_id, workdir, tool_events,
+                repo_root=(trigger_ctx or {}).get("repo_root")
+                if trigger_type == "SERVER_SCAN" else None,
+                anomaly_domain=(trigger_ctx or {}).get("domain")
+                if trigger_type == "SERVER_SCAN" else None,
+            )
 
         result_text = "".join(collected_chunks).strip()
 
@@ -1010,6 +1103,28 @@ async def _run_proactive_loop(
                         f"\n\n[INDEPENDENT VERIFICATION — rawos.kernel.anomaly_verifier]\n"
                         f"resolved={verdict.resolved} method={verdict.method}\n{verdict.evidence}"
                     )
+
+                    if verdict.resolved and settings.autonomy_auto_apply_enabled:
+                        try:
+                            apply_result = await _maybe_auto_apply(
+                                anomaly, trigger_ctx, fix_branch, base_sha,
+                            )
+                        except Exception:
+                            log.exception(
+                                "reversible_apply failed for user=%s branch=%s",
+                                user_id, fix_branch,
+                            )
+                            result_text += (
+                                "\n\n[AUTO-APPLY — rawos.kernel.reversible_apply raised an "
+                                "exception, see rawos logs. Fix remains propose-only.]"
+                            )
+                        else:
+                            if apply_result is not None:
+                                result_text += (
+                                    f"\n\n[AUTO-APPLY — rawos.kernel.reversible_apply]\n"
+                                    f"applied={apply_result.applied} healthy={apply_result.healthy} "
+                                    f"rolled_back={apply_result.rolled_back}\n{apply_result.detail}"
+                                )
                 except asyncio.TimeoutError:
                     log.warning(
                         "anomaly_verifier timeout (%ds) for user=%s branch=%s",
@@ -1409,6 +1524,55 @@ def _is_autonomous_cooldown(anomaly_kind: str) -> bool:
     return row is not None
 
 
+async def _update_earned_autonomy_track_records(snapshot) -> None:
+    """Stage 3 (observational): advance the earned-autonomy ladder.
+
+    For every (repo_root, anomaly_domain) rawos has previously proposed a
+    rawos/fix-* branch for (rawos_commits.repo_root/anomaly_domain), check
+    whether a human has merged that branch (is_branch_merged) and whether
+    the anomaly is currently present in , then advance that
+    class's autonomy_track_record. A class only graduates after
+    GRADUATION_THRESHOLD merged-and-stayed-resolved cycles
+    (rawos.kernel.track_record) — this function never auto-applies
+    anything, it only records outcomes. Read-only with respect to the
+    scanned repos (git rev-parse/merge-base only); never the live rawos
+    tree.
+    """
+    present = {
+        (anomaly.affected_path, anomaly.domain)
+        for anomaly in snapshot.actionable
+        if anomaly.severity >= AUTONOMOUS_SCAN_THRESHOLD
+    }
+    now = int(time.time())
+    with db._conn() as conn:
+        rows = conn.execute(
+            """SELECT repo_root, anomaly_domain, branch, commit_hash FROM (
+                   SELECT repo_root, anomaly_domain, branch, commit_hash,
+                          ROW_NUMBER() OVER (
+                              PARTITION BY repo_root, anomaly_domain
+                              ORDER BY created_at DESC
+                          ) AS rn
+                   FROM rawos_commits
+                   WHERE user_id = ? AND repo_root IS NOT NULL
+                     AND anomaly_domain IS NOT NULL
+                     AND branch LIKE 'rawos/fix-%'
+               ) WHERE rn = 1""",
+            (RAWOS_ENTITY_USER_ID,),
+        ).fetchall()
+
+    for repo_root, anomaly_domain, branch, sha in rows:
+        if not Path(repo_root).is_dir():
+            continue
+        if not await is_branch_merged(repo_root, sha):
+            continue
+        update_track_record(
+            RAWOS_ENTITY_USER_ID, repo_root, anomaly_domain,
+            anomaly_present=(repo_root, anomaly_domain) in present,
+            branch_merged=True,
+            fix_branch=branch, fix_sha=sha, now=now,
+        )
+
+
 async def _run_autonomous_scan() -> None:
     """
     rawos examines the entire server. No human trigger.
@@ -1426,17 +1590,18 @@ async def _run_autonomous_scan() -> None:
         log.exception("server_scanner failed")
         return
 
+    try:
+        await _update_earned_autonomy_track_records(snapshot)
+    except Exception:
+        log.exception("autonomy track-record update failed")
+
     if snapshot.max_severity < AUTONOMOUS_SCAN_THRESHOLD:
         return  # server is healthy — rawos is silent
 
     for anomaly in snapshot.actionable:
         if anomaly.severity < AUTONOMOUS_SCAN_THRESHOLD:
             break
-        _anomaly_domain = (
-            f"{anomaly.kind}:{anomaly.service}"
-            if anomaly.service
-            else anomaly.kind
-        )
+        _anomaly_domain = anomaly.domain
         if _is_autonomous_cooldown(_anomaly_domain):
             log.debug("autonomous: anomaly on cooldown domain=%s", _anomaly_domain)
             continue
