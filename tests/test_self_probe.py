@@ -192,3 +192,9 @@ class TestSelfProbeCycle:
         asyncio.run(_run_self_probe_cycle())
 
         assert not restart_cmds, f"service restart detected: {restart_cmds}"
+
+
+def test_billing_event_type_self_probe_valid():
+    """BillingEventType must accept self_probe - used by agent_loop in every cycle."""
+    from rawos.models import BillingEventType
+    assert BillingEventType("self_probe") == BillingEventType.SELF_PROBE
