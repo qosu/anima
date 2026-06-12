@@ -115,6 +115,10 @@ def _build_continuity_block(user_id: str) -> str:
 
         lines: list[str] = []
 
+        narrative = model.get("self_narrative")
+        if narrative:
+            lines.append(narrative)
+
         goal = model.get("inferred_goal")
         if goal:
             confidence = model.get("goal_confidence") or 0.0

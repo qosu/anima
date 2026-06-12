@@ -538,6 +538,20 @@ class TestChatDigestGreeting:
         result, _ = self._run(":q\n", {"last_chat_at": 0, "artifacts": []})
         assert "While you were away" not in result.output
 
+    def test_chat_shows_self_narrative_when_present(self):
+        session = {
+            "last_chat_at": 1_000_000,
+            "artifacts": [],
+            "self_narrative": "I am rawos, and I have been tending the checkout flow.",
+        }
+        result, _ = self._run(":q\n", session)
+        assert "I am rawos, and I have been tending the checkout flow." in result.output
+
+    def test_chat_shows_no_narrative_line_when_absent(self):
+        session = {"last_chat_at": 0, "artifacts": [], "self_narrative": None}
+        result, _ = self._run(":q\n", session)
+        assert "While you were away" not in result.output
+
     def test_chat_continues_to_repl_after_digest(self):
         session = {"last_chat_at": 0, "artifacts": []}
         events = [{"type": "chunk", "text": "hello from rawos"}]

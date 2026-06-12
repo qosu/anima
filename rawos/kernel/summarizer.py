@@ -40,17 +40,25 @@ async def summarize_memories(memories: list[Memory]) -> str:
         lines.append(f"{role.upper()}: {content[:800]}")
     conversation = "\n\n".join(lines)
 
+    return await _complete(_SUMMARY_PROMPT, conversation)
+
+
+async def _complete(system_prompt: str, user_text: str) -> str:
+    """
+    Shared internal LLM completion: Groq (fast/cheap) first, DeepSeek fallback.
+    Returns empty string if both fail. Internal use only — never user-facing.
+    """
     # Try Groq first (fast + cheap for internal tasks)
     if settings.groq_keys:
-        result = await _groq_summarize(conversation)
+        result = await _groq_complete(system_prompt, user_text)
         if result:
             return result
 
     # Fallback to DeepSeek
-    return await _deepseek_summarize(conversation)
+    return await _deepseek_complete(system_prompt, user_text)
 
 
-async def _groq_summarize(conversation: str) -> str:
+async def _groq_complete(system_prompt: str, user_text: str) -> str:
     try:
         import groq as _groq
         import asyncio
@@ -65,8 +73,8 @@ async def _groq_summarize(conversation: str) -> str:
             resp = client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=[
-                    {"role": "system", "content": _SUMMARY_PROMPT},
-                    {"role": "user",   "content": conversation[:12_000]},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_text[:12_000]},
                 ],
                 max_tokens=512,
                 temperature=0.3,
@@ -76,19 +84,19 @@ async def _groq_summarize(conversation: str) -> str:
         return await loop.run_in_executor(None, _call)
 
     except Exception as e:
-        log.warning("groq summarization failed: %s", e)
+        log.warning("groq completion failed: %s", e)
         return ""
 
 
-async def _deepseek_summarize(conversation: str) -> str:
+async def _deepseek_complete(system_prompt: str, user_text: str) -> str:
     try:
         import httpx
 
         payload = {
             "model": settings.deepseek_model_fast,
             "messages": [
-                {"role": "system", "content": _SUMMARY_PROMPT},
-                {"role": "user",   "content": conversation[:12_000]},
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_text[:12_000]},
             ],
             "stream": False,
             "max_tokens": 512,
@@ -109,5 +117,5 @@ async def _deepseek_summarize(conversation: str) -> str:
             return data["choices"][0]["message"]["content"] or ""
 
     except Exception as e:
-        log.warning("deepseek summarization failed: %s", e)
+        log.warning("deepseek completion failed: %s", e)
         return ""

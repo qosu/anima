@@ -716,6 +716,25 @@ def set_last_chat_at(user_id: str, ts: int) -> None:
         )
 
 
+def get_self_narrative(user_id: str) -> str | None:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT self_narrative FROM user_model WHERE user_id = ? LIMIT 1",
+            (user_id,),
+        ).fetchone()
+    return row["self_narrative"] if row else None
+
+
+def set_self_narrative(user_id: str, text: str) -> None:
+    with _conn() as conn:
+        conn.execute(
+            """INSERT INTO user_model (user_id, self_narrative)
+               VALUES (?, ?)
+               ON CONFLICT(user_id) DO UPDATE SET self_narrative = excluded.self_narrative""",
+            (user_id, text),
+        )
+
+
 def get_proactive_artifacts_since(
     user_id: str, since_ts: int, limit: int = 10
 ) -> list[dict]:

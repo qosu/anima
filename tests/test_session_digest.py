@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 os.environ["DB_PATH"] = str(Path(tempfile.mkdtemp()) / "test.db")
@@ -69,6 +70,16 @@ def test_set_last_chat_at_overwrites_previous():
     db.set_last_chat_at(user.id, 1_000_000)
     db.set_last_chat_at(user.id, 2_000_000)
     assert db.get_last_chat_at(user.id) == 2_000_000
+
+
+def test_get_self_narrative_none_for_unknown_user():
+    assert db.get_self_narrative("nonexistent-user-id") is None
+
+
+def test_set_and_get_self_narrative_roundtrip():
+    user = _make_user("narrative@example.com")
+    db.set_self_narrative(user.id, "I am rawos, and I have been tending the checkout flow.")
+    assert db.get_self_narrative(user.id) == "I am rawos, and I have been tending the checkout flow."
 
 
 def test_get_proactive_artifacts_since_returns_empty_when_none():
@@ -142,3 +153,35 @@ def test_session_start_updates_last_chat_at():
         assert r.status_code == 200
         new_ts = db.get_last_chat_at(user_id)
         assert before <= new_ts <= after
+
+
+def test_session_start_returns_self_narrative():
+    with TestClient(app) as client:
+        headers, user_id = _signup_and_headers(client, "narrative-arrival@example.com")
+        db.set_self_narrative(user_id, "I am rawos, mid-way through the checkout flow.")
+
+        r = client.post("/context/session_start", headers=headers)
+
+        assert r.status_code == 200
+        assert r.json()["self_narrative"] == "I am rawos, mid-way through the checkout flow."
+
+
+def test_session_start_returns_none_self_narrative_for_fresh_user():
+    with TestClient(app) as client:
+        headers, _ = _signup_and_headers(client, "fresh-narrative@example.com")
+
+        r = client.post("/context/session_start", headers=headers)
+
+        assert r.status_code == 200
+        assert r.json()["self_narrative"] is None
+
+
+def test_session_start_schedules_narrative_regeneration():
+    with TestClient(app) as client:
+        headers, _ = _signup_and_headers(client, "regen@example.com")
+
+        with patch("rawos.api.context_routes.asyncio.create_task") as mock_create_task:
+            r = client.post("/context/session_start", headers=headers)
+
+            assert r.status_code == 200
+            mock_create_task.assert_called_once()

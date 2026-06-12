@@ -1499,6 +1499,11 @@ def _show_session_digest(console: Any) -> None:
     except SystemExit:
         return
     artifacts = data.get("artifacts") or []
+    self_narrative = data.get("self_narrative")
+
+    if self_narrative:
+        console.print(f"\n[dim italic]{self_narrative}[/dim italic]")
+
     if not artifacts:
         return
     console.print("\n[bold cyan]While you were away:[/bold cyan]")

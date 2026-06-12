@@ -8,12 +8,18 @@ GET  /context/why       — explain why a file was created (query param: path)
 """
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from rawos.api.deps import current_user as get_current_user
 from rawos.context.user_model import get_user_model, rebuild_user_model
 from rawos.inference.intent_engine import infer_intent
 from rawos.manifester.writer import get_provenance, list_proactive_artifacts
+
+import logging
+
+log = logging.getLogger("rawos.context_routes")
 
 router = APIRouter()
 
@@ -79,12 +85,39 @@ async def context_why(
 
 @router.post("/context/session_start")
 async def session_start(user=Depends(get_current_user)):
-    """Return proactive artifacts since last chat, then update last_chat_at."""
+    """
+    Return proactive artifacts + the existing self-narrative since last chat,
+    update last_chat_at, and schedule background regeneration of the
+    self-narrative for the *next* arrival (fire-and-forget — no added latency).
+    """
     import time
     import rawos.db as _db
 
     last_chat_at = _db.get_last_chat_at(user.id)
     artifacts = _db.get_proactive_artifacts_since(user.id, since_ts=last_chat_at)
+    self_narrative = _db.get_self_narrative(user.id)
     _db.set_last_chat_at(user.id, int(time.time()))
 
-    return {"last_chat_at": last_chat_at, "artifacts": artifacts}
+    asyncio.create_task(_regenerate_self_narrative_bg(user.id))
+
+    return {
+        "last_chat_at": last_chat_at,
+        "artifacts": artifacts,
+        "self_narrative": self_narrative,
+    }
+
+
+async def _regenerate_self_narrative_bg(user_id: str) -> None:
+    """Background: write the next self-narrative entry from current state."""
+    import rawos.db as _db
+    from rawos.kernel.self_narrative import write_self_narrative
+
+    try:
+        prior = _db.get_self_narrative(user_id)
+        model = get_user_model(user_id)
+        episodic_history = (model or {}).get("episodic_history") or []
+        new_narrative = await write_self_narrative(prior, model, episodic_history)
+        if new_narrative:
+            _db.set_self_narrative(user_id, new_narrative)
+    except Exception:
+        log.exception("self-narrative regeneration failed for user_id=%s", user_id)
