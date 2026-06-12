@@ -24,6 +24,7 @@ from rawos.kernel.worktree import create_worktree, get_head_sha, remove_worktree
 from rawos.kernel.anomaly_verifier import VERIFIABLE_ANOMALY_KINDS, verify_fix
 from rawos.kernel.track_record import get_track_record, is_branch_merged, update_track_record
 from rawos.kernel.reversible_apply import ApplyResult, reversible_apply
+from rawos.kernel.arch import get_arch
 from rawos.kernel.sandbox import run_bash
 from rawos.context.server_scanner import ServerAnomaly
 from rawos.config import settings
@@ -854,8 +855,10 @@ def _live_health_check(
     """
 
     async def _check() -> bool:
-        result = await run_bash(f"systemctl is-active {service_name}", repo_root)
-        return result.exit_code == 0 and result.stdout.strip() == "active"
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, get_arch().service_manager.is_active, service_name,
+        )
 
     return _check
 

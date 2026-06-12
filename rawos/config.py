@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     port: int   = 8002
     debug: bool = False
 
+    # Arch backend layer (kernel/arch) — overrides host OS detection for tests
+    arch_override: str | None = None
+    # Arch paths — configurable so non-Linux backends can point to their own roots
+    worktree_root: str = "/root/.rawos-worktrees"
+    rawos_source_root: str = "/root/rawos"
+
     # Database
     db_path: str = "/root/rawos/data/rawos.db"
 
