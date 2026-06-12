@@ -1016,9 +1016,11 @@ async def _run_proactive_loop(
             workdir=workdir,
             model=settings.deepseek_model_pro,
             intent_id=intent_rec.id,
+            user_id=user_id,
             system_prompt=system_prompt,
             tool_definitions=tool_defs,
             agent_id=agent_rec.id,
+            event_type="server_scan" if trigger_type == "SERVER_SCAN" else "intent",
         ):
             etype = event.get("type")
             if etype == "chunk":

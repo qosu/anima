@@ -110,6 +110,7 @@ class TestAgentLoopToolDefinitions:
                         workdir=td,
                         model="deepseek-chat",
                         intent_id="itest",
+                        user_id="user-itest",
                         agent_id="agent-abc",
                     ):
                         events.append(ev)

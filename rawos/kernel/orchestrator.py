@@ -164,6 +164,7 @@ async def _run_sub_agent(
             workdir=workdir,
             model=model,
             intent_id=intent_id,
+            user_id=agent.user_id,
             on_artifact=on_artifact,
             system_prompt=system,
             tool_definitions=tool_defs,
@@ -228,6 +229,7 @@ async def run(
             workdir=workdir,
             model=model,
             intent_id=intent_id,
+            user_id=user_id,
             on_artifact=on_artifact,
             system_prompt=system_prompt,
         ):
@@ -361,6 +363,7 @@ async def run(
             workdir=workdir,
             model=model,
             intent_id=intent_id,
+            user_id=user_id,
             on_artifact=on_artifact,
             system_prompt=_SYNTHESIS_PROMPT,
             tool_definitions=[],  # synthesis agent uses no tools

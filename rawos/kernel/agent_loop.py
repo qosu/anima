@@ -25,7 +25,9 @@ from typing import Any, AsyncIterator
 
 import httpx
 
+import rawos.db as db
 from rawos.config import settings
+from rawos.kernel import billing_context
 from rawos.kernel.tools import TOOL_DEFINITIONS, execute as execute_tool
 
 log = logging.getLogger("rawos.agent_loop")
@@ -291,8 +293,31 @@ async def _llm_stream_final(
                     continue
 
 
+# Verified DeepSeek pricing (USD per 1M tokens). Models not listed here have
+# unverified pricing — cost is reported as None rather than fabricated.
+_PRICING_USD_PER_M = {
+    "deepseek-v4-pro": {"cache_hit": 0.003625, "cache_miss": 0.435, "output": 0.87},
+}
+
+
+def _compute_cost_usd_micros(model: str, usage: dict) -> int | None:
+    """Compute call cost in USD micros, or None if pricing for `model` is unverified."""
+    pricing = _PRICING_USD_PER_M.get(model)
+    if pricing is None:
+        return None
+    cache_hit = usage.get("prompt_cache_hit_tokens", 0)
+    cache_miss = usage.get("prompt_cache_miss_tokens", 0)
+    out = usage.get("completion_tokens", 0)
+    return round(
+        cache_hit * pricing["cache_hit"]
+        + cache_miss * pricing["cache_miss"]
+        + out * pricing["output"]
+    )
+
+
 def _log_usage(model: str, usage: dict) -> None:
-    """Log DeepSeek token usage including cache hit/miss breakdown."""
+    """Log DeepSeek token usage including cache hit/miss breakdown, and persist
+    a billing_events row if a billing context is active (see billing_context)."""
     total_in = usage.get("prompt_tokens", 0)
     cache_hit = usage.get("prompt_cache_hit_tokens", 0)
     cache_miss = usage.get("prompt_cache_miss_tokens", 0)
@@ -301,6 +326,22 @@ def _log_usage(model: str, usage: dict) -> None:
     log.info(
         "tokens model=%s in=%d cache_hit=%d cache_miss=%d out=%d hit_rate=%.0f%%",
         model, total_in, cache_hit, cache_miss, out, hit_rate,
+    )
+
+    ctx = billing_context.get_billing_context()
+    if ctx is None:
+        return
+
+    db.create_billing_event(
+        user_id=ctx["user_id"],
+        intent_id=ctx["intent_id"],
+        event_type=ctx["event_type"],
+        tokens=total_in + out,
+        model=model,
+        cache_hit_tokens=cache_hit,
+        cache_miss_tokens=cache_miss,
+        output_tokens=out,
+        cost_usd_micros=_compute_cost_usd_micros(model, usage),
     )
 
 
@@ -337,16 +378,34 @@ async def run(
     workdir:         str,
     model:           str,
     intent_id:       str,
+    user_id:         str,
     on_artifact:     Any = None,
     system_prompt:   str | None = None,
     tool_definitions: list[dict] | None = None,
     agent_id:        str = "",
+    event_type:      str = "intent",
 ) -> AsyncIterator[dict]:
     """
     Run the agentic loop. Yields SSE event dicts.
     messages: history WITHOUT system prompt (caller provides).
     on_artifact: async callable invoked for each new file, returns Artifact with id.
+    user_id/event_type: billing attribution for per-call DeepSeek usage (see billing_context).
     """
+    with billing_context.set_billing_context(user_id=user_id, intent_id=intent_id, event_type=event_type):
+        async for event in _run(messages, workdir, model, intent_id, on_artifact, system_prompt, tool_definitions, agent_id):
+            yield event
+
+
+async def _run(
+    messages:        list[dict],
+    workdir:         str,
+    model:           str,
+    intent_id:       str,
+    on_artifact:     Any = None,
+    system_prompt:   str | None = None,
+    tool_definitions: list[dict] | None = None,
+    agent_id:        str = "",
+) -> AsyncIterator[dict]:
     existing: set[str] = set()
     _detect_artifacts(workdir, existing)
 

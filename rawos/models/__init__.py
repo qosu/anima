@@ -285,13 +285,18 @@ class BillingEventType(str, Enum):
     INTENT         = "intent"
     MANUAL_CREDIT  = "manual_credit"
     RESET          = "reset"
+    SERVER_SCAN    = "server_scan"
 
 
 class BillingEvent(BaseModel):
-    id:         str              = Field(default_factory=_uuid)
-    user_id:    str
-    intent_id:  str | None       = None
-    tokens:     int
-    model:      str              = ""
-    event_type: BillingEventType = BillingEventType.INTENT
-    created_at: int              = Field(default_factory=_now)
+    id:                str              = Field(default_factory=_uuid)
+    user_id:           str
+    intent_id:         str | None       = None
+    tokens:            int
+    model:             str              = ""
+    event_type:        BillingEventType = BillingEventType.INTENT
+    cache_hit_tokens:  int              = 0
+    cache_miss_tokens: int              = 0
+    output_tokens:     int              = 0
+    cost_usd_micros:   int | None       = None
+    created_at:        int              = Field(default_factory=_now)

@@ -568,15 +568,25 @@ def get_agent_children(user_id: str, parent_id: str) -> list:
 
 def create_billing_event(user_id: str, tokens: int, model: str = "",
                           intent_id: str | None = None,
-                          event_type: str = "intent") -> None:
+                          event_type: str = "intent",
+                          cache_hit_tokens: int = 0,
+                          cache_miss_tokens: int = 0,
+                          output_tokens: int = 0,
+                          cost_usd_micros: int | None = None) -> None:
     from rawos.models import BillingEvent
     ev = BillingEvent(user_id=user_id, intent_id=intent_id,
-                      tokens=tokens, model=model, event_type=event_type)
+                      tokens=tokens, model=model, event_type=event_type,
+                      cache_hit_tokens=cache_hit_tokens,
+                      cache_miss_tokens=cache_miss_tokens,
+                      output_tokens=output_tokens,
+                      cost_usd_micros=cost_usd_micros)
     with _conn() as conn:
         conn.execute(
-            """INSERT INTO billing_events (id, user_id, intent_id, tokens, model, event_type, created_at)
-               VALUES (?,?,?,?,?,?,?)""",
-            (ev.id, ev.user_id, ev.intent_id, ev.tokens, ev.model, ev.event_type.value, ev.created_at),
+            """INSERT INTO billing_events (id, user_id, intent_id, tokens, model, event_type, created_at,
+                                            cache_hit_tokens, cache_miss_tokens, output_tokens, cost_usd_micros)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (ev.id, ev.user_id, ev.intent_id, ev.tokens, ev.model, ev.event_type.value, ev.created_at,
+             ev.cache_hit_tokens, ev.cache_miss_tokens, ev.output_tokens, ev.cost_usd_micros),
         )
 
 
@@ -590,6 +600,8 @@ def get_billing_events(user_id: str, limit: int = 100) -> list:
     return [BillingEvent(
         id=r["id"], user_id=r["user_id"], intent_id=r["intent_id"],
         tokens=r["tokens"], model=r["model"], event_type=r["event_type"],
+        cache_hit_tokens=r["cache_hit_tokens"], cache_miss_tokens=r["cache_miss_tokens"],
+        output_tokens=r["output_tokens"], cost_usd_micros=r["cost_usd_micros"],
         created_at=r["created_at"],
     ) for r in rows]
 
