@@ -10,9 +10,8 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -20,6 +19,7 @@ import rawos.db as db
 from rawos import billing
 from rawos import monitoring
 from rawos.api.deps import current_user
+from rawos.api.run_registry import Run, registry
 from rawos.config import settings
 from rawos.kernel import agent_loop
 from rawos.kernel import orchestrator, context_builder, memory_index
@@ -136,157 +136,165 @@ async def _maybe_summarize_bg(user_id: str, project_id: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# SSE generator
+# Orchestration lifecycle (decoupled from the SSE connection — Stage F)
 # ---------------------------------------------------------------------------
 
-async def _sse_generator(
+async def _run_orchestration(
+    run: Run,
+    intent: Intent,
     user: User,
     project_id: str,
     raw_message: str,
     model: str | None,
-) -> AsyncIterator[str]:
+) -> None:
+    """Run one full agent turn to completion, independent of any subscriber.
+
+    Always finalises (memory, intent status, billing, background indexing)
+    in a `finally`, regardless of whether a client is still connected to the
+    SSE stream. Events are published via `registry.append` so both the
+    original POST stream and any later `GET /intent/{run_id}/stream`
+    reconnect can observe them.
+    """
     _intent_start = time.perf_counter()
     monitoring.active_sse_connections.inc()
+
+    chosen_model = model or settings.deepseek_model_pro
+    error_occurred = False
+    response_chunks: list[str] = []
+    user_mem_id: str | None = None
+    asst_mem_id: str | None = None
+
+    await registry.append(run, {"type": "run_started", "run_id": run.run_id})
+
     try:
-        async for chunk in _sse_generator_inner(user, project_id, raw_message, model):
-            yield chunk
+        project = db.get_project(user.id, project_id)
+        if not project:
+            error_occurred = True
+            await registry.append(run, {"type": "error", "message": "project not found"})
+            return
+        if not project.workdir:
+            error_occurred = True
+            await registry.append(run, {"type": "error", "message": "project workdir not initialised"})
+            return
+
+        # Create intent + agent records
+        db.create_intent(intent)
+
+        agent = Agent(user_id=user.id, project_id=project_id, goal=raw_message[:200],
+                      model=chosen_model)
+        agent = agent.transition(AgentStatus.ACTIVE)
+        db.create_agent(agent)
+        db.update_intent(user.id, intent.id, agent_id=agent.id, status=IntentStatus.EXECUTING)
+        db.log_event(Event(user_id=user.id, project_id=project_id, agent_id=agent.id,
+                           type=EventType.AGENT_STARTED, payload={"intent_id": intent.id}))
+
+        # Save user message to episodic memory
+        user_mem = Memory(user_id=user.id, project_id=project_id, agent_id=agent.id,
+                          tier=MemoryTier.EPISODIC, role=MessageRole.USER, content=raw_message)
+        db.save_memory(user_mem)
+        user_mem_id = user_mem.id
+
+        # Build enriched context (recent history + semantic retrieval)
+        messages, system_ctx = context_builder.build_context(user.id, project_id, raw_message)
+        # Remove the just-saved user message from history to avoid duplication
+        if messages and messages[-1]["role"] == "user" and messages[-1]["content"] == raw_message:
+            messages = messages[:-1]
+        messages.append({"role": "user", "content": raw_message})
+
+        # Enrich system prompt with semantic context
+        from rawos.kernel.agent_loop import _SYSTEM_PROMPT as BASE_PROMPT
+        enriched_system = BASE_PROMPT + system_ctx if system_ctx else None
+
+        async def on_artifact(af_meta: dict) -> Artifact:
+            art = Artifact(
+                user_id=user.id, project_id=project_id, agent_id=agent.id,
+                intent_id=intent.id,
+                type=ArtifactType.FILE,
+                name=af_meta["name"],
+                path=af_meta["path"],
+                mime_type=af_meta["mime_type"],
+                size_bytes=af_meta["size_bytes"],
+            )
+            db.save_artifact(art)
+            return art
+
+        try:
+            async for event in orchestrator.run(
+                user_id=user.id,
+                project_id=project_id,
+                intent_id=intent.id,
+                messages=messages,
+                workdir=project.workdir,
+                model=chosen_model,
+                on_artifact=on_artifact,
+                system_prompt=enriched_system,
+            ):
+                if event["type"] == "chunk":
+                    response_chunks.append(event["text"])
+                elif event["type"] == "error":
+                    error_occurred = True
+
+                db.log_event(Event(
+                    user_id=user.id, project_id=project_id, agent_id=agent.id,
+                    type=EventType.TOOL_CALLED if event["type"] == "tool_call" else EventType.TASK_COMPLETED,
+                    payload=event,
+                ))
+                await registry.append(run, event)
+
+        except Exception as e:
+            log.exception("agent loop uncaught: %s", e)
+            error_occurred = True
+            await registry.append(run, {"type": "error", "message": str(e)})
+
+        # Persist assistant response
+        if response_chunks:
+            asst_mem = Memory(
+                user_id=user.id, project_id=project_id, agent_id=agent.id,
+                tier=MemoryTier.EPISODIC, role=MessageRole.ASSISTANT,
+                content="".join(response_chunks),
+            )
+            db.save_memory(asst_mem)
+            asst_mem_id = asst_mem.id
+
+        # Finalise records
+        final_status = IntentStatus.FAILED if error_occurred else IntentStatus.COMPLETED
+        db.update_intent(user.id, intent.id, status=final_status)
+        db.update_agent_status(user.id, agent.id, AgentStatus.ARCHIVED)
+        db.log_event(Event(
+            user_id=user.id, project_id=project_id, agent_id=agent.id,
+            type=EventType.ERROR if error_occurred else EventType.TASK_COMPLETED,
+            payload={"intent_id": intent.id, "chars": len("".join(response_chunks))},
+        ))
+
+        # Record token usage for billing and metrics
+        if response_chunks:
+            # Approximate: 1 token ≈ 4 chars (rough but consistent)
+            approx_tokens = max(1, len("".join(response_chunks)) // 4)
+            billing.record_usage(user.id, approx_tokens, model=chosen_model, intent_id=intent.id)
+            monitoring.intent_tokens_total.labels(
+                model=chosen_model, user_tier=user.tier.value
+            ).inc(approx_tokens)
+
+        # Background: index new memories + files into ChromaDB, maybe summarise
+        new_ids = ([user_mem_id] if user_mem_id else []) + ([asst_mem_id] if asst_mem_id else [])
+        asyncio.create_task(_index_memories_bg(user.id, project_id, new_ids))
+        asyncio.create_task(_index_files_bg(user.id, project_id))
+        asyncio.create_task(_maybe_summarize_bg(user.id, project_id))
+
     finally:
+        status = "failed" if error_occurred else "completed"
+        await registry.finish(run, status)
         monitoring.active_sse_connections.dec()
         monitoring.intent_duration_seconds.labels(model=model or "default").observe(
             time.perf_counter() - _intent_start
         )
 
 
-async def _sse_generator_inner(
-    user: User,
-    project_id: str,
-    raw_message: str,
-    model: str | None,
-) -> AsyncIterator[str]:
-
-    project = db.get_project(user.id, project_id)
-    if not project:
-        yield f"data: {json.dumps({'type': 'error', 'message': 'project not found'})}\n\n"
-        return
-    if not project.workdir:
-        yield f"data: {json.dumps({'type': 'error', 'message': 'project workdir not initialised'})}\n\n"
-        return
-
-    # Create intent + agent records
-    intent = Intent(user_id=user.id, project_id=project_id, raw_text=raw_message,
-                    status=IntentStatus.ROUTING)
-    db.create_intent(intent)
-
-    agent = Agent(user_id=user.id, project_id=project_id, goal=raw_message[:200],
-                  model=model or settings.deepseek_model_pro)
-    agent = agent.transition(AgentStatus.ACTIVE)
-    db.create_agent(agent)
-    db.update_intent(user.id, intent.id, agent_id=agent.id, status=IntentStatus.EXECUTING)
-    db.log_event(Event(user_id=user.id, project_id=project_id, agent_id=agent.id,
-                       type=EventType.AGENT_STARTED, payload={"intent_id": intent.id}))
-
-    # Save user message to episodic memory
-    user_mem = Memory(user_id=user.id, project_id=project_id, agent_id=agent.id,
-                      tier=MemoryTier.EPISODIC, role=MessageRole.USER, content=raw_message)
-    db.save_memory(user_mem)
-
-    # Build enriched context (recent history + semantic retrieval)
-    messages, system_ctx = context_builder.build_context(user.id, project_id, raw_message)
-    # Remove the just-saved user message from history to avoid duplication
-    if messages and messages[-1]["role"] == "user" and messages[-1]["content"] == raw_message:
-        messages = messages[:-1]
-    messages.append({"role": "user", "content": raw_message})
-
-    # Enrich system prompt with semantic context
-    from rawos.kernel.agent_loop import _SYSTEM_PROMPT as BASE_PROMPT
-    enriched_system = BASE_PROMPT + system_ctx if system_ctx else None
-
-    chosen_model = model or settings.deepseek_model_pro
-    error_occurred = False
-    response_chunks: list[str] = []
-
-    async def on_artifact(af_meta: dict) -> Artifact:
-        art = Artifact(
-            user_id=user.id, project_id=project_id, agent_id=agent.id,
-            intent_id=intent.id,
-            type=ArtifactType.FILE,
-            name=af_meta["name"],
-            path=af_meta["path"],
-            mime_type=af_meta["mime_type"],
-            size_bytes=af_meta["size_bytes"],
-        )
-        db.save_artifact(art)
-        return art
-
-    try:
-        async for event in orchestrator.run(
-            user_id=user.id,
-            project_id=project_id,
-            intent_id=intent.id,
-            messages=messages,
-            workdir=project.workdir,
-            model=chosen_model,
-            on_artifact=on_artifact,
-            system_prompt=enriched_system,
-        ):
-            if event["type"] == "chunk":
-                response_chunks.append(event["text"])
-            elif event["type"] == "error":
-                error_occurred = True
-
-            db.log_event(Event(
-                user_id=user.id, project_id=project_id, agent_id=agent.id,
-                type=EventType.TOOL_CALLED if event["type"] == "tool_call" else EventType.TASK_COMPLETED,
-                payload=event,
-            ))
-            yield f"data: {json.dumps(event)}\n\n"
-
-    except Exception as e:
-        log.exception("agent loop uncaught: %s", e)
-        error_occurred = True
-        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-
-    # Persist assistant response
-    asst_mem_id = None
-    if response_chunks:
-        asst_mem = Memory(
-            user_id=user.id, project_id=project_id, agent_id=agent.id,
-            tier=MemoryTier.EPISODIC, role=MessageRole.ASSISTANT,
-            content="".join(response_chunks),
-        )
-        db.save_memory(asst_mem)
-        asst_mem_id = asst_mem.id
-
-    # Finalise records
-    final_status = IntentStatus.FAILED if error_occurred else IntentStatus.COMPLETED
-    db.update_intent(user.id, intent.id, status=final_status)
-    db.update_agent_status(user.id, agent.id, AgentStatus.ARCHIVED)
-    db.log_event(Event(
-        user_id=user.id, project_id=project_id, agent_id=agent.id,
-        type=EventType.ERROR if error_occurred else EventType.TASK_COMPLETED,
-        payload={"intent_id": intent.id, "chars": len("".join(response_chunks))},
-    ))
-
-    # Record token usage for billing and metrics
-    if response_chunks:
-        # Approximate: 1 token ≈ 4 chars (rough but consistent)
-        approx_tokens = max(1, len("".join(response_chunks)) // 4)
-        billing.record_usage(user.id, approx_tokens, model=chosen_model, intent_id=intent.id)
-        monitoring.intent_tokens_total.labels(
-            model=chosen_model, user_tier=user.tier.value
-        ).inc(approx_tokens)
-
-    # Background: index new memories + files into ChromaDB, maybe summarise
-    new_ids = [user_mem.id] + ([asst_mem_id] if asst_mem_id else [])
-    asyncio.create_task(_index_memories_bg(user.id, project_id, new_ids))
-    asyncio.create_task(_index_files_bg(user.id, project_id))
-    asyncio.create_task(_maybe_summarize_bg(user.id, project_id))
-
-
 @router.post("")
 async def create_intent(body: IntentRequest, user: User = Depends(current_user)):
     try:
-        Intent(user_id=user.id, project_id=body.project_id, raw_text=body.message)
+        intent = Intent(user_id=user.id, project_id=body.project_id, raw_text=body.message,
+                        status=IntentStatus.ROUTING)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -295,8 +303,32 @@ async def create_intent(body: IntentRequest, user: User = Depends(current_user))
     except billing.QuotaExceeded as e:
         raise HTTPException(status_code=429, detail=str(e))
 
+    run = registry.create(intent.id, user.id)
+    asyncio.create_task(_run_orchestration(run, intent, user, body.project_id, body.message, body.model))
+
     return StreamingResponse(
-        _sse_generator(user, body.project_id, body.message, body.model),
+        registry.subscribe(run, after_seq=0),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get("/{run_id}/stream")
+async def stream_intent(run_id: str, request: Request, user: User = Depends(current_user)):
+    after_seq = 0
+    last_event_id = request.headers.get("last-event-id") or request.query_params.get("after")
+    if last_event_id is not None:
+        try:
+            after_seq = int(last_event_id)
+        except ValueError:
+            after_seq = 0
+
+    run = registry.get(run_id)
+    if run is None or run.user_id != user.id:
+        raise HTTPException(status_code=404, detail="run not found or expired")
+
+    return StreamingResponse(
+        registry.subscribe(run, after_seq),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

@@ -74,41 +74,91 @@ def _api(method: str, path: str, **kwargs: Any) -> dict:
     return resp.json()
 
 
+_MAX_RECONNECTS = 5
+
+
 def _api_stream(path: str, payload: dict) -> Iterator[dict]:
-    """Stream SSE events from a POST endpoint.
+    """Stream SSE events from a POST endpoint, resuming across drops.
 
     Uses unbounded read-timeout (read=None) because agent runs can be long.
-    Yields one parsed dict per ``data: {...}`` SSE frame.
-    Blank keepalive lines and non-``data:`` lines are skipped.
+    Yields one parsed dict per ``data: {...}`` SSE frame, excluding the
+    `run_started` / `run_complete` control events (Stage F framing) — these
+    are consumed here to track ``run_id`` and the last seen ``id:`` sequence.
+    Blank keepalive lines and non-``data:``/``id:`` lines are skipped.
     Mirrors ``_api``'s 401 / ≥400 error handling: echoes the error and exits.
+
+    On a clean `run_complete`, returns with no reconnect. On a premature
+    stream end / transport error before `run_complete`, reconnects via
+    ``GET {path}/{run_id}/stream`` with a `Last-Event-ID` header set to the
+    last seen sequence number, up to `_MAX_RECONNECTS` attempts.
     """
     token = _get_token()
     url = _DEFAULT_URL.rstrip("/") + path
+    run_id: str | None = None
+    last_seq = 0
+    method = "POST"
+    request_url = url
+    reconnects = 0
+
     with httpx.Client(
         timeout=httpx.Timeout(connect=10.0, read=None, write=None, pool=None)
     ) as client:
-        with client.stream(
-            "POST",
-            url,
-            json=payload,
-            headers={"Authorization": f"Bearer {token}"},
-        ) as resp:
-            if resp.status_code == 401:
-                click.echo("Session expired. Run: rawos login", err=True)
-                sys.exit(1)
-            if resp.status_code >= 400:
-                click.echo(
-                    f"API error {resp.status_code}",
-                    err=True,
-                )
-                sys.exit(1)
-            for line in resp.iter_lines():
-                if not line or not line.startswith("data: "):
-                    continue
-                try:
-                    yield json.loads(line[6:])
-                except json.JSONDecodeError:
-                    continue
+        while True:
+            headers = {"Authorization": f"Bearer {token}"}
+            stream_kwargs: dict[str, Any] = {"headers": headers}
+            if method == "POST":
+                stream_kwargs["json"] = payload
+            else:
+                headers["Last-Event-ID"] = str(last_seq)
+
+            completed = False
+            try:
+                with client.stream(method, request_url, **stream_kwargs) as resp:
+                    if resp.status_code == 401:
+                        click.echo("Session expired. Run: rawos login", err=True)
+                        sys.exit(1)
+                    if resp.status_code >= 400:
+                        click.echo(
+                            f"API error {resp.status_code}",
+                            err=True,
+                        )
+                        sys.exit(1)
+                    for line in resp.iter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("id: "):
+                            try:
+                                last_seq = int(line[len("id: "):].strip())
+                            except ValueError:
+                                pass
+                            continue
+                        if not line.startswith("data: "):
+                            continue
+                        try:
+                            event = json.loads(line[6:])
+                        except json.JSONDecodeError:
+                            continue
+
+                        ev_type = event.get("type")
+                        if ev_type == "run_started":
+                            run_id = event.get("run_id")
+                            continue
+                        if ev_type == "run_complete":
+                            completed = True
+                            continue
+                        yield event
+            except httpx.TransportError:
+                pass
+
+            if completed:
+                return
+            if run_id is None or reconnects >= _MAX_RECONNECTS:
+                return
+
+            reconnects += 1
+            time.sleep(min(2 ** reconnects, 10))
+            method = "GET"
+            request_url = f"{url}/{run_id}/stream"
 
 
 def _resolve_project_id() -> str:

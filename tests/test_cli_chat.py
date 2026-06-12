@@ -20,6 +20,7 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, call
 
+import httpx
 import pytest
 from click.testing import CliRunner
 from rich.console import Console
@@ -230,6 +231,114 @@ class TestApiStream:
         with self._patch_client(client), self._patch_token():
             result = list(_api_stream("/intent", {}))
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# 2b. _api_stream — Stage F: run_id/seq tracking, reconnect, run_complete
+# ---------------------------------------------------------------------------
+
+def _sse_resp(lines: list[str], status_code: int = 200):
+    """Build a single mock SSE streaming response (context manager)."""
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.iter_lines.return_value = iter(lines)
+    resp.__enter__ = MagicMock(return_value=resp)
+    resp.__exit__ = MagicMock(return_value=False)
+    return resp
+
+
+def _make_multi_stream_ctx(*responses):
+    """Build a mock httpx.Client whose .stream() returns successive responses
+    (one per call), in order — for reconnect tests."""
+    client = MagicMock()
+    client.stream.side_effect = list(responses)
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+    return client
+
+
+class TestApiStreamResumable:
+    def _patch_client(self, mock_client):
+        return patch("rawos.cli.main.httpx.Client", return_value=mock_client)
+
+    def _patch_token(self):
+        return patch("rawos.cli.main._get_token", return_value="tok_test")
+
+    def test_filters_run_started_and_run_complete_control_events(self):
+        ev_started = {"type": "run_started", "run_id": "run123"}
+        ev_chunk = {"type": "chunk", "text": "hi"}
+        ev_complete = {"type": "run_complete", "status": "completed"}
+        lines = [
+            "id: 1",
+            f"data: {json.dumps(ev_started)}",
+            "id: 2",
+            f"data: {json.dumps(ev_chunk)}",
+            "id: 3",
+            f"data: {json.dumps(ev_complete)}",
+        ]
+        resp = _sse_resp(lines)
+        client = _make_multi_stream_ctx(resp)
+        with self._patch_client(client), self._patch_token():
+            result = list(_api_stream("/intent", {"project_id": "p1", "message": "hi"}))
+        assert result == [ev_chunk]
+
+    def test_run_complete_stops_cleanly_without_reconnect(self):
+        ev_started = {"type": "run_started", "run_id": "run123"}
+        ev_chunk = {"type": "chunk", "text": "hi"}
+        ev_complete = {"type": "run_complete", "status": "completed"}
+        lines = [
+            "id: 1",
+            f"data: {json.dumps(ev_started)}",
+            "id: 2",
+            f"data: {json.dumps(ev_chunk)}",
+            "id: 3",
+            f"data: {json.dumps(ev_complete)}",
+        ]
+        resp = _sse_resp(lines)
+        client = _make_multi_stream_ctx(resp)
+        with self._patch_client(client), self._patch_token():
+            list(_api_stream("/intent", {"project_id": "p1", "message": "hi"}))
+        assert client.stream.call_count == 1
+
+    def test_reconnects_on_transport_drop_and_resumes(self):
+        ev_started = {"type": "run_started", "run_id": "run123"}
+        ev1 = {"type": "chunk", "text": "a"}
+        ev2 = {"type": "chunk", "text": "b"}
+        ev_complete = {"type": "run_complete", "status": "completed"}
+
+        def _first_lines():
+            yield "id: 1"
+            yield f"data: {json.dumps(ev_started)}"
+            yield "id: 2"
+            yield f"data: {json.dumps(ev1)}"
+            raise httpx.ReadError("connection dropped")
+
+        resp1 = MagicMock()
+        resp1.status_code = 200
+        resp1.iter_lines.return_value = _first_lines()
+        resp1.__enter__ = MagicMock(return_value=resp1)
+        resp1.__exit__ = MagicMock(return_value=False)
+
+        resp2 = _sse_resp([
+            "id: 3",
+            f"data: {json.dumps(ev2)}",
+            "id: 4",
+            f"data: {json.dumps(ev_complete)}",
+        ])
+
+        client = _make_multi_stream_ctx(resp1, resp2)
+        with self._patch_client(client), self._patch_token(), \
+                patch("rawos.cli.main.time.sleep"):
+            result = list(_api_stream("/intent", {"project_id": "p1", "message": "hi"}))
+
+        assert result == [ev1, ev2]
+        assert client.stream.call_count == 2
+
+        second_call = client.stream.call_args_list[1]
+        assert second_call[0][0] == "GET"
+        assert second_call[0][1].endswith("/intent/run123/stream")
+        assert second_call[1]["headers"]["Last-Event-ID"] == "2"
+        assert second_call[1]["headers"]["Authorization"] == "Bearer tok_test"
 
 
 # ---------------------------------------------------------------------------
