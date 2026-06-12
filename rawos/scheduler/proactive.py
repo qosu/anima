@@ -117,7 +117,6 @@ MAX_PROACTIVE_LOOP_TIME_S = 300   # hard cap per-run (5 min)
 VERIFICATION_TIMEOUT_S = 300
 
 # Autonomous server scan — runs independently of human activity
-AUTONOMOUS_SCAN_INTERVAL_S  = 600   # 10 minutes between full server scans
 AUTONOMOUS_SCAN_THRESHOLD   = 6     # minimum severity to act (1-10 scale)
 AUTO_APPLY_MAX_DIFF_LINES   = 50    # Stage 3 graduated auto-apply: max total diff lines
 AUTONOMOUS_SCAN_COOLDOWN_S  = 1800  # 30 min cooldown per anomaly type
@@ -1638,13 +1637,13 @@ async def _run_autonomous_scan() -> None:
 async def autonomous_server_scan_loop() -> None:
     """
     rawos autonomous attention loop.
-    Runs every AUTONOMOUS_SCAN_INTERVAL_S. No human activity required.
+    Runs every settings.autonomous_scan_interval_s seconds. No human activity required.
     This is the inversion: rawos acts because it found something,
     not because a human triggered it.
     """
     log.info(
         "rawos autonomous scan started (interval=%ds, threshold=%d/10)",
-        AUTONOMOUS_SCAN_INTERVAL_S, AUTONOMOUS_SCAN_THRESHOLD,
+        settings.autonomous_scan_interval_s, AUTONOMOUS_SCAN_THRESHOLD,
     )
     while True:
         try:
@@ -1654,7 +1653,7 @@ async def autonomous_server_scan_loop() -> None:
             break
         except Exception:
             log.exception("autonomous scan error (continuing)")
-        await asyncio.sleep(AUTONOMOUS_SCAN_INTERVAL_S)
+        await asyncio.sleep(settings.autonomous_scan_interval_s)
 
 
 async def proactive_scan_loop() -> None:

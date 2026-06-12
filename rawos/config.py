@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     # class graduates (>=3 verified human-merged successes, see
     # kernel.track_record) AND an operator flips this flag
 
+    # Autonomous server scan — operator-tunable cadence (cost vs reaction-time tradeoff)
+    autonomous_scan_interval_s: int = 600   # seconds between full server scans
+
     # Phase 4 — multi-agent orchestration
     max_sub_agent_tokens:    int = 15_000
     max_orchestrator_tokens: int = 10_000
