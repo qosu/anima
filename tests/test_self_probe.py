@@ -198,3 +198,18 @@ def test_billing_event_type_self_probe_valid():
     """BillingEventType must accept self_probe - used by agent_loop in every cycle."""
     from rawos.models import BillingEventType
     assert BillingEventType("self_probe") == BillingEventType.SELF_PROBE
+
+
+def test_self_probe_tool_set_excludes_git_branch():
+    """agent_loop for self-probe must NOT receive git_branch — branch is pre-created."""
+    import rawos.scheduler.proactive as _p
+    names = {t["function"]["name"] for t in _p._get_tools_for_self_probe()}
+    assert "git_branch" not in names, f"git_branch must not be in self-probe tools: {names}"
+
+
+def test_self_probe_tool_set_includes_write_and_commit():
+    """self-probe needs write_file and git_commit to make and commit changes."""
+    import rawos.scheduler.proactive as _p
+    names = {t["function"]["name"] for t in _p._get_tools_for_self_probe()}
+    assert "write_file" in names
+    assert "git_commit" in names

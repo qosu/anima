@@ -619,18 +619,17 @@ _SELF_PROBE_SYSTEM_PROMPT = (
     "live working tree. TIER enforcement is active: writes outside the TIER 1\n"
     "allowlist (tests/, rawos/evaluation/, rawos/dataset/, rawos/study/,\n"
     "rawos/timing/, rawos/manifester/, docs/) are automatically reverted.\n\n"
-    "MISSION: Inspect the test suite or TIER 1 documentation and make EXACTLY ONE\n"
-    "concrete improvement. Prefer adding a missing test case in tests/.\n\n"
-    "RULES:\n"
-    "- Write to TIER 1 paths only (tests/, docs/, rawos/study/, etc.).\n"
-    "- Use git_branch to create a rawos/self-improve-[description] branch.\n"
-    "- Use git_commit with format:\n"
-    "    rawos: [description]\n\n"
+    "BRANCH STATUS: You are ALREADY on a rawos/self-improve-* branch created\n"
+    "before this agent started. git_branch is NOT in the tool list. Use git_commit directly.\n\n"
+    "TASK: Execute the user instructions EXACTLY. Minimum tool calls possible.\n\n"
+    "COMMIT FORMAT:\n"
+    "    rawos: [one-line description]\n\n"
     "    Self-probe: [what was added/improved]\n"
-    "    Confidence: 0.X\n"
+    "    Confidence: 0.X\n\n"
+    "RULES:\n"
+    "- Write only to TIER 1 paths (tests/, docs/, rawos/study/, etc.).\n"
     "- Do NOT restart rawos.service. Do NOT merge. Do NOT write to TIER 0 paths.\n"
-    "- If nothing concrete to improve: use bash_readonly to log and stop.\n"
-    "- Begin response with CONTRIBUTE (making a commit) or SILENCE (nothing found).\n"
+    "- Begin response with CONTRIBUTE (will commit) or SILENCE (nothing viable).\n"
 )
 
 
@@ -810,6 +809,22 @@ def _get_tools_for_server_scan() -> list[dict]:
     the entity's own autonomy grant.
     """
     return [t for t in TOOL_DEFINITIONS if t["function"]["name"] in _SERVER_SCAN_TOOLS]
+
+
+_SELF_PROBE_TOOLS: frozenset[str] = frozenset({
+    "bash_readonly", "read_file", "list_files", "write_file", "git_commit",
+})
+
+
+def _get_tools_for_self_probe() -> list[dict]:
+    """Toolset for SELF_PROBE cycles inside an isolated worktree.
+
+    Narrower than _get_tools_for_server_scan: git_branch is excluded because
+    _run_self_probe_cycle() pre-creates the rawos/self-improve-<ts> branch before
+    invoking the agent. Giving the agent git_branch wastes a round creating a
+    redundant branch.
+    """
+    return [t for t in TOOL_DEFINITIONS if t["function"]["name"] in _SELF_PROBE_TOOLS]
 
 
 def _log_proactive_tool_calls(
@@ -1872,9 +1887,34 @@ async def _run_self_probe_cycle() -> None:
         )
 
         goal = (
-            "Inspect the rawos test suite and add EXACTLY ONE missing test case "
-            "for an uncovered edge case in tests/. Follow existing test patterns. "
-            "Commit to the current branch. Do not modify files outside tests/."
+            "CONTRIBUTE.\n"
+            "Gap identified: tests/test_tier_enforcement.py::TestInTier1Allowlist "
+            "has no tests for rawos/dataset/, rawos/study/, rawos/timing/ "
+            "despite all three appearing in _TIER1_PREFIXES in rawos/kernel/tools.py.\n\n"
+            "Step 1: read_file path=tests/test_tier_enforcement.py\n"
+            "Step 2: write_file path=tests/test_tier_enforcement.py "
+            "with the complete file content (include ALL existing content). "
+            "Insert three new test methods into TestInTier1Allowlist class, "
+            "after the last existing test in that class (around line 62), "
+            "before class TestDiffPaths:\n"
+            "    def test_dataset_dir_allowed(self):\n"
+            "        from rawos.kernel.tools import _in_tier1_allowlist\n"
+            "        assert _in_tier1_allowlist('rawos/dataset/schema.py')\n"
+            "    def test_study_dir_allowed(self):\n"
+            "        from rawos.kernel.tools import _in_tier1_allowlist\n"
+            "        assert _in_tier1_allowlist('rawos/study/notes.md')\n"
+            "    def test_timing_dir_allowed(self):\n"
+            "        from rawos.kernel.tools import _in_tier1_allowlist\n"
+            "        assert _in_tier1_allowlist('rawos/timing/benchmark.py')\n\n"
+            "Step 3: bash_readonly "
+            "cmd='python -m pytest tests/test_tier_enforcement.py::TestInTier1Allowlist "
+            "-x -q 2>&1 | tail -5'\n"
+            "Step 4: git_commit with message="
+            "'rawos: add TIER1 allowlist tests for dataset/study/timing\\n\\n"
+            "Self-probe: _in_tier1_allowlist had no assertions for rawos/dataset/, "
+            "rawos/study/, rawos/timing/ despite all three in _TIER1_PREFIXES."
+            "\\nConfidence: 0.95'\n"
+            "Stop after step 4. No further exploration."
         )
 
         # Minimal DB records for billing attribution and audit trail.
@@ -1904,7 +1944,7 @@ async def _run_self_probe_cycle() -> None:
                 intent_id=intent_rec.id,
                 user_id=RAWOS_ENTITY_USER_ID,
                 system_prompt=_SELF_PROBE_SYSTEM_PROMPT,
-                tool_definitions=_get_tools_for_server_scan(),
+                tool_definitions=_get_tools_for_self_probe(),
                 agent_id=agent_rec.id,
                 event_type="self_probe",
             ):
