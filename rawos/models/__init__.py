@@ -286,6 +286,7 @@ class BillingEventType(str, Enum):
     MANUAL_CREDIT  = "manual_credit"
     RESET          = "reset"
     SERVER_SCAN    = "server_scan"
+    SELF_PROBE     = "self_probe"
 
 
 class BillingEvent(BaseModel):
