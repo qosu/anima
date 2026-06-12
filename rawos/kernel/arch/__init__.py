@@ -26,6 +26,12 @@ from rawos.kernel.arch.macos import (
     MacOSServiceManager,
     MacOSShellPolicy,
 )
+from rawos.kernel.arch.windows import (
+    WindowsLogReader,
+    WindowsResourceProbe,
+    WindowsServiceManager,
+    WindowsShellPolicy,
+)
 
 
 @dataclass(frozen=True)
@@ -52,7 +58,12 @@ def _build_backend(os_: OS) -> Backend:
             log_reader=MacOSLogReader(),
             shell_policy=MacOSShellPolicy(),
         )
-    raise NotImplementedError("Windows arch backend not yet implemented (Stage C)")
+    return Backend(
+        resource_probe=WindowsResourceProbe(),
+        service_manager=WindowsServiceManager(),
+        log_reader=WindowsLogReader(),
+        shell_policy=WindowsShellPolicy(),
+    )
 
 
 def get_arch(settings: Settings | None = None) -> Backend:
