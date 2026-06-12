@@ -351,3 +351,123 @@ class TestExecuteWrapper:
         ))
         assert result.success
         assert (repo / "rawos" / "api" / "app.py").read_text() == "y"
+
+
+# ---------------------------------------------------------------------------
+# TestEscapeVectors — out-of-worktree write vectors that worktree git status
+# alone cannot detect.  RED before fix; GREEN after _execute_with_tier_enforcement
+# also monitors the live rawos repo for changes.
+# ---------------------------------------------------------------------------
+
+class TestEscapeVectors:
+    """Verify that the TIER boundary holds for escape vectors that bypass the
+    worktree-local git status check.
+
+    Each test sets up:
+      - a main rawos repo (repo)
+      - a linked git worktree (worktree)
+      - monkeypatches _RAWOS_GIT_COMMON_DIR to repo/.git
+
+    execute() is called with workdir=worktree — the live-repo check in
+    _execute_with_tier_enforcement must catch and revert the violation.
+    """
+
+    def _setup_linked_worktree(self, tmp_path):
+        """Return (repo, worktree) — repo with TIER 0/1 structure, linked worktree."""
+        repo = tmp_path / "rawos_main"
+        repo.mkdir()
+        _init_repo(str(repo))
+        (repo / "rawos" / "api").mkdir(parents=True)
+        (repo / "rawos" / "evaluation").mkdir(parents=True)
+        (repo / "tests").mkdir(parents=True)
+        (repo / "rawos" / "api" / "app.py").write_text("# tier0 live\n")
+        (repo / "rawos" / "evaluation" / "metrics.py").write_text("# tier1 live\n")
+        (repo / "tests" / "__init__.py").write_text("")
+        _git("add", "-A", cwd=str(repo))
+        _git("commit", "-qm", "init", cwd=str(repo))
+
+        worktree = tmp_path / "worktree"
+        _git("worktree", "add", str(worktree), "HEAD", cwd=str(repo))
+        return repo, worktree
+
+    def _patch_common_dir(self, monkeypatch, repo):
+        import rawos.kernel.tools as tools
+        monkeypatch.setattr(tools, "_RAWOS_GIT_COMMON_DIR", str(repo / ".git"))
+
+    def test_bash_absolute_path_write_to_live_repo_detected(self, tmp_path, monkeypatch):
+        """bash writing to an absolute TIER 0 path in the live repo (outside worktree) must be blocked."""
+        from rawos.kernel.tools import execute
+
+        repo, worktree = self._setup_linked_worktree(tmp_path)
+        self._patch_common_dir(monkeypatch, repo)
+
+        target = repo / "rawos" / "api" / "app.py"
+        cmd = f"echo EVIL >> {target}"
+        result = asyncio.run(execute("bash", {"command": cmd}, str(worktree)))
+
+        assert not result.success, "absolute-path write to live TIER 0 must be blocked"
+        assert target.read_text() == "# tier0 live\n", "live file must be reverted"
+        assert "TIER VIOLATION" in result.output
+
+    def test_bash_write_through_symlink_to_live_repo_detected(self, tmp_path, monkeypatch):
+        """bash writing through an in-worktree symlink that points to a live TIER 0 file must be blocked."""
+        from rawos.kernel.tools import execute
+
+        repo, worktree = self._setup_linked_worktree(tmp_path)
+        self._patch_common_dir(monkeypatch, repo)
+
+        target = repo / "rawos" / "api" / "app.py"
+        link = worktree / "tests" / "evil_link.py"
+
+        # Create the symlink (this step is itself allowed — new untracked TIER 1 file)
+        link.symlink_to(target)
+
+        # Write through the symlink — this modifies the live TIER 0 file
+        cmd = f"echo EVIL >> {link}"
+        result = asyncio.run(execute("bash", {"command": cmd}, str(worktree)))
+
+        assert not result.success, "write-through-symlink to live TIER 0 must be blocked"
+        assert target.read_text() == "# tier0 live\n", "live file must be reverted"
+        assert "TIER VIOLATION" in result.output
+
+    def test_write_file_symlink_resolution_blocks_out_of_tree(self, tmp_path, monkeypatch):
+        """write_file with a path that resolves via symlink to outside workdir raises PathTraversalError.
+
+        This is already blocked by validate_path(); confirm it stays blocked.
+        """
+        from rawos.kernel.tools import execute
+
+        repo, worktree = self._setup_linked_worktree(tmp_path)
+        self._patch_common_dir(monkeypatch, repo)
+
+        target = repo / "rawos" / "api" / "app.py"
+        link = worktree / "tests" / "evil_link.py"
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(target)
+
+        result = asyncio.run(execute(
+            "write_file", {"path": "tests/evil_link.py", "content": "EVIL"}, str(worktree),
+        ))
+
+        assert not result.success
+        assert target.read_text() == "# tier0 live\n", "live file must be unchanged"
+
+    def test_bash_hardlink_to_live_repo_write_detected(self, tmp_path, monkeypatch):
+        """bash writing to a hardlink in worktree TIER 1 that shares an inode with a live TIER 0 file must be blocked."""
+        import os
+        from rawos.kernel.tools import execute
+
+        repo, worktree = self._setup_linked_worktree(tmp_path)
+        self._patch_common_dir(monkeypatch, repo)
+
+        target = repo / "rawos" / "api" / "app.py"
+        hardlink = worktree / "tests" / "evil_hardlink.py"
+        hardlink.parent.mkdir(parents=True, exist_ok=True)
+        os.link(str(target), str(hardlink))  # same inode as live TIER 0 file
+
+        cmd = f"echo EVIL >> {hardlink}"
+        result = asyncio.run(execute("bash", {"command": cmd}, str(worktree)))
+
+        assert not result.success, "hardlink write to live TIER 0 inode must be blocked"
+        assert target.read_text() == "# tier0 live\n", "live file must be reverted"
+        assert "TIER VIOLATION" in result.output

@@ -904,8 +904,25 @@ async def _execute_with_tier_enforcement(
     """Run a mutating tool inside a rawos source-tree worktree, then detect
     and revert any TIER 0 violation — including violations smuggled into a
     commit (undone via `git reset --soft` before the working-tree diff).
+
+    For linked worktrees (workdir != main rawos repo), the enforcement also
+    snapshots the live main repo before and after the tool call.  This closes
+    escape vectors that bypass the worktree-local git status:
+      - absolute-path writes to /root/rawos/**
+      - writes through in-worktree symlinks pointing to live TIER 0 files
+      - writes via hardlinks sharing an inode with a live TIER 0 file
+    Any change detected in the live repo's TIER 0 paths is reverted via
+    `git checkout HEAD` in that repo and reported as a TIER VIOLATION.
     """
+    from pathlib import Path as _Path
+
+    # Detect linked-worktree mode: workdir is a linked worktree, not the main repo.
+    # In that mode we additionally monitor the live rawos repo for out-of-worktree writes.
+    _main_repo = str(_Path(_RAWOS_GIT_COMMON_DIR).parent)
+    _is_linked = _Path(workdir).resolve() != _Path(_main_repo).resolve()
+
     before_status = await _git_status_porcelain(workdir)
+    before_live = await _git_status_porcelain(_main_repo) if _is_linked else {}
     before_head = (await run_bash("git rev-parse HEAD", workdir)).stdout.strip()
 
     result = await _run_impl(impl, tool_name, params, workdir)
@@ -927,6 +944,25 @@ async def _execute_with_tier_enforcement(
 
     after_status = await _git_status_porcelain(workdir)
     violations = await _tier_violations(workdir, before_status, after_status)
+
+    # Check live repo for out-of-worktree writes (linked-worktree mode only).
+    if _is_linked:
+        after_live = await _git_status_porcelain(_main_repo)
+        live_violations = await _tier_violations(_main_repo, before_live, after_live)
+        if live_violations:
+            for path in sorted(live_violations):
+                await _git_checkout_restore(_main_repo, path)
+            return ToolResult(
+                output=(
+                    result.output
+                    + f"\n\nTIER VIOLATION (LIVE REPO): out-of-worktree write detected and "
+                    f"reverted in {sorted(live_violations)} — worktree tools must not modify "
+                    "the live rawos repo directly (absolute paths, symlinks, or hardlinks)."
+                ),
+                success=False,
+                duration_ms=result.duration_ms,
+            )
+
     if not violations:
         return result
 
