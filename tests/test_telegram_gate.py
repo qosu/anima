@@ -53,7 +53,7 @@ def _make_voice_update(chat_id: int, file_id: str) -> MagicMock:
 class TestTelegramConfig:
     def test_config_telegram_fields_exist(self):
         from rawos.config import Settings
-        s = Settings()
+        s = Settings(_env_file="/dev/null")
         assert hasattr(s, "telegram_bot_token")
         assert hasattr(s, "telegram_owner_chat_id")
         assert hasattr(s, "telegram_owner_email")
@@ -62,7 +62,7 @@ class TestTelegramConfig:
 
     def test_config_telegram_defaults(self):
         from rawos.config import Settings
-        s = Settings()
+        s = Settings(_env_file="/dev/null")
         assert s.telegram_enabled is False
         assert s.telegram_bot_token == ""
         assert s.telegram_owner_chat_id == 0
