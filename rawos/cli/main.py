@@ -25,6 +25,8 @@ from typing import Any, Iterator
 import click
 import httpx
 
+from rawos.kernel.arch.linux import LinuxLogReader, LinuxServiceManager
+
 _CONFIG_DIR  = Path.home() / ".rawos"
 _CREDS_FILE  = _CONFIG_DIR / "credentials.json"
 _DEFAULT_URL = os.environ.get("RAWOS_URL", "http://127.0.0.1:8002")
@@ -1732,6 +1734,79 @@ def frontdoor_revert(snapshot: str) -> None:
     if arch.validate():
         arch.reload()
     # Intentionally silent — this runs as a systemd transient unit
+
+
+
+# service command group
+
+
+@cli.group()
+def service() -> None:
+    """Manage the rawos systemd service."""
+
+
+@service.command("install")
+@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--exec-start", required=True, help="ExecStart for the unit")
+@click.option("--working-dir", required=True, help="WorkingDirectory for the unit")
+@click.option("--env-file", required=True, help="EnvironmentFile for the unit")
+@click.option("--unit-dir", default="/etc/systemd/system", hidden=True)
+def service_install(name: str, exec_start: str, working_dir: str, env_file: str, unit_dir: str) -> None:
+    """Install rawos as a systemd service."""
+    mgr = LinuxServiceManager()
+    content = mgr.generate_unit(
+        name=name,
+        exec_start=exec_start,
+        working_dir=working_dir,
+        env_file=env_file,
+    )
+    mgr.install_unit(name, content, unit_dir=unit_dir)
+    click.echo(f"rawos service '{name}' installed and enabled.")
+
+
+@service.command("uninstall")
+@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--unit-dir", default="/etc/systemd/system", hidden=True)
+def service_uninstall(name: str, unit_dir: str) -> None:
+    """Disable and remove the rawos systemd service."""
+    mgr = LinuxServiceManager()
+    mgr.uninstall_unit(name, unit_dir=unit_dir)
+    click.echo(f"rawos service '{name}' uninstalled.")
+
+
+@service.command("status")
+@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+def service_status(name: str) -> None:
+    """Show whether the rawos service is active."""
+    mgr = LinuxServiceManager()
+    active = mgr.is_active(name)
+    status_str = "active" if active else "inactive"
+    click.echo(f"{name}: {status_str}")
+
+
+@service.command("restart")
+@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+def service_restart(name: str) -> None:
+    """Restart the rawos service."""
+    mgr = LinuxServiceManager()
+    ok = mgr.restart(name)
+    if ok:
+        click.echo(f"rawos service '{name}' restarted ok.")
+    else:
+        click.echo(f"failed to restart '{name}'.", err=True)
+        raise SystemExit(1)
+
+
+@service.command("logs")
+@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("-n", "--lines", default=50, show_default=True, help="Number of log lines")
+def service_logs(name: str, lines: int) -> None:
+    """Tail journal logs for the rawos service."""
+    reader = LinuxLogReader()
+    output = reader.tail(name, lines)
+    if output:
+        click.echo(output)
+
 
 def main() -> None:
     cli()
