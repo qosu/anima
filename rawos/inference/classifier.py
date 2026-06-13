@@ -15,6 +15,7 @@ import pickle
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from rawos.config import settings
 from typing import Any
 
 import numpy as np
@@ -26,7 +27,7 @@ from rawos.inference.features import (
 
 log = logging.getLogger("rawos.inference.classifier")
 
-_MODEL_PATH = Path("/root/rawos/data/intent_classifier.pkl")
+_MODEL_PATH = Path(settings.rawos_source_root) / "data" / "intent_classifier.pkl"
 
 
 @dataclass

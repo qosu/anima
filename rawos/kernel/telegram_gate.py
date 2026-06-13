@@ -13,6 +13,7 @@ import io
 import logging
 import os
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
@@ -85,7 +86,8 @@ class TelegramGate:
             if telegram_projects:
                 project = telegram_projects[0]
             else:
-                workdir = f"/root/rawos-telegram-{user.id[:8]}"
+                from rawos.config import settings
+                workdir = str(Path(settings.workspaces_root) / f"telegram-{user.id[:8]}")
                 os.makedirs(workdir, exist_ok=True)
                 project = db.create_project(Project(
                     user_id=user.id,

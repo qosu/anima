@@ -15,6 +15,7 @@ import json
 import logging
 import time
 from pathlib import Path
+from rawos.config import settings
 
 import numpy as np
 
@@ -24,7 +25,7 @@ from rawos.inference.features import (
 
 log = logging.getLogger("rawos.inference.benchmark")
 
-_RESULTS_PATH = Path("/root/rawos/data/benchmark_results.json")
+_RESULTS_PATH = Path(settings.rawos_source_root) / "data" / "benchmark_results.json"
 
 
 # ---------------------------------------------------------------------------

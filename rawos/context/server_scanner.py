@@ -11,11 +11,12 @@ import time
 from dataclasses import dataclass, field
 
 from rawos.kernel.arch import get_arch
+from rawos.config import settings
 
 # Map known service names to their source repos (for workdir resolution)
 _SERVICE_TO_REPO: dict[str, str] = {
     "exocortex":          "/root/exocortex",
-    "rawos":              "/root/rawos",
+    "rawos":              settings.rawos_source_root,
     "sovereign":          "/root/sovereign",
     "prometheus-nimgen":  "/root/prometheus",
     "prometheus-status":  "/root/prometheus",

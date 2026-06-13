@@ -131,7 +131,7 @@ RAWOS_ENTITY_PROJECT_ID = "51c880d3-3576-4aca-8616-74cb51a6f727"
 
 # Path to rawos own source repo — self-probe cycles create isolated worktrees of this.
 # Tests override this via monkeypatch to avoid touching the live /root/rawos tree.
-_SELF_PROBE_RAWOS_REPO = "/root/rawos"
+_SELF_PROBE_RAWOS_REPO = settings.rawos_source_root
 
 # Semantic trigger thresholds
 _STUCK_MIN_EDITS    = 5     # edits to same file within window → STUCK
