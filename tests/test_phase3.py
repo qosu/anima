@@ -196,6 +196,25 @@ class TestContextBuilder:
         continuity_idx = sys_ctx.index("<continuity>")
         assert continuity_idx < narrative_idx < goal_idx
 
+    def test_merge_dynamic_context_prepends_to_last_message(self):
+        from rawos.kernel.context_builder import merge_dynamic_context
+        messages = [{"role": "user", "content": "hello"}]
+        merge_dynamic_context(messages, "<project_memory>foo</project_memory>")
+        assert messages[-1]["content"] == "<project_memory>foo</project_memory>\n\nhello"
+        assert messages[-1]["role"] == "user"
+
+    def test_merge_dynamic_context_noop_when_empty(self):
+        from rawos.kernel.context_builder import merge_dynamic_context
+        messages = [{"role": "user", "content": "hello"}]
+        merge_dynamic_context(messages, "")
+        assert messages[-1]["content"] == "hello"
+
+    def test_merge_dynamic_context_noop_when_no_messages(self):
+        from rawos.kernel.context_builder import merge_dynamic_context
+        messages = []
+        merge_dynamic_context(messages, "<project_memory>foo</project_memory>")
+        assert messages == []
+
 
 # ---------------------------------------------------------------------------
 # Summariser

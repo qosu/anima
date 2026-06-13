@@ -201,9 +201,11 @@ async def _run_orchestration(
             messages = messages[:-1]
         messages.append({"role": "user", "content": raw_message})
 
-        # Enrich system prompt with semantic context
+        # Keep system message static (cache-prefix anchor) - merge dynamic
+        # per-turn context into the final user message instead.
+        context_builder.merge_dynamic_context(messages, system_ctx)
         from rawos.kernel.agent_loop import _SYSTEM_PROMPT as BASE_PROMPT
-        enriched_system = BASE_PROMPT + system_ctx if system_ctx else None
+        enriched_system = BASE_PROMPT
 
         async def on_artifact(af_meta: dict) -> Artifact:
             art = Artifact(

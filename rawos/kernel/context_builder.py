@@ -106,6 +106,20 @@ def build_context(
     return messages, system_addition
 
 
+def merge_dynamic_context(messages: list[dict], system_ctx: str) -> None:
+    """Merge per-turn dynamic context into the final user message in place.
+
+    Keeps the system message static (cache-prefix anchor for the LLM provider)
+    by routing system_ctx (continuity/project_memory/being blocks, which vary
+    every turn) into the last message instead of the system prompt.
+    No-op if system_ctx is empty or messages is empty.
+    """
+    if not system_ctx or not messages:
+        return
+    last = messages[-1]
+    last["content"] = system_ctx + "\n\n" + last["content"]
+
+
 def _build_continuity_block(user_id: str) -> str:
     """
     Cross-project continuity: the being's one continuous life, regardless of
