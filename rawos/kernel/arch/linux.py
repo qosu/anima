@@ -78,6 +78,63 @@ class LinuxServiceManager:
         return r.returncode == 0
 
 
+    def generate_unit(
+        self,
+        name: str,
+        exec_start: str,
+        working_dir: str,
+        env_file: str,
+        description: str = '',
+    ) -> str:
+        if not description:
+            description = f'{name} service'
+        lines = [
+            '[Unit]',
+            f'Description={description}',
+            'After=network.target',
+            '[Service]',
+            'Type=simple',
+            'User=root',
+            f'WorkingDirectory={working_dir}',
+            f'EnvironmentFile={env_file}',
+            f'ExecStart={exec_start}',
+            'Restart=always',
+            'RestartSec=5',
+            'StandardOutput=journal',
+            'StandardError=journal',
+            f'SyslogIdentifier={name}',
+            '[Install]',
+            'WantedBy=multi-user.target',
+        ]
+        return '\n'.join(lines) + '\n'
+
+    def install_unit(
+        self,
+        name: str,
+        unit_content: str,
+        unit_dir: str = '/etc/systemd/system',
+    ) -> None:
+        import os as _os
+        unit_path = _os.path.join(unit_dir, f'{name}.service')
+        with open(unit_path, 'w') as fh:
+            fh.write(unit_content)
+        subprocess.run(['systemctl', 'daemon-reload'], capture_output=True, text=True, timeout=15.0)
+        subprocess.run(['systemctl', 'enable', name], capture_output=True, text=True, timeout=10.0)
+
+    def uninstall_unit(
+        self,
+        name: str,
+        unit_dir: str = '/etc/systemd/system',
+    ) -> None:
+        import os as _os
+        subprocess.run(['systemctl', 'disable', name], capture_output=True, text=True, timeout=10.0)
+        subprocess.run(['systemctl', 'stop', name], capture_output=True, text=True, timeout=15.0)
+        unit_path = _os.path.join(unit_dir, f'{name}.service')
+        if _os.path.isfile(unit_path):
+            _os.unlink(unit_path)
+        subprocess.run(['systemctl', 'daemon-reload'], capture_output=True, text=True, timeout=15.0)
+
+
 class LinuxLogReader:
     def tail(self, unit: str, n: int) -> str:
         try:

@@ -32,6 +32,34 @@ class ServiceManager(Protocol):
         """Restart the named unit. Return True on success, False on failure."""
         ...
 
+    def generate_unit(
+        self,
+        name: str,
+        exec_start: str,
+        working_dir: str,
+        env_file: str,
+        description: str = '',
+    ) -> str:
+        """Return systemd unit file content as a string."""
+        ...
+
+    def install_unit(
+        self,
+        name: str,
+        unit_content: str,
+        unit_dir: str = '/etc/systemd/system',
+    ) -> None:
+        """Write unit file, daemon-reload, enable unit."""
+        ...
+
+    def uninstall_unit(
+        self,
+        name: str,
+        unit_dir: str = '/etc/systemd/system',
+    ) -> None:
+        """Disable, stop, remove unit file, daemon-reload."""
+        ...
+
 
 class LogReader(Protocol):
     def tail(self, unit: str, n: int) -> str:
