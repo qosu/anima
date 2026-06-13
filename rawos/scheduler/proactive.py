@@ -301,6 +301,22 @@ def _is_goal_on_cooldown(user_id: str, cooldown_key: str) -> bool:
     return row is not None
 
 
+def _compute_cooldown_key(
+    trigger_type: str | None,
+    domain: str,
+    trigger_ctx: dict[str, Any] | None = None,
+) -> str:
+    """Single source of truth for cooldown_key.
+
+    Must be computed identically at the recording site (_run_proactive_agent)
+    and the gating site (_scan_once) — divergence means _is_goal_on_cooldown
+    never matches and GOAL_COOLDOWN_S is silently bypassed.
+    """
+    if trigger_type == "NEEDS_ATTENTION":
+        return "calendar_attention:" + (trigger_ctx or {}).get("uid", "")
+    return f"{trigger_type or 'unknown'}:{domain}"
+
+
 def _get_user_project(user_id: str) -> tuple[str | None, str | None]:
     """Return (project_id, workdir) for user's most recent project."""
     with db._conn() as conn:
@@ -1445,11 +1461,7 @@ async def _run_proactive_agent(
     _agent_loop_start_ts = int(time.time())
 
     # Compute stable cooldown key for this agent run
-    _run_cooldown_key = (
-        "calendar_attention:" + (trigger_ctx or {}).get("uid", "")
-        if trigger_type == "NEEDS_ATTENTION"
-        else f"{trigger_type or 'unknown'}:{intent_obj.domain}"
-    )
+    _run_cooldown_key = _compute_cooldown_key(trigger_type, intent_obj.domain, trigger_ctx)
 
     result_text = await _run_proactive_loop(
         user_id=user_id,
@@ -1482,6 +1494,12 @@ async def _run_proactive_agent(
 
     if _decision == "SILENCE":
         log.info("rawos: SILENCE for user=%s domain=%s", user_id, intent_obj.domain)
+        _record_proactive_artifact(
+            user_id, intent_obj.goal, _confidence,
+            "", None, None,
+            action_type="silence",
+            cooldown_key=_run_cooldown_key,
+        )
         return
     if _decision == "CONTRIBUTE" and _confidence < CONFIDENCE_THRESHOLD:
         log.info(
@@ -1795,11 +1813,7 @@ async def _scan_once(semaphore: asyncio.Semaphore) -> None:
                 continue
 
         # NEEDS_ATTENTION: cooldown per event UID to prevent re-firing
-        cooldown_key = (
-            "calendar_attention:" + trigger_ctx.get("uid", "")
-            if trigger_type == "NEEDS_ATTENTION"
-            else f"{trigger_type}:{intent_obj.domain}"
-        )
+        cooldown_key = _compute_cooldown_key(trigger_type, intent_obj.domain, trigger_ctx)
         if _is_goal_on_cooldown(uid, cooldown_key):
             log.debug("goal on cooldown: user=%s key='%s'", uid, cooldown_key[:60])
             continue
