@@ -1683,6 +1683,25 @@ def frontdoor_enter() -> None:
         os.execvp(shell, [shell, "--login"])
 
 
+def _resolve_frontdoor_binary() -> str:
+    """Resolve the lockout-proof `rawos-frontdoor` console script.
+
+    `frontdoor install` must NEVER point ForceCommand at the plain `rawos`
+    entrypoint (no exception handling around the rawos.cli.main import — a
+    broken main.py would brick SSH). `rawos-frontdoor` (rawos.cli.frontdoor_entry)
+    is the only entrypoint with a lockout-proof bash fallback.
+    """
+    import shutil
+
+    rawos_bin = shutil.which("rawos-frontdoor")
+    if rawos_bin is None:
+        raise click.ClickException(
+            "rawos-frontdoor entrypoint not found on PATH. "
+            "Run `pip install -e .` to generate it before installing the front-door."
+        )
+    return rawos_bin
+
+
 @frontdoor.command("install")
 @click.option(
     "--revert-after",
@@ -1709,8 +1728,7 @@ def frontdoor_install(revert_after: int) -> None:
     from rawos.kernel.arch.linux import LinuxFrontDoor
     from rawos.kernel.frontdoor import FrontDoorInstallError, install_with_deadman
 
-    import shutil as _sh
-    rawos_bin = _sh.which("rawos") or os.path.abspath(sys.argv[0])
+    rawos_bin = _resolve_frontdoor_binary()
     entry_cmd = f"{rawos_bin} frontdoor enter"
 
     arch = LinuxFrontDoor()

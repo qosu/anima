@@ -61,3 +61,4 @@ include = ["rawos*"]
 
 [project.scripts]
 rawos = "rawos.cli.main:main"
+rawos-frontdoor = "rawos.cli.frontdoor_entry:main"
