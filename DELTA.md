@@ -1,3 +1,5 @@
+CHANGED: .env — LLM_FALLBACK_MODEL 8B→nvidia/llama-3.3-nemotron-super-49b-v1 (49B, TC_YES)
+  WHY: 8B hallucinated 12+ tool calls on simple prompts; 49B has proper TC support
 CHANGED: rawos/kernel/llm_client.py — 429-specific fallback to llm_fallback_model in complete/tool_call/stream_final
   WHY: mistral-large-3-675b-instruct-2512 persistently 429 (NIM capacity throttle), llm_client had no fallback logic
 CHANGED: rawos/config.py — add llm_fallback_model field
