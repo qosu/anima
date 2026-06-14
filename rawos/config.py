@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     llm_base_url:         str = "https://api.deepseek.com/v1"
     llm_agent_model:      str = ""
     llm_summarizer_model: str = ""
+    llm_fallback_model:   str = ""
     llm_timeout_s:        int = 120
 
     # Workspaces root — each user project gets an isolated subdirectory

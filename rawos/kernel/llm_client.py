@@ -47,6 +47,12 @@ async def complete(
             json=payload,
             headers=_headers(),
         )
+        if resp.status_code == 429:
+            fallback = settings.llm_fallback_model
+            if fallback and model != fallback:
+                log.warning("model %s → 429, retrying with fallback %s", model, fallback)
+                return await complete(messages, model=fallback, max_tokens=max_tokens, temperature=temperature)
+            raise RuntimeError("LLM unavailable — try again in a few seconds")
         if resp.status_code != 200:
             raise RuntimeError(f"LLM API error {resp.status_code}: {resp.text[:300]}")
         data = resp.json()
@@ -84,6 +90,15 @@ async def tool_call(
             json=payload,
             headers=_headers(),
         )
+        if resp.status_code == 429:
+            fallback = settings.llm_fallback_model
+            if fallback and model != fallback:
+                log.warning("model %s → 429, retrying with fallback %s", model, fallback)
+                return await tool_call(
+                    messages, tools=tools, model=fallback,
+                    system_prompt=system_prompt, max_tokens=max_tokens,
+                )
+            raise RuntimeError("LLM unavailable — try again in a few seconds")
         if resp.status_code != 200:
             raise RuntimeError(f"LLM API error {resp.status_code}: {resp.text[:300]}")
         data = resp.json()
@@ -119,6 +134,14 @@ async def stream_final(
             json=payload,
             headers=_headers(),
         ) as resp:
+            if resp.status_code == 429:
+                fallback = settings.llm_fallback_model
+                if fallback and model != fallback:
+                    log.warning("model %s → 429 (stream), retrying with fallback %s", model, fallback)
+                    async for chunk in stream_final(messages, model=fallback, system_prompt=system_prompt, max_tokens=max_tokens):
+                        yield chunk
+                    return
+                raise RuntimeError("LLM unavailable — try again in a few seconds")
             if resp.status_code != 200:
                 body = await resp.aread()
                 raise RuntimeError(f"LLM stream error {resp.status_code}: {body[:200]}")
