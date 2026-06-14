@@ -38,21 +38,32 @@ I4 REVERT RUNS OUTSIDE PAM AUTH-PATH:
     revert command blocks → deadman fires but cannot restore → lockout.
 
 I5 ORACLE IS LIVE-AUTH PROBE, NOT SYNTACTIC:
-  validate() returns True only when `ssh -o ControlMaster=no -o ControlPath=none
-  -o BatchMode=yes -o ConnectTimeout=10 -i <owner_pubkey> root@127.0.0.1 true`
-  exits 0 from within install_pam_edit_with_deadman. A passing pamtester result with
-  a failing live-auth probe must return validate()=False and trigger restore().
+  validate() returns True only when:
+    ssh -i /root/.rawos-pam-backups/probe_key \
+        -o ControlMaster=no -o ControlPath=none \
+        -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+        root@127.0.0.1 true
+  exits 0. The probe key is a dedicated on-box ED25519 key (authorized_keys:
+  `restrict <pubkey> rawos-pam-probe@127.0.0.1`) that cannot be used for anything
+  except authenticated connections. A passing pamtester result with a failing probe
+  must return validate()=False and trigger restore().
   pamtester is a pre-flight syntactic check only, run before the live-auth probe.
   LOCKOUT VECTOR: pamtester passes but pam_access/pam_exec rule blocks pubkey path →
     commit() fires → deadman disarmed → auth broken permanently.
 
-I6 OPERATOR LIFELINE SESSION:
-  install_pam_edit_with_deadman must be called from an active, authenticated SSH
-  session that remains open until commit() or restore() completes. If the operator
-  session closes before commit, the deadman timer (I3, I4) is the only active safety
-  net. This is a required operator practice; violation degrades protection to Layer 1 only.
-  LOCKOUT VECTOR: operator session drops mid-validate → probe cannot complete → if
-    deadman also misfires → no recovery path without KVM.
+I6 PROBE KEY INDEPENDENCE:
+  verify() must use ONLY the dedicated restricted probe key at
+  /root/.rawos-pam-backups/probe_key — not the operator's personal SSH key, not any
+  agent-forwarded key. The probe sends "true" as the SSH command argument, which
+  triggers the frontdoor PASSTHROUGH branch before any health/token check, making
+  the probe robust even when rawos.service is unhealthy.
+  authorized_keys entry for the probe key must include the "restrict" option
+  (disables port forwarding, agent forwarding, X11, pty). The probe opens a fresh
+  TCP connection (ControlMaster=no, ControlPath=none) per verify() call.
+  No operator lifeline session is required — the probe is fully autonomous.
+  LOCKOUT VECTOR: probe falls back to operator's personal key or forwarded agent →
+    oracle unreliable (depends on unrelated agent state) → PAM changes may be
+    committed when auth is actually broken.
 
 I7 NO AUTONOMOUS PAM WRITE PATH:
   No function named operate_on_pam() or equivalent exists. No graduation threshold

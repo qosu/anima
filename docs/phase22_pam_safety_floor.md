@@ -160,35 +160,51 @@ def commit_pam_edit(*, _systemd: Any = None) -> None:
 
 `pamtester sshd root auth` exercises the PAM stack with a password credential. SSH pubkey auth traverses a different set of PAM modules than password auth — specifically, `pam_unix.so` password enforcement is skipped for pubkey, but `pam_access.so`, `pam_exec.so`, `pam_limits.so` still fire. A config that breaks only the pubkey path will pass pamtester.
 
-**Oracle design:**
+**Oracle design: dedicated on-box restricted probe key (autonomous, no agent forwarding)**
 
+Verified root cause: agent-forwarding approach fails when the operator key is loaded
+with `-i` flag but not `ssh-add`-ed to the agent. The probe uses a dedicated keypair
+generated on-box, independent of operator key management.
+
+**Probe key (one-time setup, done in prerequisites):**
 ```
-OPERATOR SESSION (held, already authenticated)
-  │
-  ├── arm deadman timer
-  ├── apply pam change
-  └── PROBE: ssh \
-          -o ControlMaster=no \
-          -o ControlPath=none \
-          -o BatchMode=yes \
-          -o ConnectTimeout=10 \
-          -i <owner_pubkey> \
-          root@127.0.0.1 \
-          true
-      ├── exit 0  → auth still works → validate() = True → ARMED
-      └── non-zero / timeout → auth broken → validate() = False
-                               → disarm + restore + raise PamInstallError
+/root/.rawos-pam-backups/probe_key      (chmod 600, never leaves box)
+/root/.rawos-pam-backups/probe_key.pub  → authorized_keys entry:
+  restrict ssh-ed25519 <pubkey> rawos-pam-probe@127.0.0.1
 ```
+`restrict` disables: port forwarding, agent forwarding, X11, pty.
 
-`-o ControlMaster=no -o ControlPath=none`: ensures the probe opens a genuinely separate TCP connection and new PAM session — it cannot piggyback on the operator session's existing auth state.
+**ForceCommand interaction:** authorized_keys `command="true"` is intentionally
+omitted — OpenSSH evaluates sshd_config ForceCommand with higher priority than
+authorized_keys command. The probe sends `"true"` as the SSH command argument
+(SSH_ORIGINAL_COMMAND="true"), which triggers the frontdoor PASSTHROUGH branch
+(first check, before health/token) → `bash -c "true"` → exit 0. The probe is
+robust regardless of rawos API health state.
 
-`-o BatchMode=yes`: refuses password prompts — probe must succeed via pubkey only, same path as production operator access.
+**Probe execution (in verify()):**
+```
+ssh \
+  -i /root/.rawos-pam-backups/probe_key \
+  -o ControlMaster=no \
+  -o ControlPath=none \
+  -o BatchMode=yes \
+  -o StrictHostKeyChecking=no \
+  -o ConnectTimeout=10 \
+  root@127.0.0.1 \
+  true
+```
+- exit 0  → pubkey auth + PAM stack accepted → validate() = True → ARMED
+- non-zero / timeout → PAM broken → validate() = False → disarm + restore + PamInstallError
 
-`root@127.0.0.1`: loopback avoids network path variations; tests the sshd daemon running on this machine.
+**Why this probe is correct:**
+- Fresh TCP connection per invocation (ControlMaster=no) — new PAM session each time
+- No operator lifeline session required — probe is autonomous (probe key is on-box)
+- Command argument "true" triggers PASSTHROUGH in frontdoor before health check
+- `StrictHostKeyChecking=no` is safe for loopback (127.0.0.1) where MITM is impossible
 
-**Lifeline invariant:** The operator session (the one calling `install_pam_edit_with_deadman`) MUST remain open during the entire call including validate(). If it closes, the probe loses its loopback reference and the deadman is the only protection. This is documented as a required operator practice, not enforced in code (code cannot prevent the operator from closing their terminal).
-
-**pamtester role:** Pre-flight syntactic check only, run BEFORE the live-auth probe. Catches obvious parse errors in the new pam.d content. Installed as a build dependency: `apt-get install -y pamtester`. Result: pamtester fail → don't even try live-auth → raise PamInstallError immediately.
+**pamtester role:** Pre-flight syntactic check only, run BEFORE the live-auth probe.
+Catches obvious pam.d parse errors. Result: pamtester fail → abort, PamInstallError,
+probe never runs.
 
 ---
 
@@ -214,12 +230,14 @@ systemd-run --on-active 300 --unit=rawos-pam-revert \
 **Layer 2 — Break-glass recovery account (§3, covers Layer 1 failures):**
 
 ```
-ssh -i ~/.ssh/recovery_key rawos-recovery@167.233.44.121
-sudo cp /root/.rawos-pam-backups/<snapshot_id> /etc/pam.d/<target>
-sudo systemctl reload ssh
+ssh -i ~/.ssh/rawos_recovery_key rawos-recovery@167.233.44.121
+sudo rawos-pam-restore <snapshot_id> <pam_target>
 ```
 
-Account's authorized_keys not managed by rawos. sudo rule: `rawos-recovery ALL=(root) NOPASSWD: /bin/cp /root/.rawos-pam-backups/* /etc/pam.d/*, /bin/systemctl reload ssh`. Scope-limited: no unrestricted root shell.
+Account rawos-recovery, authorized_keys not managed by rawos.
+sudo rule: `rawos-recovery ALL=(root) NOPASSWD: /usr/local/bin/rawos-pam-restore` (installed at /etc/sudoers.d/rawos-recovery, chmod 440).
+rawos-pam-restore validates UUID format + pam target chars before any write.
+Scope-limited: no unrestricted root shell.
 
 **Layer 3 — Hetzner KVM console (unconditional):**
 
@@ -278,11 +296,11 @@ Phase 22 build CANNOT begin until ALL of the following are independently verifie
 
 - [ ] **This document reviewed and approved** by owner (confirms lockout understanding)
 - [ ] **`phase22_pam_invariants.md` reviewed and approved** by owner
-- [ ] **Break-glass recovery account created**: `ssh -i recovery_key rawos-recovery@167.233.44.121 sudo true` exits 0
-- [ ] **Recovery key stored off-box**: separate from `~/.ssh/claude_server_key`, copy in secure backup
-- [ ] **Backup directory exists**: `/root/.rawos-pam-backups/` writable by root, confirmed on box
+- [x] **Break-glass recovery account created**: rawos-recovery user exists, `ssh -i ~/.ssh/rawos_recovery_key rawos-recovery@167.233.44.121 echo OK` exits 0, `sudo rawos-pam-restore` usage shows (verified 2026-06-14)
+- [x] **Recovery key stored off-box**: `~/.ssh/rawos_recovery_key` local-only (never SCP'd to box); separate from claude_server_key (verified 2026-06-14)
+- [x] **Backup directory exists**: `/root/.rawos-pam-backups/` writable by root (verified 2026-06-14; probe_key at 600 inside)
 - [ ] **pamtester installed**: `apt-get install -y pamtester && pamtester sshd root auth` loads modules cleanly
 - [ ] **KVM console accessed at least once**: operator has Hetzner Robot credentials and has verified KVM VNC session opens
-- [ ] **Loopback probe works**: manual `ssh -o BatchMode=yes -o ControlMaster=no -i ~/.ssh/claude_server_key root@127.0.0.1 true` exits 0 from the box itself
+- [x] **Loopback probe works**: `ssh -i /root/.rawos-pam-backups/probe_key -o BatchMode=yes -o ControlMaster=no -o StrictHostKeyChecking=no root@127.0.0.1 true` exits 0 from the box (verified 2026-06-14)
 
 Only after all boxes checked: begin `PamFileEdit` + `install_pam_edit_with_deadman` implementation in a feature branch with TDD.
