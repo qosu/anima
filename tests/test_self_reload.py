@@ -86,6 +86,39 @@ class FakeWorktree:
         self.removed.append(worktree_path)
 
 
+class TestSelfReloadDeadmanSystemd:
+    """I-SR3 (mirror I-VENV3): real systemd-run arm + disarm against
+    _SelfReloadDeadmanSystemd -- disarm() must stop the `.timer` unit, not
+    the bare unit name (regression class found via venv twin-prove).
+    Twin unit name only; never touches rawos-selfreload-revert."""
+
+    def test_disarm_stops_timer_unit(self) -> None:
+        import subprocess
+
+        from rawos.kernel.self_reload import _SelfReloadDeadmanSystemd
+
+        sd = _SelfReloadDeadmanSystemd()
+        unit = "rawos-selfreload-revert-pytest"
+        sd.arm(unit, 3600, "/bin/true")
+        try:
+            timers = subprocess.run(
+                ["systemctl", "list-timers", "--all"], capture_output=True, text=True
+            ).stdout
+            assert f"{unit}.timer" in timers, "arm() did not create timer unit"
+
+            sd.disarm(unit)
+
+            timers_after = subprocess.run(
+                ["systemctl", "list-timers", "--all"], capture_output=True, text=True
+            ).stdout
+            assert f"{unit}.timer" not in timers_after, "disarm() did not stop timer unit"
+        finally:
+            subprocess.run(
+                ["systemctl", "stop", f"{unit}.timer", f"{unit}.service"],
+                capture_output=True,
+            )
+
+
 class FakeSelfReloadDeadman:
     def __init__(self, order: list | None = None, on_arm=None) -> None:
         self.armed: list[tuple[str, int, str]] = []
