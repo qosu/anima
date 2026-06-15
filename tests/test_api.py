@@ -26,6 +26,7 @@ def fresh_db(tmp_path):
 
 
 class TestHealth:
+    @pytest.mark.self_reload_smoke
     def test_health_ok(self):
         r = client.get("/health")
         assert r.status_code == 200

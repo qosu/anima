@@ -990,3 +990,35 @@ def remove_managed_pam_target(user_id: str, pam_file: str) -> None:
             "DELETE FROM managed_pam_targets WHERE user_id = ? AND pam_file = ?",
             (user_id, pam_file),
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 25 Stage 1 — self-reload outcome ledger (managed_self_reload)
+# ---------------------------------------------------------------------------
+
+def record_self_reload_outcome(old_sha: str, new_sha: str, outcome: str) -> None:
+    """Append one row to the self-reload history ledger.
+
+    outcome must be one of 'committed' | 'resurrected' | 'liveness_failed'
+    (enforced by the migration 026 CHECK constraint — invalid values raise
+    sqlite3.IntegrityError).
+    """
+    with _conn() as conn:
+        conn.execute(
+            """INSERT INTO managed_self_reload (old_sha, new_sha, outcome)
+               VALUES (?, ?, ?)""",
+            (old_sha, new_sha, outcome),
+        )
+
+
+def list_self_reload_history(limit: int = 20) -> list[dict]:
+    """Return the most recent self-reload outcomes, newest first."""
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT old_sha, new_sha, outcome, created_at
+               FROM managed_self_reload
+               ORDER BY created_at DESC, id DESC
+               LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [dict(row) for row in rows]

@@ -1813,6 +1813,138 @@ def frontdoor_revert(snapshot: str) -> None:
 
 # setup command
 
+# ---------------------------------------------------------------------------
+# selfreload command group (Phase 25 Stage 1 -- "The Ouroboros")
+# ---------------------------------------------------------------------------
+
+@cli.group()
+def selfreload() -> None:
+    """Owner-triggered self-reload (R-self).
+
+    Stage 1: human-triggered only. No autonomous entrypoint exists --
+    kernel/self_reload.py exposes no `operate_on_self_reload` (I-SR6).
+
+    `arm-and-go` swaps /root/rawos to <new_sha> and kills this process
+    (os._exit). systemd (Restart=always) respawns rawos against the new
+    source ~5s later. A deadman timer (rawos-selfreload-revert) is armed
+    BEFORE the swap: if the new self never reports healthy, the timer
+    reverts the source and restarts rawos at the old sha (I-SR2/I-SR3).
+    """
+
+
+@selfreload.command("stage")
+@click.argument("new_sha")
+def selfreload_stage(new_sha: str) -> None:
+    """Preflight-check NEW_SHA without arming or swapping anything.
+
+    Refuses (no side effects) if NEW_SHA touches migrations/, pyproject.toml,
+    or any TIER-0 protected file, or fails to import / fails the self-reload
+    smoke subset. Use this to validate a candidate sha before `arm-and-go`.
+    """
+    from rawos.kernel.self_reload import (
+        SelfReloadPreflightError,
+        SelfReloadRefusalError,
+        preflight_stage,
+    )
+
+    try:
+        snap = preflight_stage(new_sha)
+    except (SelfReloadRefusalError, SelfReloadPreflightError) as exc:
+        click.echo(f"✗ refused: {exc}", err=True)
+        raise SystemExit(1) from exc
+
+    click.echo("✓ preflight passed -- safe to arm-and-go")
+    click.echo(f"  old_sha:    {snap.old_sha}")
+    click.echo(f"  new_sha:    {snap.new_sha}")
+    click.echo(f"  migration_delta: {snap.migration_delta or '(none)'}")
+
+
+@selfreload.command("arm-and-go")
+@click.argument("new_sha")
+@click.option(
+    "--yes",
+    is_flag=True,
+    default=False,
+    help="Skip the confirmation prompt.",
+)
+def selfreload_arm_and_go(new_sha: str, yes: bool) -> None:
+    """Preflight, arm the revert deadman, swap to NEW_SHA, and exit this process.
+
+    
+    This process dies (os._exit) on success -- your SSH session and any
+    in-flight requests are dropped. systemd respawns rawos against the new
+    source in ~5s. The new self verifies its own liveness at boot
+    (boot_liveness_commit); if that fails before the deadman deadline, the
+    deadman reverts to the current sha and restarts rawos automatically.
+
+    Run `rawos selfreload status` after ~10s to see the outcome.
+    """
+    if not yes:
+        click.confirm(
+            f"This will swap /root/rawos to {new_sha} and kill the current "
+            "rawos process (deadman-protected). Continue?",
+            abort=True,
+        )
+
+    from rawos.kernel.self_reload import (
+        SelfReloadPreflightError,
+        SelfReloadRefusalError,
+        SelfReloadStateError,
+        execute_owner_self_reload,
+    )
+
+    click.echo(f"Preflighting {new_sha} and arming deadman -- this process will exit on success…")
+    try:
+        execute_owner_self_reload(new_sha)
+    except (SelfReloadRefusalError, SelfReloadPreflightError, SelfReloadStateError) as exc:
+        click.echo(f"✗ refused: {exc}", err=True)
+        raise SystemExit(1) from exc
+    # execute_owner_self_reload calls os._exit(0) on success -- unreachable.
+
+
+@selfreload.command("status")
+def selfreload_status() -> None:
+    """Show any in-flight self-reload and recent outcome history."""
+    import json as _json
+
+    import rawos.db as db
+    from rawos.config import settings
+    from rawos.kernel.self_reload import (
+        SELF_RELOAD_STATE_DIR,
+        SELF_RELOAD_STATE_FILENAME,
+    )
+
+    db.init(settings.db_path)
+
+    state_path = Path(SELF_RELOAD_STATE_DIR) / SELF_RELOAD_STATE_FILENAME
+    if state_path.exists():
+        try:
+            pending = _json.loads(state_path.read_text())
+            click.echo("pending: yes")
+            click.echo(f"  old_sha: {pending.get('old_sha')}")
+            click.echo(f"  new_sha: {pending.get('new_sha')}")
+            click.echo(f"  state_id: {pending.get('state_id')}")
+            click.echo(f"  deadman_unit: {pending.get('deadman_unit')}")
+        except Exception as exc:
+            click.echo(f"pending: yes (unreadable: {exc})")
+    else:
+        click.echo("pending: no")
+
+    click.echo()
+    click.echo("recent outcomes:")
+    rows = db.list_self_reload_history()
+    if not rows:
+        click.echo("  (none)")
+    for row in rows:
+        click.echo(
+            f"  {row['created_at']}  {row['outcome']:<16}"
+            f" {row['old_sha'][:12]} -> {row['new_sha'][:12]}"
+        )
+
+
+
+# setup command
+
 
 @cli.command("setup")
 @click.option("--base-dir", required=True, help="Directory where rawos will be installed")

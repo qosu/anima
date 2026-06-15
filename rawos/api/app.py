@@ -75,6 +75,7 @@ async def lifespan(app: FastAPI):
     operator_scan_task       = asyncio.create_task(_start_operator_scan_loop(),          name="operator-scan")
     system_fs_reflex_task = asyncio.create_task(_start_system_fs_reflex(),              name="system-fs-reflex")
     kernel_perception_task = asyncio.create_task(_start_kernel_perception_loop(),       name="kernel-perception")
+    selfreload_task    = asyncio.create_task(_self_reload_boot_commit_task(),       name="self-reload-boot-commit")
     _telegram_gate     = await _start_telegram_gate()
 
     # Clean up intents orphaned by crash/restart — any still 'executing' after
@@ -104,7 +105,8 @@ async def lifespan(app: FastAPI):
     operator_scan_task.cancel()
     system_fs_reflex_task.cancel()
     kernel_perception_task.cancel()
-    await asyncio.gather(db_sync_task, proactive_task, watcher_task, snapshot_task, calendar_task, autonomous_task, self_probe_task, narrative_task, operator_scan_task, system_fs_reflex_task, kernel_perception_task, return_exceptions=True)
+    selfreload_task.cancel()
+    await asyncio.gather(db_sync_task, proactive_task, watcher_task, snapshot_task, calendar_task, autonomous_task, self_probe_task, narrative_task, operator_scan_task, system_fs_reflex_task, kernel_perception_task, selfreload_task, return_exceptions=True)
     stop_system_perception()
     stop_filesystem_watcher()
     _log.info("rawos shutdown complete")
@@ -131,6 +133,68 @@ async def _start_system_fs_reflex() -> None:
 async def _start_kernel_perception_loop() -> None:
     from rawos.context.kernel_perception import kernel_perception_loop
     await kernel_perception_loop()
+
+
+async def _self_reload_boot_commit_task() -> None:
+    """Resolve any pending self-reload from a prior `rawos selfreload arm-and-go`.
+
+    Phase 25 Stage 1 (dormant unless an arm-and-go is in flight — see
+    kernel/self_reload.py). Runs once at boot, AFTER this point in lifespan
+    so the ASGI app can already accept requests and the probe below can hit
+    its own /health over loopback (calling boot_liveness_commit() directly
+    inside startup would deadlock: no connections are accepted until
+    lifespan startup returns).
+
+    On "committed"/"resurrected"/"liveness_failed" the outcome (with the
+    old/new SHAs read from the pending state file before it is consumed) is
+    appended to the managed_self_reload ledger for `rawos selfreload status`
+    and Stage 2's future graduation check. Never raises — a failure here must
+    not prevent rawos from serving.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    import httpx
+
+    from rawos.kernel.self_reload import (
+        SELF_RELOAD_STATE_DIR,
+        SELF_RELOAD_STATE_FILENAME,
+        boot_liveness_commit,
+    )
+
+    state_path = _Path(SELF_RELOAD_STATE_DIR) / SELF_RELOAD_STATE_FILENAME
+    if not state_path.exists():
+        return
+
+    try:
+        pending = _json.loads(state_path.read_text())
+        old_sha, new_sha = pending["old_sha"], pending["new_sha"]
+    except Exception:
+        _log.exception("self-reload: pending.json unreadable — leaving deadman armed")
+        return
+
+    def _probe() -> bool:
+        try:
+            resp = httpx.get(f"http://127.0.0.1:{settings.port}/health", timeout=2.0)
+            return resp.status_code == 200
+        except Exception:
+            return False
+
+    loop = asyncio.get_event_loop()
+    try:
+        outcome = await loop.run_in_executor(None, lambda: boot_liveness_commit(_probe=_probe))
+    except Exception:
+        _log.exception("self-reload: boot_liveness_commit failed — leaving deadman armed")
+        return
+
+    if outcome == "no_pending":
+        return
+
+    _log.info("self-reload: boot_liveness_commit -> %s (old=%s new=%s)", outcome, old_sha, new_sha)
+    try:
+        db.record_self_reload_outcome(old_sha, new_sha, outcome)
+    except Exception:
+        _log.exception("self-reload: failed to record outcome %s in ledger", outcome)
 
 
 async def _start_autonomous_scan() -> None:

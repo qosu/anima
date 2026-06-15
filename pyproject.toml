@@ -54,6 +54,9 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "self_reload_smoke: fast critical-path subset run by self_reload.preflight_stage (Phase 25 Stage 1)",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
