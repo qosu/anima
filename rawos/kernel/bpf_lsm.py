@@ -380,6 +380,46 @@ class BpfLsmHolderClient(abc.ABC):
         """Request graceful detach (holder releases bpf_link, exits cleanly)."""
 
 
+_HOLDER_SOCK_PATH: str = "/run/rawos-bpf-lsm-holder.sock"
+
+
+class _SocketHolderClient(BpfLsmHolderClient):
+    """Unix-socket control client for the rawos-bpf-lsm-holder daemon (post-24B.1).
+
+    Sends heartbeat/mode/detach commands over a unix stream socket.
+    Each call opens a new connection (holder is simple, connections are brief).
+    Socket I/O is blocking, run in executor to avoid blocking the event loop.
+    Connection failure raises — BpfLsmSupervisor.run() catches and continues
+    (I-LSM7: holder's own deadman handles sustained silence).
+    """
+
+    def __init__(self, sock_path: str = _HOLDER_SOCK_PATH) -> None:
+        self._sock_path = sock_path
+
+    def _send(self, cmd: str) -> None:
+        import socket as _socket
+        with _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM) as s:
+            s.settimeout(5.0)
+            s.connect(self._sock_path)
+            s.sendall((cmd + chr(10)).encode())
+            s.recv(64)  # consume response
+
+    async def heartbeat(self) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self._send, "heartbeat")
+
+    async def flip_mode(self, mode: str) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self._send, f"mode {mode}")
+
+    async def update_policy(self, policy: "Policy") -> None:
+        pass  # TODO: deny_comm map updates via socket (24B.3+)
+
+    async def detach(self) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self._send, "detach")
+
+
 @final
 class _NullHolderClient(BpfLsmHolderClient):
     """No-op holder client used when bpf_lsm_enabled=False (24B.0 dormant).

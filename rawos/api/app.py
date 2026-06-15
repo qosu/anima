@@ -159,14 +159,18 @@ async def _start_kernel_perception_loop() -> None:
 async def _start_bpf_lsm_heartbeat_loop() -> None:
     """Phase 24B: BPF LSM heartbeat supervisor (I-LSM7 deadman loop).
 
-    When bpf_lsm_enabled=False (24B.0 dormant), BpfLsmSupervisor.run()
-    returns immediately (zero-cost no-op). When enabled (post-24B.1+),
-    sends periodic heartbeats to the holder daemon; missing heartbeats
-    trigger holder self-detach (enforcement revert without reboot, I-LSM2).
+    When bpf_lsm_enabled=False (24B.0 dormant), run() returns immediately.
+    When enabled=True (post-24B.1), uses _SocketHolderClient to send
+    periodic heartbeats; missing heartbeats trigger holder self-detach
+    (enforcement revert without reboot, I-LSM2).
     """
     from rawos.kernel import bpf_lsm as _bpf_lsm_mod
+    if settings.bpf_lsm_enabled:
+        client: _bpf_lsm_mod.BpfLsmHolderClient = _bpf_lsm_mod._SocketHolderClient()
+    else:
+        client = _bpf_lsm_mod._NullHolderClient()
     supervisor = _bpf_lsm_mod.BpfLsmSupervisor(
-        client=_bpf_lsm_mod._NullHolderClient(),  # replaced by _SocketHolderClient post-24B.1
+        client=client,
         heartbeat_interval_s=5.0,
         enabled=settings.bpf_lsm_enabled,
     )

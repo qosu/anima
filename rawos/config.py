@@ -174,12 +174,12 @@ class Settings(BaseSettings):
     # kernel auto-detach → enforce gone without reboot (I-LSM2). Floor
     # (sshd/systemd/holder/rawos/git) compiled into immutable engine bytecode,
     # checked BEFORE policy maps — policy-map writes CANNOT deny floor (I-LSM5).
-    bpf_lsm_enabled: bool = False
+    bpf_lsm_enabled: bool = True           # 24B.2 ACTIVATED 2026-06-15 (audit soak)
     bpf_lsm_mode: str = "audit"              # audit (log-only) or enforce
-    bpf_lsm_object_path: str = ""            # path to prebuilt CO-RE .o (empty = dormant)
-    bpf_lsm_object_sha256: str = ""          # sha256 of .o; mismatch → fail-closed (I-LSM11)
-    bpf_lsm_holder_binary_path: str = ""     # path to holder binary
-    bpf_lsm_holder_binary_sha256: str = ""   # sha256 of holder binary (I-LSM11)
+    bpf_lsm_object_path: str = "/opt/rawos-bpf/engine.bpf.o"            # path to prebuilt CO-RE .o (empty = dormant)
+    bpf_lsm_object_sha256: str = "08f2e291122677177ebabb2653831e0b4a450979ae37ae9b35ae054358273c52"          # sha256 of .o; mismatch → fail-closed (I-LSM11)
+    bpf_lsm_holder_binary_path: str = "/opt/rawos-bpf/rawos-bpf-lsm-holder"     # path to holder binary
+    bpf_lsm_holder_binary_sha256: str = "8eebb023810d3b378f364fc375157ee0c4f9863dc4ef9a8def09ae31e214a7c1"   # sha256 of holder binary (I-LSM11)
     bpf_lsm_holder_heartbeat_timeout_s: int = 30   # holder self-detaches after N missing beats
     bpf_lsm_revert_deadman_delay_s: int = 300       # transient revert unit delay (I-LSM8)
     bpf_lsm_deny_comm: tuple[str, ...] = ()         # process comms to deny (non-floor only)

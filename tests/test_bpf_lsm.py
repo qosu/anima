@@ -343,3 +343,28 @@ async def test_null_client_heartbeat_is_noop():
     await client.heartbeat()  # must not raise
     await client.flip_mode("audit")  # must not raise
     await client.detach()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# _SocketHolderClient — thin unix-socket wrapper (I-LSM7 live path)
+# ---------------------------------------------------------------------------
+def test_holder_sock_path_constant_exists():
+    assert hasattr(bpf_lsm, '_HOLDER_SOCK_PATH')
+    assert bpf_lsm._HOLDER_SOCK_PATH.endswith('.sock')
+
+
+async def test_socket_client_heartbeat_raises_on_no_holder():
+    # When holder is not running, _SocketHolderClient must raise (supervisor catches).
+    client = bpf_lsm._SocketHolderClient(
+        sock_path='/tmp/rawos-bpf-lsm-holder-NONEXISTENT.sock'
+    )
+    with pytest.raises(Exception):
+        await client.heartbeat()
+
+
+async def test_socket_client_detach_raises_on_no_holder():
+    client = bpf_lsm._SocketHolderClient(
+        sock_path='/tmp/rawos-bpf-lsm-holder-NONEXISTENT.sock'
+    )
+    with pytest.raises(Exception):
+        await client.detach()
