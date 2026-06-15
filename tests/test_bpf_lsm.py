@@ -368,3 +368,91 @@ async def test_socket_client_detach_raises_on_no_holder():
     )
     with pytest.raises(Exception):
         await client.detach()
+
+
+
+# ---------------------------------------------------------------------------
+# 24B.3 -- I-LSM7 supervisor resilience + socket command format (deadman drill)
+# ---------------------------------------------------------------------------
+async def test_supervisor_continues_after_heartbeat_failure():
+    """I-LSM7: supervisor must not crash on heartbeat exception, continues loop.
+
+    Mirrors 24B.3 deadman drill: rawos survived holder death; heartbeats
+    failed (ConnectionRefusedError) and were caught silently. rawos stayed up.
+    """
+    import asyncio
+    calls: list[str] = []
+
+    class _FailOnceClient(bpf_lsm.BpfLsmHolderClient):
+        async def heartbeat(self) -> None:
+            calls.append('heartbeat')
+            if len(calls) == 1:
+                raise ConnectionRefusedError('holder not running (simulated)')
+
+        async def flip_mode(self, mode: str) -> None:
+            pass
+
+        async def update_policy(self, policy: bpf_lsm.Policy) -> None:
+            pass
+
+        async def detach(self) -> None:
+            pass
+
+    supervisor = bpf_lsm.BpfLsmSupervisor(
+        client=_FailOnceClient(),
+        heartbeat_interval_s=0.01,
+        enabled=True,
+    )
+    try:
+        await asyncio.wait_for(supervisor.run(), timeout=0.1)
+    except asyncio.TimeoutError:
+        pass
+
+    assert len(calls) >= 2, (
+        f'supervisor stopped after first failure (I-LSM7 violated); calls={calls}'
+    )
+
+
+def test_socket_client_flip_mode_sends_correct_command(tmp_path):
+    """_SocketHolderClient._send must deliver exact command bytes.
+
+    Verifies the wire format used during 24B.3 enforce flip + revert cycle.
+    Checks: 'mode enforce' and 'mode audit' both terminated with newline.
+    """
+    import socket
+    import threading
+
+    NEWLINE = bytes([10])  # avoids backslash-n escape in generated file
+    sock_path = str(tmp_path / 'test_holder_flip.sock')
+    received: list[bytes] = []
+    ready = threading.Event()
+
+    def _server() -> None:
+        srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        srv.bind(sock_path)
+        srv.listen(1)
+        ready.set()
+        for _ in range(2):  # accept 2 connections: enforce + audit
+            conn, _ = srv.accept()
+            data = b''
+            while NEWLINE not in data:
+                chunk = conn.recv(64)
+                if not chunk:
+                    break
+                data += chunk
+            received.append(data)
+            conn.sendall(b'ok' + NEWLINE)
+            conn.close()
+        srv.close()
+
+    t = threading.Thread(target=_server, daemon=True)
+    t.start()
+    ready.wait(timeout=2)
+
+    client = bpf_lsm._SocketHolderClient(sock_path=sock_path)
+    client._send('mode enforce')
+    client._send('mode audit')
+    t.join(timeout=2)
+
+    expected = [b'mode enforce' + NEWLINE, b'mode audit' + NEWLINE]
+    assert received == expected, f'unexpected wire commands: {received}'
