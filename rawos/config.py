@@ -117,7 +117,7 @@ class Settings(BaseSettings):
 
     # M3 — Owned-Resource Operator (R-own). Ships dormant; flip after twin-prove of
     # workspace GC cycle with reversibility verified (first standing authority).
-    operator_owned_enabled: bool = False
+    operator_owned_enabled: bool = True   # ACTIVATED 2026-06-15
     # Workspace GC: move-to-trash after retention_days idle (floor: min_age_days).
     # Hard-delete trash after trash_retention_days. GC threshold triggers autonomous scan.
     owned_workspace_retention_days: int = 30
