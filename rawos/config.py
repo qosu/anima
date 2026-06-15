@@ -166,6 +166,25 @@ class Settings(BaseSettings):
     # (I-LL6): a bad envelope can only break the being's own sandboxed
     # commands, never sshd/boot/operator. See rawos/kernel/landlock.py.
 
+    # Phase 24B — BPF LSM machine-wide MAC (active enforcement, dormant)
+    # Ships DORMANT (I-LSM12): all bpf_lsm_* flags are no-ops until the
+    # supervised 24B.0→24B.4 maintenance-window gates (GRUB + holder binary,
+    # human-gated, NOT autonomous). Fact A (bpf in LSM list, needs GRUB+reboot)
+    # and Fact B (attached holder) are independently gated; holder death →
+    # kernel auto-detach → enforce gone without reboot (I-LSM2). Floor
+    # (sshd/systemd/holder/rawos/git) compiled into immutable engine bytecode,
+    # checked BEFORE policy maps — policy-map writes CANNOT deny floor (I-LSM5).
+    bpf_lsm_enabled: bool = False
+    bpf_lsm_mode: str = "audit"              # audit (log-only) or enforce
+    bpf_lsm_object_path: str = ""            # path to prebuilt CO-RE .o (empty = dormant)
+    bpf_lsm_object_sha256: str = ""          # sha256 of .o; mismatch → fail-closed (I-LSM11)
+    bpf_lsm_holder_binary_path: str = ""     # path to holder binary
+    bpf_lsm_holder_binary_sha256: str = ""   # sha256 of holder binary (I-LSM11)
+    bpf_lsm_holder_heartbeat_timeout_s: int = 30   # holder self-detaches after N missing beats
+    bpf_lsm_revert_deadman_delay_s: int = 300       # transient revert unit delay (I-LSM8)
+    bpf_lsm_deny_comm: tuple[str, ...] = ()         # process comms to deny (non-floor only)
+    bpf_lsm_protected_comm: tuple[str, ...] = ()    # extra floor names beyond FLOOR_COMM
+
     # Milestone 4 (\The window\) — Telegram front-door
     telegram_enabled:        bool = False
     telegram_bot_token:      str  = ""

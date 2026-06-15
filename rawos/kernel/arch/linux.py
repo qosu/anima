@@ -487,3 +487,32 @@ class LinuxKernelObserver:
         if not isinstance(inner, dict):
             return None
         return inner
+
+
+class LinuxKernelEnforcer:
+    """Linux implementation of BPF LSM enforcement supervision (Phase 24B).
+
+    For 24B.0 (dormant), this is a documentation stub; the actual control
+    plane is rawos/kernel/bpf_lsm.py + BpfLsmSupervisor (api/app.py).
+
+    Post-24B.1 (when holder binary + lsm= GRUB cmdline are in place), this
+    class will manage the holder daemon lifecycle (spawn, healthcheck, graceful
+    stop) from the arch backend layer, with the being's policy-map updates
+    flowing through BpfLsmSupervisor → _SocketHolderClient → holder unix socket.
+
+    Invariants:
+      I-LSM2  — holder holds the only ref to the bpf_link (no-pin); class
+                 never pins to bpffs, only tracks the holder process.
+      I-LSM3  — holder is an independent systemd unit; stop() uses systemctl.
+      I-LSM11 — before spawning holder, verifies engine .o + binary checksums
+                 (delegated to bpf_lsm._verify_artifact).
+
+    See rawos/kernel/bpf_lsm.py for full design.
+    """
+
+    supports_bpf_lsm_enforcement = True
+    _HOLDER_UNIT = "rawos-bpf-lsm-holder.service"
+
+    def is_bpf_lsm_available(self) -> bool:
+        from rawos.kernel import bpf_lsm
+        return bpf_lsm.supported()

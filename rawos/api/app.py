@@ -56,6 +56,15 @@ async def lifespan(app: FastAPI):
     from rawos.kernel import landlock
     landlock.validate_boot_config(enabled=settings.landlock_self_mac_enabled)
 
+    # Phase 24B — fail-fast: refuse boot if bpf_lsm is enabled but BPF LSM is
+    # not available (bpf absent from active LSM list, BTF missing, or bpffs
+    # unmounted). Mirrors Phase 26 Landlock validate_boot_config (I-LSM10/I-LSM12).
+    from rawos.kernel import bpf_lsm as _bpf_lsm_mod
+    _bpf_lsm_mod.validate_boot_config(
+        enabled=settings.bpf_lsm_enabled,
+        mode=settings.bpf_lsm_mode,
+    )
+
     # Pre-warm ChromaDB + sentence-transformers
     from rawos.kernel.memory_index import warmup
     loop = asyncio.get_event_loop()
@@ -83,6 +92,9 @@ async def lifespan(app: FastAPI):
     kernel_perception_task = asyncio.create_task(_start_kernel_perception_loop(),       name="kernel-perception")
     selfreload_task    = asyncio.create_task(_self_reload_boot_commit_task(),       name="self-reload-boot-commit")
     venv_boot_task     = asyncio.create_task(_venv_boot_commit_task(),                name="venv-boot-commit")
+    # Phase 24B — heartbeat supervisor (I-LSM7 deadman). No-op when dormant
+    # (bpf_lsm_enabled=False → BpfLsmSupervisor.run() returns immediately).
+    bpf_lsm_heartbeat_task = asyncio.create_task(_start_bpf_lsm_heartbeat_loop(),    name="bpf-lsm-heartbeat")
     _telegram_gate     = await _start_telegram_gate()
 
     # Clean up intents orphaned by crash/restart — any still 'executing' after
@@ -114,7 +126,8 @@ async def lifespan(app: FastAPI):
     kernel_perception_task.cancel()
     selfreload_task.cancel()
     venv_boot_task.cancel()
-    await asyncio.gather(db_sync_task, proactive_task, watcher_task, snapshot_task, calendar_task, autonomous_task, self_probe_task, narrative_task, operator_scan_task, system_fs_reflex_task, kernel_perception_task, selfreload_task, venv_boot_task, return_exceptions=True)
+    bpf_lsm_heartbeat_task.cancel()
+    await asyncio.gather(db_sync_task, proactive_task, watcher_task, snapshot_task, calendar_task, autonomous_task, self_probe_task, narrative_task, operator_scan_task, system_fs_reflex_task, kernel_perception_task, selfreload_task, venv_boot_task, bpf_lsm_heartbeat_task, return_exceptions=True)
     stop_system_perception()
     stop_filesystem_watcher()
     _log.info("rawos shutdown complete")
@@ -141,6 +154,23 @@ async def _start_system_fs_reflex() -> None:
 async def _start_kernel_perception_loop() -> None:
     from rawos.context.kernel_perception import kernel_perception_loop
     await kernel_perception_loop()
+
+
+async def _start_bpf_lsm_heartbeat_loop() -> None:
+    """Phase 24B: BPF LSM heartbeat supervisor (I-LSM7 deadman loop).
+
+    When bpf_lsm_enabled=False (24B.0 dormant), BpfLsmSupervisor.run()
+    returns immediately (zero-cost no-op). When enabled (post-24B.1+),
+    sends periodic heartbeats to the holder daemon; missing heartbeats
+    trigger holder self-detach (enforcement revert without reboot, I-LSM2).
+    """
+    from rawos.kernel import bpf_lsm as _bpf_lsm_mod
+    supervisor = _bpf_lsm_mod.BpfLsmSupervisor(
+        client=_bpf_lsm_mod._NullHolderClient(),  # replaced by _SocketHolderClient post-24B.1
+        heartbeat_interval_s=5.0,
+        enabled=settings.bpf_lsm_enabled,
+    )
+    await supervisor.run()
 
 
 async def _self_reload_boot_commit_task() -> None:
