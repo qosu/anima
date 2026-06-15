@@ -1868,38 +1868,53 @@ def selfreload_stage(new_sha: str) -> None:
     help="Skip the confirmation prompt.",
 )
 def selfreload_arm_and_go(new_sha: str, yes: bool) -> None:
-    """Preflight, arm the revert deadman, swap to NEW_SHA, and exit this process.
+    """Preflight, arm the revert deadman, swap to NEW_SHA, and let rawos exit.
 
-    
-    This process dies (os._exit) on success -- your SSH session and any
-    in-flight requests are dropped. systemd respawns rawos against the new
-    source in ~5s. The new self verifies its own liveness at boot
-    (boot_liveness_commit); if that fails before the deadman deadline, the
-    deadman reverts to the current sha and restarts rawos automatically.
+    Posts to rawos.service's own /internal/self-reload/arm-and-go (loopback
+    only). The reload MUST happen inside rawos.service's worker process --
+    that is the process systemd (Restart=always) respawns. Running
+    preflight+arm+exit in this CLI process would exit the wrong PID and
+    systemd would never pick up new_sha.
+
+    On success the worker process dies (os._exit) mid-response, so the HTTP
+    connection drops -- that dropped connection IS the success signal.
+    systemd respawns rawos against the new source in ~5s. The new self
+    verifies its own liveness at boot (boot_liveness_commit); if that fails
+    before the deadman deadline, the deadman reverts to the current sha and
+    restarts rawos automatically.
 
     Run `rawos selfreload status` after ~10s to see the outcome.
     """
     if not yes:
         click.confirm(
-            f"This will swap /root/rawos to {new_sha} and kill the current "
+            f"This will swap /root/rawos to {new_sha} and kill the running "
             "rawos process (deadman-protected). Continue?",
             abort=True,
         )
 
-    from rawos.kernel.self_reload import (
-        SelfReloadPreflightError,
-        SelfReloadRefusalError,
-        SelfReloadStateError,
-        execute_owner_self_reload,
-    )
+    from rawos.config import settings
 
-    click.echo(f"Preflighting {new_sha} and arming deadman -- this process will exit on success…")
+    url = f"http://127.0.0.1:{settings.port}/internal/self-reload/arm-and-go"
+    click.echo(f"Arming deadman and swapping to {new_sha} -- rawos will exit on success…")
     try:
-        execute_owner_self_reload(new_sha)
-    except (SelfReloadRefusalError, SelfReloadPreflightError, SelfReloadStateError) as exc:
-        click.echo(f"✗ refused: {exc}", err=True)
-        raise SystemExit(1) from exc
-    # execute_owner_self_reload calls os._exit(0) on success -- unreachable.
+        resp = httpx.post(url, json={"new_sha": new_sha}, timeout=30.0)
+    except httpx.TransportError:
+        click.echo("✓ armed -- rawos process exited (connection dropped, as expected).")
+        click.echo("Run `rawos selfreload status` after ~10s to see the outcome.")
+        return
+
+    if resp.status_code == 200:
+        click.echo("✓ armed -- rawos will exit and systemd will respawn it shortly.")
+        click.echo("Run `rawos selfreload status` after ~10s to see the outcome.")
+        return
+
+    try:
+        payload = resp.json()
+    except Exception:
+        payload = {}
+    detail = payload.get("detail") or resp.text
+    click.echo(f"✗ refused: {detail}", err=True)
+    raise SystemExit(1)
 
 
 @selfreload.command("status")

@@ -144,3 +144,78 @@ class TestProjects:
     def test_unauthenticated_blocked(self):
         r = client.post("/projects", json={"name": "X"})
         assert r.status_code == 401
+
+
+
+class TestInternalSelfReload:
+    """Phase 25 Stage 1c -- /internal/self-reload/arm-and-go, loopback-only.
+
+    Runs execute_owner_self_reload() IN-PROCESS so os._exit(0) kills THIS
+    worker's MainPID -- the only way systemd (Restart=always) respawns
+    rawos.service against new_sha and boot_liveness_commit can resolve the
+    pending state written here. Mirrors the /metrics localhost check
+    (X-Forwarded-For aware -- nginx /api/ proxies here with real client IP).
+    """
+
+    def test_refuses_remote_request(self):
+        r = client.post(
+            "/internal/self-reload/arm-and-go",
+            json={"new_sha": "deadbeef"},
+            headers={"X-Forwarded-For": "203.0.113.5"},
+        )
+        assert r.status_code == 403
+
+    def test_missing_new_sha(self):
+        r = client.post(
+            "/internal/self-reload/arm-and-go",
+            json={},
+            headers={"X-Forwarded-For": "127.0.0.1"},
+        )
+        assert r.status_code == 400
+
+    def test_preflight_error_returns_409(self, monkeypatch):
+        import rawos.kernel.self_reload as self_reload
+
+        def _raise(*args, **kwargs):
+            raise self_reload.SelfReloadPreflightError("boom")
+
+        monkeypatch.setattr(self_reload, "execute_owner_self_reload", _raise)
+        r = client.post(
+            "/internal/self-reload/arm-and-go",
+            json={"new_sha": "deadbeef"},
+            headers={"X-Forwarded-For": "127.0.0.1"},
+        )
+        assert r.status_code == 409
+        assert "boom" in r.json()["detail"]
+
+    def test_state_error_returns_409(self, monkeypatch):
+        import rawos.kernel.self_reload as self_reload
+
+        def _raise(*args, **kwargs):
+            raise self_reload.SelfReloadStateError("pending")
+
+        monkeypatch.setattr(self_reload, "execute_owner_self_reload", _raise)
+        r = client.post(
+            "/internal/self-reload/arm-and-go",
+            json={"new_sha": "deadbeef"},
+            headers={"X-Forwarded-For": "127.0.0.1"},
+        )
+        assert r.status_code == 409
+        assert "pending" in r.json()["detail"]
+
+    def test_calls_execute_owner_self_reload(self, monkeypatch):
+        import rawos.kernel.self_reload as self_reload
+
+        calls = []
+
+        def _stub(new_sha, **kwargs):
+            calls.append(new_sha)
+
+        monkeypatch.setattr(self_reload, "execute_owner_self_reload", _stub)
+        r = client.post(
+            "/internal/self-reload/arm-and-go",
+            json={"new_sha": "deadbeef"},
+            headers={"X-Forwarded-For": "127.0.0.1"},
+        )
+        assert r.status_code == 200
+        assert calls == ["deadbeef"]

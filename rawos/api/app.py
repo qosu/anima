@@ -416,3 +416,42 @@ async def metrics(request: Request):
             raise HTTPException(status_code=403, detail="invalid metrics token")
 
     return StarletteResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.post("/internal/self-reload/arm-and-go", include_in_schema=False)
+async def internal_self_reload_arm_and_go(request: Request):
+    """Owner-triggered self-reload (Phase 25 I-SR6 funnel), loopback-only.
+
+    Must run IN-PROCESS: execute_owner_self_reload()'s os._exit(0) has to
+    kill THIS worker's MainPID -- that is the only way systemd
+    (Restart=always) respawns rawos.service against new_sha and
+    boot_liveness_commit (lifespan, above) can resolve the pending state
+    written here. See rawos/cli/main.py `selfreload arm-and-go`.
+    """
+    from fastapi import HTTPException
+
+    client_ip = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+    if not client_ip:
+        client_ip = request.client.host if request.client else ""
+    if client_ip not in ("127.0.0.1", "::1", ""):
+        raise HTTPException(status_code=403, detail="self-reload not accessible remotely")
+
+    body = await request.json()
+    new_sha = body.get("new_sha", "")
+    if not new_sha:
+        raise HTTPException(status_code=400, detail="new_sha required")
+
+    from rawos.kernel.self_reload import (
+        SelfReloadPreflightError,
+        SelfReloadRefusalError,
+        SelfReloadStateError,
+        execute_owner_self_reload,
+    )
+
+    try:
+        execute_owner_self_reload(new_sha)
+    except (SelfReloadRefusalError, SelfReloadPreflightError, SelfReloadStateError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    # execute_owner_self_reload calls os._exit(0) on success -- unreachable
+    # in production. Reached only when a test monkeypatches it.
+    return {"status": "armed"}
