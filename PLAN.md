@@ -435,3 +435,31 @@ HEAD) — distinct `new_sha` for the second real self-reload of `rawos.service`
 `boot_liveness_commit` takes the `committed` branch (not `resurrected`), advancing
 `operator_track_record(self_reload, /root/rawos).verified_successes` toward the
 Stage 2 graduation threshold of 3._
+
+## 2026-06-15 — Phase 25 Stage 1 Step 4b: SECOND real self-reload — outcome=committed
+
+Fired `arm-and-go {"new_sha":"72fee001"}` with `old_sha`=`17fcbc91` != `new_sha`
+(new_sha created via `git commit-tree`, never checked out — avoids the degenerate
+old==new case from Step 4a). Result: PID 151865 -> 153794, HEAD `17fcbc91` ->
+`72fee001`, `/health`=200, deadman disarmed, `pending.json` cleared.
+`boot_liveness_commit -> committed (old=17fcbc91 new=72fee001 autonomous=False)`.
+
+**Graduation ledger, stated precisely (not rounded to "1/3"):**
+`operator_track_record(self_reload, /root/rawos)` after this run:
+`verified_successes=0, last_outcome=merged_pending_stability, pending_since=<set>`.
+
+`_advance_state` (kernel/track_record.py, shared with code-fix graduation) requires
+**2 consecutive `committed` outcomes** (no `resurrected`/`liveness_failed` in between)
+to advance `verified_successes` by 1 — this run started that window
+(`merged_pending_stability`). `GRADUATION_THRESHOLD=3` ⇒ **6 consecutive `committed`
+outcomes total** are needed before `verified_successes>=3` and
+`self_reload_autonomous_enabled` becomes eligible to flip (manual flip, I-OWN5
+pattern — never auto-flipped). 1 of 6 done; 1 more consecutive `committed` closes
+the first pair (`verified_successes` -> 1).
+
+Step 4 (real prod self-reload, mechanism end-to-end) is now proven **twice** —
+once degenerate (`resurrected`, old==new) and once canonical (`committed`,
+old!=new). Phase 25 Stage 1 + Stage 2 code: fully shipped, dormant, battle-tested in
+prod. Remaining graduation (5 more `committed` runs) is optional, incremental,
+non-blocking — accrues opportunistically via future self-reloads, not a prerequisite
+for any other phase.
