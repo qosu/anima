@@ -273,8 +273,13 @@ async def infer_intent(user_id: str, force_llm: bool = False) -> InferredIntent:
             result = clf_result
         else:
             # Layer 3: LLM (accurate goal text, API call)
-            result = await _llm_infer(model)
-            # If LLM also fails, fall back to best available
+            # Bounded timeout so /context/status never hangs waiting for NIM.
+            # Falls back to best available result on timeout.
+            try:
+                result = await asyncio.wait_for(_llm_infer(model), timeout=8.0)
+            except asyncio.TimeoutError:
+                result = clf_result or rule_result or _EMPTY
+            # If LLM returned but with very low confidence, also fall back
             if result.confidence < 0.1:
                 result = clf_result or rule_result or _EMPTY
 
