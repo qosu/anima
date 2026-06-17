@@ -613,11 +613,24 @@ class LinuxUnitTopologyManager:
 
         Returns (ok, output) — ok=True iff exit code 0.
         Runs on FULL config (not just new unit) as required by I-UT5.
+
+        Filters: regular files + symlinks with unit-file extensions only.
+        Excludes directories (.wants/, .requires/, .d/) and non-unit files.
+        systemd-analyze verify passes directories as unit names → fatal error.
         """
         import subprocess
         import glob
         import os
-        unit_files = glob.glob(os.path.join(self._SYSTEMD_UNIT_DIR, "*"))
+        _UNIT_EXTS = frozenset({
+            ".service", ".socket", ".timer", ".target", ".mount",
+            ".automount", ".path", ".slice", ".scope", ".device", ".swap",
+        })
+        all_entries = glob.glob(os.path.join(self._SYSTEMD_UNIT_DIR, "*"))
+        unit_files = [
+            f for f in all_entries
+            if not os.path.isdir(f)
+            and os.path.splitext(f)[1] in _UNIT_EXTS
+        ]
         if not unit_files:
             return (True, "")
         result = subprocess.run(
