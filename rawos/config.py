@@ -203,7 +203,7 @@ class Settings(BaseSettings):
     # Phase 23-full — Unit/Boot Topology Authorship (active authority, dormant)
     # Ships DORMANT (I-UT11): all unit_topology_* flags are no-ops until the
     # supervised 23F.0→23F.4 maintenance-window gates (human-gated, NOT autonomous).
-    operator_unit_topology_enabled: bool = False
+    operator_unit_topology_enabled: bool = True   # 23F.1 ACTIVATED propose-only 2026-06-16
     unit_topology_propose_only: bool = True
     unit_topology_revert_deadman_delay_s: int = 300
 
