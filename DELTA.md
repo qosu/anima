@@ -1,3 +1,4 @@
-CHANGED: rawos/kernel/arch/linux.py | fix analyze_verify() — exclude dirs + non-unit files via _UNIT_EXTS frozenset | I-UT5 oracle now robust; dirs (.wants/.requires/.d/) caused exit non-zero → auto-restore fired (I-UT6 proven), then fixed
-CHANGED: (23F.2 DRILL COMPLETE 2026-06-16) | live author+start+stop+delete on real systemd, all 15 checks pass | 23F.3 next = boot-graph + reboot, HUMAN-GATED
-NEXT: 23F.3 human gate — SSH-session-2 + Hetzner console + Rescue sẵn, arm boot-deadman, commit boot-graph change benign, reboot, verify floor + deadman drill
+CHANGED: scripts/unit_topology_boot_deadman.sh (NEW) | boot deadman health check — floor probe + force-revert drill mode + auto-disarm | I-UT8 implementation
+CHANGED: /etc/systemd/system/rawos-unit-topology-revert.service (LIVE, not in repo) | boot-graph deadman: enabled, armed, ConditionPathExists=armed flag | ready for 23F.3 reboot
+CHANGED: /etc/rawos/unit-topology-deadman.{armed,revert.sh} (LIVE) | rawos-23f3-boottest enabled (boot-graph change), deadman armed | REBOOT PENDING human gate
+NEXT: 23F.3C — human confirm session-2+console+rescue → arm transient deadman → grub-reboot 0 && reboot → post-reboot verify → force-revert drill
