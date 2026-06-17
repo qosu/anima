@@ -219,9 +219,15 @@ class LinuxShellPolicy:
             rw_extra = (workdir,) if _os.path.exists(workdir) else ()
             _wt_root = settings.worktree_root
             wt_extra = (_wt_root,) if _os.path.exists(_wt_root) else ()
+            # Git commands running inside a worktree need RW access to the
+            # origin repo's .git/ dir (reads objects, writes branch refs).
+            # Without this, "git checkout -b" in a worktree subprocess fails
+            # with "fatal: not a git repository: /root/rawos/.git/worktrees/..."
+            _rawos_root = settings.rawos_source_root
+            rawos_extra = (_rawos_root,) if _os.path.exists(_rawos_root) else ()
             policy = dataclasses.replace(
                 landlock.DEFAULT_BEING_ENVELOPE,
-                rw_paths=landlock.DEFAULT_BEING_ENVELOPE.rw_paths + rw_extra + wt_extra,
+                rw_paths=landlock.DEFAULT_BEING_ENVELOPE.rw_paths + rw_extra + wt_extra + rawos_extra,
             )
             return shell_cmd, {"preexec_fn": landlock.build_restrict_self_fn(policy)}
 

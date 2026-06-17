@@ -206,9 +206,10 @@ def test_wrap_flag_on_but_unsupported_falls_back_to_passthrough(monkeypatch, tmp
 async def test_run_bash_denies_out_of_envelope_path(monkeypatch, tmp_path):
     monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", True)
 
-    # /root/rawos/PLAN.md is outside DEFAULT_BEING_ENVELOPE (only
-    # /root/rawos/data is RW; /root itself is not in ro_paths).
-    result = await run_bash("cat /root/rawos/PLAN.md", str(tmp_path))
+    # /root/.ssh/authorized_keys is always outside DEFAULT_BEING_ENVELOPE.
+    # (rawos source root /root/rawos is now in rw_paths for git-worktree ops,
+    # but .ssh/ is never added — it must stay blocked.)
+    result = await run_bash("cat /root/.ssh/authorized_keys", str(tmp_path))
 
     assert result.exit_code != 0
 
