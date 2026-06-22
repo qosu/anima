@@ -10,8 +10,10 @@ Background asyncio task. Every SCAN_INTERVAL_S:
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import logging
+import random
 import re
 import time
 from pathlib import Path
@@ -121,6 +123,25 @@ MAX_PROACTIVE_LOOP_TIME_S = 300   # hard cap per-run (5 min)
 # (pre-fix + post-fix), each capped at its own internal 180s — bound the
 # whole verification step independently of the agent loop's 300s cap.
 VERIFICATION_TIMEOUT_S = 300
+
+# Per-user exponential backoff on consecutive LLM failures (429 / timeout).
+# Prevents the scanner from hammering NIM quota after rate-limit events.
+# State is ephemeral (in-memory); resets on service restart — acceptable
+# because the goal is quota protection, not permanent user suspension.
+_BACKOFF_BASE_S:     float = SCAN_INTERVAL_S  # first retry at next normal interval
+_BACKOFF_MAX_S:      float = 1800.0           # cap at 30 min
+_BACKOFF_MULTIPLIER: float = 2.0
+_BACKOFF_JITTER:     float = 0.15             # ±15% — prevents synchronised retry storms
+
+
+@dataclasses.dataclass
+class _UserBackoff:
+    consecutive_failures: int = 0
+    next_allowed_at: float = 0.0  # time.monotonic()
+
+
+# Keyed by user_id. Written by _record_proactive_failure / _record_proactive_success.
+_proactive_backoff: dict[str, _UserBackoff] = {}
 
 # Autonomous server scan — runs independently of human activity
 AUTONOMOUS_SCAN_THRESHOLD   = 6     # minimum severity to act (1-10 scale)
@@ -1469,7 +1490,9 @@ async def _run_proactive_agent(
         trigger_type=trigger_type,
     )
     if result_text is None:
+        _record_proactive_failure(user_id)
         return
+    _record_proactive_success(user_id)
     if len(result_text) < 80:
         log.debug("proactive: result too short (%d chars) — skipping", len(result_text))
         return
@@ -1759,6 +1782,38 @@ async def proactive_scan_loop() -> None:
             log.exception("proactive scan error (continuing)")
 
 
+def _is_proactive_in_backoff(user_id: str) -> bool:
+    """Return True if this user is currently inside an error backoff window."""
+    state = _proactive_backoff.get(user_id)
+    return state is not None and time.monotonic() < state.next_allowed_at
+
+
+def _record_proactive_failure(user_id: str) -> None:
+    """Increment consecutive failure count and set next-allowed-at with jitter."""
+    state = _proactive_backoff.setdefault(user_id, _UserBackoff())
+    state.consecutive_failures += 1
+    raw_delay = min(
+        _BACKOFF_BASE_S * (_BACKOFF_MULTIPLIER ** (state.consecutive_failures - 1)),
+        _BACKOFF_MAX_S,
+    )
+    jitter = random.uniform(1.0 - _BACKOFF_JITTER, 1.0 + _BACKOFF_JITTER)
+    state.next_allowed_at = time.monotonic() + raw_delay * jitter
+    log.info(
+        "proactive backoff: user=%s consecutive_failures=%d next_retry_in=%.0fs",
+        user_id, state.consecutive_failures, raw_delay * jitter,
+    )
+
+
+def _record_proactive_success(user_id: str) -> None:
+    """Reset backoff state after a successful LLM completion."""
+    if user_id in _proactive_backoff:
+        log.info(
+            "proactive backoff reset: user=%s (cleared after %d failures)",
+            user_id, _proactive_backoff[user_id].consecutive_failures,
+        )
+        del _proactive_backoff[user_id]
+
+
 async def _scan_once(semaphore: asyncio.Semaphore) -> None:
     user_ids = _get_active_users()
     if not user_ids:
@@ -1812,6 +1867,10 @@ async def _scan_once(semaphore: asyncio.Semaphore) -> None:
         cooldown_key = _compute_cooldown_key(trigger_type, intent_obj.domain, trigger_ctx)
         if _is_goal_on_cooldown(uid, cooldown_key):
             log.debug("goal on cooldown: user=%s key='%s'", uid, cooldown_key[:60])
+            continue
+
+        if _is_proactive_in_backoff(uid):
+            log.debug("proactive backoff active: user=%s — skipping scan cycle", uid)
             continue
 
         # Get timeliness score for logging (fallback to 1.0 when trigger bypasses gate)
