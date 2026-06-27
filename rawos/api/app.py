@@ -103,6 +103,7 @@ async def lifespan(app: FastAPI):
     # Phase 24B — heartbeat supervisor (I-LSM7 deadman). No-op when dormant
     # (bpf_lsm_enabled=False → BpfLsmSupervisor.run() returns immediately).
     bpf_lsm_heartbeat_task = asyncio.create_task(_start_bpf_lsm_heartbeat_loop(),    name="bpf-lsm-heartbeat")
+    audit_mirror_task  = asyncio.create_task(_audit_mirror_loop(),                          name="audit-chain-mirror")
     _telegram_gate     = await _start_telegram_gate()
 
     # Clean up intents orphaned by crash/restart — any still 'executing' after
@@ -115,6 +116,43 @@ async def lifespan(app: FastAPI):
             (_orphan_cutoff,),
         )
     _log.info("rawos started — context collection active, proactive scheduler running, autonomous scan active")
+
+    # SHP.5 I-SEC7: audit chain boot verify + startup record
+    from rawos.kernel import audit_chain as _audit_chain_mod
+    _boot_verify = _audit_chain_mod.verify_chain()
+    if not _boot_verify.ok:
+        _log.error(
+            "SHP.5: audit chain tamper detected (%d records checked): %s",
+            _boot_verify.records_verified, _boot_verify.reason,
+        )
+    else:
+        _log.info(
+            "SHP.5: audit chain OK (%d records verified)",
+            _boot_verify.records_verified,
+        )
+    # SHP.7 I-SEC9: dep drift check — detect supply-chain version tampering at boot
+    from rawos.kernel.dep_lock import verify_dep_lock as _verify_dep_lock
+    _dep_drift = _verify_dep_lock()
+    if not _dep_drift.ok:
+        _log.warning(
+            "SHP.7: dep lock drift detected at boot: %s | added=%s removed=%s changed=%s",
+            _dep_drift.summary,
+            _dep_drift.added[:5],
+            _dep_drift.removed[:5],
+            _dep_drift.changed[:5],
+        )
+    else:
+        _log.info("SHP.7: dep lock OK")
+
+    _audit_chain_mod.append(
+        "startup",
+        {
+            "chain_records_at_boot": _boot_verify.records_verified,
+            "chain_ok_at_boot": _boot_verify.ok,
+            "dep_lock_ok_at_boot": _dep_drift.ok,
+            "dep_drift_summary": _dep_drift.summary,
+        },
+    )
 
     yield
 
@@ -135,7 +173,8 @@ async def lifespan(app: FastAPI):
     selfreload_task.cancel()
     venv_boot_task.cancel()
     bpf_lsm_heartbeat_task.cancel()
-    await asyncio.gather(db_sync_task, proactive_task, watcher_task, snapshot_task, calendar_task, autonomous_task, self_probe_task, narrative_task, operator_scan_task, system_fs_reflex_task, kernel_perception_task, selfreload_task, venv_boot_task, bpf_lsm_heartbeat_task, return_exceptions=True)
+    audit_mirror_task.cancel()
+    await asyncio.gather(db_sync_task, proactive_task, watcher_task, snapshot_task, calendar_task, autonomous_task, self_probe_task, narrative_task, operator_scan_task, system_fs_reflex_task, kernel_perception_task, selfreload_task, venv_boot_task, bpf_lsm_heartbeat_task, audit_mirror_task, return_exceptions=True)
     stop_system_perception()
     stop_filesystem_watcher()
     _log.info("rawos shutdown complete")
@@ -183,6 +222,18 @@ async def _start_bpf_lsm_heartbeat_loop() -> None:
         enabled=settings.bpf_lsm_enabled,
     )
     await supervisor.run()
+
+
+
+async def _audit_mirror_loop() -> None:
+    """SHP.5: periodically push chain-head to Telegram as off-box anchor."""
+    from rawos.kernel import audit_chain as _ac
+    while True:
+        await asyncio.sleep(_ac.MIRROR_INTERVAL_S)
+        try:
+            await _ac.push_mirror()
+        except Exception:
+            _log.exception("audit chain mirror push failed")
 
 
 async def _self_reload_boot_commit_task() -> None:

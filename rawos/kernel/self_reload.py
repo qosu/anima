@@ -67,6 +67,7 @@ the entrypoint is inert until BOTH new gates open:
 from __future__ import annotations
 
 import hashlib
+import logging
 import json
 import os
 import shutil
@@ -79,6 +80,8 @@ from pathlib import Path
 from typing import Callable, NoReturn
 
 from rawos.config import settings
+
+_log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -232,6 +235,33 @@ def _dependency_hash(runner, cwd: str, sha: str) -> str:
     return h.hexdigest()
 
 
+
+def _verify_sha_ancestry(runner, source_root: str, new_sha: str) -> None:
+    """Refuse new_sha unless it is a descendant of current HEAD (I-SEC9).
+
+    An orphan commit or a rewind to a past SHA would bypass all content checks
+    while loading arbitrary code — a supply-chain injection vector. We close
+    this gap by requiring git merge-base --is-ancestor to confirm forward
+    movement in the commit graph.
+
+    Raises SelfReloadRefusalError if new_sha is not a strict descendant of HEAD.
+    Same-SHA (no-op reload) is allowed without a merge-base call.
+    """
+    head_sha = _git_head(runner, source_root)
+    if head_sha == new_sha:
+        return  # idempotent reload — trivially valid
+    result = runner.run(
+        ["git", "merge-base", "--is-ancestor", head_sha, new_sha],
+        cwd=source_root,
+    )
+    if result.returncode != 0:
+        raise SelfReloadRefusalError(
+            f"refused: {new_sha[:12]} is not a descendant of current HEAD "
+            f"({head_sha[:12]}). Self-reload requires a forward-moving commit "
+            "history — orphan commits and history rewrites are rejected (I-SEC9)."
+        )
+
+
 # ---------------------------------------------------------------------------
 # preflight_stage
 # ---------------------------------------------------------------------------
@@ -264,6 +294,9 @@ def preflight_stage(
     runner = _runner or _GitRunner()
 
     old_sha = _git_head(runner, source_root)
+
+    # SHP.7 I-SEC9: ancestry check — new_sha must be a descendant of HEAD
+    _verify_sha_ancestry(runner, source_root, new_sha)
 
     migration_delta = _diff_paths(runner, source_root, old_sha, new_sha, "migrations/")
     if migration_delta:
@@ -378,6 +411,18 @@ def arm_and_swap(
     except Exception:
         state_path.unlink(missing_ok=True)
         raise
+
+    # SHP.7 I-SEC7: tamper-evident record of swap — written before irreversible git reset
+    try:
+        from rawos.kernel import audit_chain as _ac
+        _ac.append("self_reload_arm", {
+            "old_sha": snap.old_sha,
+            "new_sha": snap.new_sha,
+            "state_id": snap.state_id,
+            "autonomous": autonomous,
+        })
+    except Exception as exc:
+        _log.warning("self_reload: audit chain append failed: %s", exc)
 
     try:
         result = runner.run(["git", "reset", "--hard", snap.new_sha], cwd=source_root)
