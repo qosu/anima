@@ -1,5 +1,5 @@
 """
-rawos Specialized Agent Configurations — Phase 4.
+anima Specialized Agent Configurations — Phase 4.
 
 Each agent type has:
   - system_prompt:  role-specific instructions injected as system context

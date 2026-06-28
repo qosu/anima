@@ -60,8 +60,8 @@ def repo(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
     _git("init", "-q", "-b", "main", cwd=str(root))
-    _git("config", "user.email", "test@rawos.local", cwd=str(root))
-    _git("config", "user.name", "rawos-test", cwd=str(root))
+    _git("config", "user.email", "test@anima.local", cwd=str(root))
+    _git("config", "user.name", "anima-test", cwd=str(root))
     (root / "app.txt").write_text("v1\n")
     _git("add", ".", cwd=str(root))
     _git("commit", "-q", "-m", "init", cwd=str(root))
@@ -69,7 +69,7 @@ def repo(tmp_path):
 
 
 def _graduate(repo_root: str, domain: str) -> None:
-    for cycle, branch in enumerate(["rawos/fix-1", "rawos/fix-2", "rawos/fix-3"]):
+    for cycle, branch in enumerate(["anima/fix-1", "anima/fix-2", "anima/fix-3"]):
         update_track_record(
             RAWOS_ENTITY_USER_ID, repo_root, domain,
             anomaly_present=False, branch_merged=True,
@@ -96,17 +96,17 @@ class TestMaybeAutoApply:
         db.init(os.path.join(self.tmp, "test.db"))
         db.create_user(User(
             id=RAWOS_ENTITY_USER_ID,
-            email=f"rawos-entity-{id(self)}@test.com",
+            email=f"anima-entity-{id(self)}@test.com",
             password_hash=hashlib.sha256(b"pass").hexdigest(),
         ))
 
     def _make_fix_branch(self, repo) -> str:
-        _git("checkout", "-q", "-b", "rawos/fix-x", cwd=str(repo))
+        _git("checkout", "-q", "-b", "anima/fix-x", cwd=str(repo))
         (repo / "app.txt").write_text("v2\n")
         _git("add", "app.txt", cwd=str(repo))
-        _git("commit", "-q", "-m", "rawos: fix x", cwd=str(repo))
+        _git("commit", "-q", "-m", "anima: fix x", cwd=str(repo))
         _git("checkout", "-q", "main", cwd=str(repo))
-        return "rawos/fix-x"
+        return "anima/fix-x"
 
     async def test_disabled_by_default_returns_none(self, repo, monkeypatch):
         monkeypatch.setattr(proactive.settings, "autonomy_auto_apply_enabled", False)
@@ -134,13 +134,13 @@ class TestMaybeAutoApply:
         _graduate(str(repo), domain)
         base_sha = _git_out("rev-parse", "HEAD", cwd=str(repo))
 
-        _git("checkout", "-q", "-b", "rawos/fix-big", cwd=str(repo))
+        _git("checkout", "-q", "-b", "anima/fix-big", cwd=str(repo))
         (repo / "app.txt").write_text("\n".join(f"line {i}" for i in range(AUTO_APPLY_MAX_DIFF_LINES + 10)) + "\n")
         _git("add", "app.txt", cwd=str(repo))
-        _git("commit", "-q", "-m", "rawos: huge fix", cwd=str(repo))
+        _git("commit", "-q", "-m", "anima: huge fix", cwd=str(repo))
         _git("checkout", "-q", "main", cwd=str(repo))
 
-        result = await _maybe_auto_apply(_anomaly(str(repo)), {"repo_root": str(repo)}, "rawos/fix-big", base_sha)
+        result = await _maybe_auto_apply(_anomaly(str(repo)), {"repo_root": str(repo)}, "anima/fix-big", base_sha)
 
         assert result is None
 

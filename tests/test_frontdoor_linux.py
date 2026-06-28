@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-_ENTRY_CMD = "/usr/local/bin/rawos frontdoor enter"
+_ENTRY_CMD = "/usr/local/bin/anima frontdoor enter"
 _EXPECTED_DROPIN_FRAGMENT = (
     "Match User root\n"
     f"    ForceCommand {_ENTRY_CMD}\n"
@@ -38,7 +38,7 @@ class TestLinuxFrontDoorDropin:
         """install() must write the exact Match User / ForceCommand block."""
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             fd.install(_ENTRY_CMD)
             content = dropin.read_text()
@@ -48,11 +48,11 @@ class TestLinuxFrontDoorDropin:
     def test_install_dropin_contains_managed_comment(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             fd.install(_ENTRY_CMD)
             content = dropin.read_text()
-        assert "Managed by rawos" in content
+        assert "Managed by anima" in content
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ class TestLinuxFrontDoorValidate:
     def test_validate_runs_sshd_dash_t(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             with patch("anima.kernel.arch.linux.subprocess.run",
                        return_value=_mock_run(returncode=0)) as mock_run:
@@ -77,7 +77,7 @@ class TestLinuxFrontDoorValidate:
     def test_validate_returns_false_on_nonzero_exit(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             with patch("anima.kernel.arch.linux.subprocess.run",
                        return_value=_mock_run(returncode=1)):
@@ -87,7 +87,7 @@ class TestLinuxFrontDoorValidate:
     def test_validate_returns_false_on_exception(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             with patch("anima.kernel.arch.linux.subprocess.run",
                        side_effect=Exception("no sshd")):
@@ -103,7 +103,7 @@ class TestLinuxFrontDoorReload:
     def test_reload_calls_systemctl_reload_ssh(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             with patch("anima.kernel.arch.linux.subprocess.run",
                        return_value=_mock_run()) as mock_run:
@@ -122,7 +122,7 @@ class TestLinuxFrontDoorSnapshotRestore:
     def test_snapshot_returns_string_path(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             dropin.write_text("existing content")
             fd = LinuxFrontDoor(dropin_path=dropin)
             snap = fd.snapshot()
@@ -132,7 +132,7 @@ class TestLinuxFrontDoorSnapshotRestore:
     def test_restore_reinstates_previous_content(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             original = "# old content\n"
             dropin.write_text(original)
             fd = LinuxFrontDoor(dropin_path=dropin)
@@ -146,7 +146,7 @@ class TestLinuxFrontDoorSnapshotRestore:
         """If no dropin exists yet, snapshot() must return a valid restore token."""
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             snap = fd.snapshot()
         assert isinstance(snap, str)
@@ -156,7 +156,7 @@ class TestLinuxFrontDoorSnapshotRestore:
         """Restoring to a 'no dropin' state must delete the dropin if it exists."""
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             # snapshot when dropin doesn't exist
             snap = fd.snapshot()
@@ -169,7 +169,7 @@ class TestLinuxFrontDoorSnapshotRestore:
     def test_uninstall_removes_dropin(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             dropin.write_text(_EXPECTED_DROPIN_FRAGMENT)
             fd = LinuxFrontDoor(dropin_path=dropin)
             fd.uninstall()
@@ -178,7 +178,7 @@ class TestLinuxFrontDoorSnapshotRestore:
     def test_uninstall_is_idempotent_when_dropin_missing(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             fd.uninstall()  # must not raise
         assert not dropin.exists()
@@ -186,9 +186,9 @@ class TestLinuxFrontDoorSnapshotRestore:
     def test_state_installed_when_dropin_exists(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             dropin.write_text(
-                "# Managed by rawos — do not edit manually.\n"
+                "# Managed by anima — do not edit manually.\n"
                 "Match User root\n"
                 f"    ForceCommand {_ENTRY_CMD}\n"
             )
@@ -200,7 +200,7 @@ class TestLinuxFrontDoorSnapshotRestore:
     def test_state_not_installed_when_dropin_missing(self):
         from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
-            dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
+            dropin = Path(tmpdir) / "50-anima-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
             s = fd.state()
         assert s.installed is False

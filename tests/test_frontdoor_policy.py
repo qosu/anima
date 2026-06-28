@@ -1,5 +1,5 @@
 """
-Policy layer tests for rawos.kernel.frontdoor.
+Policy layer tests for anima.kernel.frontdoor.
 
 TDD: these tests are written FIRST. They fail until the production code
 is in place.
@@ -18,7 +18,7 @@ import pytest
 # ---------------------------------------------------------------------------
 
 class TestDecideEntry:
-    def _decide(self, ssh_original_command: str, rawos_healthy: bool, has_token: bool):
+    def _decide(self, ssh_original_command: str, anima_healthy: bool, has_token: bool):
         from anima.kernel.frontdoor import decide_entry, FrontDoorPolicy
         policy = FrontDoorPolicy(
             fail_open=True,
@@ -27,7 +27,7 @@ class TestDecideEntry:
         )
         ctx = {
             "ssh_original_command": ssh_original_command,
-            "rawos_healthy": rawos_healthy,
+            "anima_healthy": anima_healthy,
             "has_token": has_token,
         }
         return decide_entry(ctx, policy)
@@ -76,7 +76,7 @@ class TestDecideEntry:
 # ---------------------------------------------------------------------------
 
 class TestAuditLogging:
-    def _decide_with_audit(self, ssh_original_command: str, rawos_healthy: bool, has_token: bool):
+    def _decide_with_audit(self, ssh_original_command: str, anima_healthy: bool, has_token: bool):
         from anima.kernel.frontdoor import decide_entry, FrontDoorPolicy
         with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
             audit_path = f.name
@@ -87,7 +87,7 @@ class TestAuditLogging:
         )
         ctx = {
             "ssh_original_command": ssh_original_command,
-            "rawos_healthy": rawos_healthy,
+            "anima_healthy": anima_healthy,
             "has_token": has_token,
         }
         decide_entry(ctx, policy)
@@ -171,12 +171,12 @@ class TestInstallWithDeadman:
         arch = _RecordingArch(validate_result=True)
         sd = _RecordingSystemd()
         install_with_deadman(
-            arch, "rawos frontdoor enter", revert_after_s=300, _systemd=sd
+            arch, "anima frontdoor enter", revert_after_s=300, _systemd=sd
         )
         # snapshot must come first
         assert arch.calls[0] == "snapshot->snap-1"
         # install before validate
-        install_idx = arch.calls.index("install(rawos frontdoor enter)")
+        install_idx = arch.calls.index("install(anima frontdoor enter)")
         validate_idx = arch.calls.index("validate")
         reload_idx = arch.calls.index("reload")
         assert install_idx < validate_idx < reload_idx
@@ -190,7 +190,7 @@ class TestInstallWithDeadman:
         sd = _RecordingSystemd()
         with pytest.raises(FrontDoorInstallError):
             install_with_deadman(
-                arch, "rawos frontdoor enter", revert_after_s=300, _systemd=sd
+                arch, "anima frontdoor enter", revert_after_s=300, _systemd=sd
             )
         assert "reload" not in arch.calls
         restore_calls = [c for c in arch.calls if c.startswith("restore(")]

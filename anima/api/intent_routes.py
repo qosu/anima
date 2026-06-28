@@ -1,5 +1,5 @@
 """
-Intent route — core of rawos.
+Intent route — core of anima.
 Phase 3: context enriched with semantic memory retrieval.
 POST /intent → SSE stream of agent events.
 """

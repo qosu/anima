@@ -25,7 +25,7 @@ def test_live_health_check_calls_service_manager_is_active_not_run_bash(tmp_path
     backend = _mock_arch(is_active_return=True)
     repo_root = str(tmp_path)
 
-    check = _live_health_check(repo_root, "some_domain", "rawos.service")
+    check = _live_health_check(repo_root, "some_domain", "anima.service")
 
     with patch("anima.scheduler.proactive.get_arch", return_value=backend), \
          patch("anima.scheduler.proactive.run_bash",
@@ -35,14 +35,14 @@ def test_live_health_check_calls_service_manager_is_active_not_run_bash(tmp_path
         result = asyncio.run(check())
 
     assert result is True
-    backend.service_manager.is_active.assert_called_once_with("rawos.service")
+    backend.service_manager.is_active.assert_called_once_with("anima.service")
 
 
 def test_live_health_check_returns_false_when_service_inactive(tmp_path):
     backend = _mock_arch(is_active_return=False)
     repo_root = str(tmp_path)
 
-    check = _live_health_check(repo_root, "some_domain", "rawos.service")
+    check = _live_health_check(repo_root, "some_domain", "anima.service")
 
     with patch("anima.scheduler.proactive.get_arch", return_value=backend), \
          patch("anima.scheduler.proactive.run_bash", new=AsyncMock(

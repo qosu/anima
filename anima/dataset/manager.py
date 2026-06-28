@@ -1,5 +1,5 @@
 """
-rawos Dataset Manager — Phase 8.
+anima Dataset Manager — Phase 8.
 
 Orchestrates dataset construction and provides query/export utilities.
 build() is the primary entry point: extract real examples from tg-claude,
@@ -102,7 +102,7 @@ def export_jsonl(path: str | None = None) -> tuple[str, int]:
     Returns (file_path, count).
     """
     if not path:
-        path = f"/tmp/rawos_dataset_{int(time.time())}.jsonl"
+        path = f"/tmp/anima_dataset_{int(time.time())}.jsonl"
 
     examples = list_examples(limit=10000)
     with open(path, "w") as fh:

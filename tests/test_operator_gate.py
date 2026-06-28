@@ -125,7 +125,7 @@ class TestOperateOnFileGate:
         assert open(self.target, "rb").read() == b"original\n"
 
     def test_refuses_self_protection_target_regardless_of_gate(self, monkeypatch):
-        protected = "/etc/systemd/system/rawos.service"
+        protected = "/etc/systemd/system/anima.service"
         db.add_managed_file_target(self.user.id, protected, "true")
         self._graduate(protected)
         monkeypatch.setattr(operator_module.settings, "operator_enabled", True)

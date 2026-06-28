@@ -1,5 +1,5 @@
 """
-rawos Timing Signals — Phase 10.
+anima Timing Signals — Phase 10.
 
 Computes raw timing signals from context_events and user_model.
 All DB queries are synchronous (SQLite WAL mode, thread-safe).

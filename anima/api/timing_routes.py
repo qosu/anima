@@ -1,5 +1,5 @@
 """
-rawos Timing API Routes — Phase 10.
+anima Timing API Routes — Phase 10.
 
 Exposes timing signals and timeliness scores for research inspection.
 GET /timing/signals  — full signal breakdown for a user

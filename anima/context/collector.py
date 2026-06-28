@@ -1,5 +1,5 @@
 """
-rawos Context Collector.
+anima Context Collector.
 
 Dual-source context collection:
   1. Filesystem watcher (watchdog inotify) — watches workspaces root for file changes
@@ -32,7 +32,7 @@ _SEMANTIC_EXTENSIONS = frozenset([
     ".html", ".css", ".env",
 ])
 _IGNORE_PREFIXES = (".", "__pycache__", "node_modules", ".git", "dist", "build", ".next", "venv")
-# rawos-generated artifact filenames — must not be treated as user activity (prevents feedback loop)
+# anima-generated artifact filenames — must not be treated as user activity (prevents feedback loop)
 _IGNORE_FILE_PREFIXES = ("RAWOS_",)
 _DOCUMENT_EXTENSIONS_SET = frozenset([".pdf", ".docx", ".doc"])
 
@@ -48,7 +48,7 @@ def _is_semantic(path: str) -> bool:
 
 
 def _is_document(path: str) -> bool:
-    """Return True if path is a PDF/DOCX that rawos should extract text from."""
+    """Return True if path is a PDF/DOCX that anima should extract text from."""
     p = Path(path)
     for part in p.parts:
         if any(part.startswith(pfx) for pfx in _IGNORE_PREFIXES):
@@ -235,18 +235,18 @@ def touch_work_session(user_id: str, stuck_signal: int = 0) -> str | None:
 
 
 def increment_anima_action(user_id: str) -> None:
-    """Increment rawos_actions on user's current open work session."""
+    """Increment anima_actions on user's current open work session."""
     session_id, _ = _active_sessions.get(user_id, (None, 0))
     if not session_id:
         return
     try:
         with db._conn() as conn:
             conn.execute(
-                "UPDATE work_sessions SET rawos_actions = rawos_actions + 1 WHERE id = ?",
+                "UPDATE work_sessions SET anima_actions = anima_actions + 1 WHERE id = ?",
                 (session_id,),
             )
     except Exception:
-        log.exception("failed to increment rawos_actions for session %s", session_id)
+        log.exception("failed to increment anima_actions for session %s", session_id)
 
 
 

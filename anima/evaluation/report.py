@@ -1,5 +1,5 @@
 """
-rawos Evaluation Report — Phase 7.
+anima Evaluation Report — Phase 7.
 
 Aggregates inference_log + artifact_ratings into research-grade statistics.
 

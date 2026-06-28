@@ -1,10 +1,10 @@
 """
-rawos Evaluation Feedback — Phase 7.
+anima Evaluation Feedback — Phase 7.
 
-Handles artifact ratings submitted via `rawos rate <file> 1-5`.
+Handles artifact ratings submitted via `anima rate <file> 1-5`.
 
 Flow:
-  user runs `rawos rate RAWOS_debugging_auth_1234567.md 4`
+  user runs `anima rate RAWOS_debugging_auth_1234567.md 4`
   → CLI calls POST /evaluation/rate
   → feedback.submit_rating:
       1. Find proactive_artifact by file_path

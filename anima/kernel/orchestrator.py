@@ -1,5 +1,5 @@
 """
-rawos Orchestrator — Phase 4 multi-agent coordination engine.
+anima Orchestrator — Phase 4 multi-agent coordination engine.
 
 Protocol:
   1. CLASSIFY: non-streaming DeepSeek call → {"mode": "direct"} | {"mode": "multi", "tasks": [...]}
@@ -38,7 +38,7 @@ _DONE_SENTINEL = "__agent_done__"
 _AGENT_TIMEOUT    = 300.0  # seconds max per sub-agent
 
 _DECOMPOSE_PROMPT = """\
-You are the rawos Orchestrator. Given a user intent, decide whether it should be handled by a \
+You are the anima Orchestrator. Given a user intent, decide whether it should be handled by a \
 single agent or broken into parallel specialised sub-tasks.
 
 Reply ONLY with valid JSON — no explanation, no markdown.
@@ -61,7 +61,7 @@ Rules:
 """
 
 _SYNTHESIS_PROMPT = """\
-You are rawos. Multiple specialised agents have completed their work.
+You are anima. Multiple specialised agents have completed their work.
 Synthesise their outputs into a coherent, concise response for the user.
 Focus on results: what was built, what was found, what the user can do next.
 Be concise — the work speaks for itself.

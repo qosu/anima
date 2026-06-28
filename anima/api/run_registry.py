@@ -7,7 +7,7 @@ or a later GET reconnect) replay buffered events from a given sequence
 number and then block for new ones via `RunRegistry.subscribe`.
 
 Single-worker only: this registry is in-process memory, valid because
-rawos.service runs uvicorn with --workers 1 (see Stage F plan).
+anima.service runs uvicorn with --workers 1 (see Stage F plan).
 """
 from __future__ import annotations
 

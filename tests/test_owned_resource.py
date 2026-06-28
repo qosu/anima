@@ -15,13 +15,13 @@ import pytest
 
 @pytest.fixture()
 def owned_roots(tmp_path):
-    """Create fake owned roots mirroring rawos config layout."""
+    """Create fake owned roots mirroring anima config layout."""
     workspaces = tmp_path / "workspaces"
     workspaces.mkdir()
     source = tmp_path / "source"
     data = source / "data"
     data.mkdir(parents=True)
-    worktrees = tmp_path / ".rawos-worktrees"
+    worktrees = tmp_path / ".anima-worktrees"
     worktrees.mkdir()
     return {
         "workspaces_root": str(workspaces),
@@ -120,7 +120,7 @@ class TestInnerFloor:
     def test_source_py_file_refused(self, kernel, owned_roots):
         """Source code under rawos_source_root (non-data) must be inner-floored."""
         from anima.kernel.owned_resource import OwnedResourceRefusalError
-        src = Path(owned_roots["rawos_source_root"]) / "rawos" / "kernel"
+        src = Path(owned_roots["rawos_source_root"]) / "anima" / "kernel"
         src.mkdir(parents=True)
         py = src / "foo.py"
         py.touch()
@@ -406,12 +406,12 @@ class TestAudit:
         import anima.db as db
         db.record_owned_op_outcome(
             op_type="db_vacuum",
-            target_summary="anima.db",
+            target_summary="rawos.db",
             outcome="applied",
         )
         rows = db.list_owned_resource_history()
         row = rows[0]
         assert row["op_type"] == "db_vacuum"
-        assert row["target_summary"] == "anima.db"
+        assert row["target_summary"] == "rawos.db"
         assert row["outcome"] == "applied"
         assert "created_at" in row

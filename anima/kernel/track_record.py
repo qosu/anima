@@ -1,5 +1,5 @@
 """
-rawos earned-autonomy track record — Stage 3 of "Earned, Reversible Autonomy"
+anima earned-autonomy track record — Stage 3 of "Earned, Reversible Autonomy"
 (see docs/plans/squishy-watching-stroustrup.md).
 
 A (repo, anomaly_domain) class starts untrusted (propose-only: a anima/fix-*

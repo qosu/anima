@@ -55,7 +55,7 @@ def entity_user(fresh_db):
                 tokens_used_today, budget_reset_date, is_admin,
                 stripe_customer_id, created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (RAWOS_ENTITY_USER_ID, "rawos-entity@internal", "hashed",
+            (RAWOS_ENTITY_USER_ID, "anima-entity@internal", "hashed",
              "free", 100_000, 0, "", 0, None, now, now),
         )
     return {"id": RAWOS_ENTITY_USER_ID}
@@ -106,31 +106,31 @@ class TestGetRecentSystemFsEvents:
         assert result == []
 
     def test_returns_events_at_min_severity(self, entity_user):
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=THRESHOLD)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=THRESHOLD)
         result = system_reflex._get_recent_system_fs_events(lookback_s=60, min_severity=THRESHOLD)
         assert len(result) == 1
-        assert result[0]["path"] == "/etc/rawos/config.json"
+        assert result[0]["path"] == "/etc/anima/config.json"
 
     def test_excludes_events_below_min_severity(self, entity_user):
-        _insert_system_fs_event("/root/rawos/rawos/config.py", "system_source_change", severity=THRESHOLD - 1)
+        _insert_system_fs_event("/root/rawos/anima/config.py", "system_source_change", severity=THRESHOLD - 1)
         result = system_reflex._get_recent_system_fs_events(lookback_s=60, min_severity=THRESHOLD)
         assert result == []
 
     def test_excludes_stale_events(self, entity_user):
         stale_ts = int(time.time()) - 200
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=8, ts=stale_ts)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=8, ts=stale_ts)
         result = system_reflex._get_recent_system_fs_events(lookback_s=60, min_severity=THRESHOLD)
         assert result == []
 
     def test_excludes_non_system_fs_source_type(self, entity_user):
         _insert_system_fs_event(
-            "/etc/rawos/config.json", "file_write", severity=9, source_type="file"
+            "/etc/anima/config.json", "file_write", severity=9, source_type="file"
         )
         result = system_reflex._get_recent_system_fs_events(lookback_s=60, min_severity=THRESHOLD)
         assert result == []
 
     def test_result_contains_required_fields(self, entity_user):
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=7)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=7)
         result = system_reflex._get_recent_system_fs_events(lookback_s=60, min_severity=THRESHOLD)
         assert len(result) == 1
         row = result[0]
@@ -147,22 +147,22 @@ class TestGetRecentSystemFsEvents:
 
 class TestIsSystemFsCooldown:
     def test_no_cooldown_initially(self, entity_user):
-        assert system_reflex._is_system_fs_cooldown("/etc/rawos/config.json") is False
+        assert system_reflex._is_system_fs_cooldown("/etc/anima/config.json") is False
 
     def test_cooldown_after_episodic_record(self, entity_user):
-        path = "/etc/rawos/config.json"
+        path = "/etc/anima/config.json"
         _insert_episodic_reflex(path)
         assert system_reflex._is_system_fs_cooldown(path) is True
 
     def test_no_cooldown_after_expiry(self, entity_user):
-        path = "/etc/rawos/config.json"
+        path = "/etc/anima/config.json"
         stale_ts = int(time.time()) - COOLDOWN_S - 10
         _insert_episodic_reflex(path, ts=stale_ts)
         assert system_reflex._is_system_fs_cooldown(path) is False
 
     def test_cooldown_independent_per_path(self, entity_user):
-        path_a = "/etc/rawos/config.json"
-        path_b = "/etc/systemd/system/rawos.service"
+        path_a = "/etc/anima/config.json"
+        path_b = "/etc/systemd/system/anima.service"
         _insert_episodic_reflex(path_a)
         assert system_reflex._is_system_fs_cooldown(path_a) is True
         assert system_reflex._is_system_fs_cooldown(path_b) is False
@@ -175,7 +175,7 @@ class TestIsSystemFsCooldown:
 class TestRunSystemFsReflexScan:
     async def test_no_op_when_disabled(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", False)
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=8)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=8)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -198,7 +198,7 @@ class TestRunSystemFsReflexScan:
 
     async def test_triggers_on_threshold_severity_event(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=THRESHOLD)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=THRESHOLD)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -210,7 +210,7 @@ class TestRunSystemFsReflexScan:
 
     async def test_skips_cooled_down_path(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        path = "/etc/rawos/config.json"
+        path = "/etc/anima/config.json"
         _insert_system_fs_event(path, "system_config_change", severity=8)
         _insert_episodic_reflex(path)
         calls = []
@@ -224,8 +224,8 @@ class TestRunSystemFsReflexScan:
 
     async def test_one_action_per_scan_cycle(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        _insert_system_fs_event("/etc/rawos/a.json", "system_config_change", severity=8)
-        _insert_system_fs_event("/etc/rawos/b.json", "system_config_change", severity=8)
+        _insert_system_fs_event("/etc/anima/a.json", "system_config_change", severity=8)
+        _insert_system_fs_event("/etc/anima/b.json", "system_config_change", severity=8)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -235,9 +235,9 @@ class TestRunSystemFsReflexScan:
         await system_reflex._run_system_fs_reflex_scan()
         assert len(calls) == 1
 
-    async def test_uses_rawos_entity_user_id(self, entity_user, monkeypatch):
+    async def test_uses_anima_entity_user_id(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=6)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=6)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -252,7 +252,7 @@ class TestRunSystemFsReflexScan:
 
     async def test_below_threshold_does_not_trigger(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        _insert_system_fs_event("/root/rawos/rawos/config.py", "system_source_change", severity=THRESHOLD - 1)
+        _insert_system_fs_event("/root/rawos/anima/config.py", "system_source_change", severity=THRESHOLD - 1)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -270,7 +270,7 @@ class TestRunSystemFsReflexScan:
 class TestSystemFsReflexTriggerContract:
     async def test_trigger_type_is_system_fs_change(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=6)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=6)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -283,7 +283,7 @@ class TestSystemFsReflexTriggerContract:
 
     async def test_workdir_override_is_rawos_source_root(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=6)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=6)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -296,7 +296,7 @@ class TestSystemFsReflexTriggerContract:
 
     async def test_intent_source_is_system_fs(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        _insert_system_fs_event("/etc/rawos/config.json", "system_config_change", severity=6)
+        _insert_system_fs_event("/etc/anima/config.json", "system_config_change", severity=6)
         calls = []
 
         async def fake_agent(*args, **kw):
@@ -311,7 +311,7 @@ class TestSystemFsReflexTriggerContract:
 
     async def test_trigger_ctx_contains_path_and_severity(self, entity_user, monkeypatch):
         monkeypatch.setattr(settings, "system_fs_reflex_enabled", True)
-        path = "/etc/rawos/config.json"
+        path = "/etc/anima/config.json"
         _insert_system_fs_event(path, "system_config_change", severity=7)
         calls = []
 

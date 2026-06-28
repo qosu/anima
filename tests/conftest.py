@@ -1,4 +1,4 @@
-"""rawos test configuration."""
+"""anima test configuration."""
 import os
 os.environ["RAWOS_TESTING"] = "1"
 os.environ.setdefault("DEEPSEEK_KEY", "test-key")

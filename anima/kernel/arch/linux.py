@@ -223,11 +223,11 @@ class LinuxShellPolicy:
             # origin repo's .git/ dir (reads objects, writes branch refs).
             # Without this, "git checkout -b" in a worktree subprocess fails
             # with "fatal: not a git repository: /root/rawos/.git/worktrees/..."
-            _rawos_root = settings.rawos_source_root
-            rawos_extra = (_rawos_root,) if _os.path.exists(_rawos_root) else ()
+            _anima_root = settings.rawos_source_root
+            anima_extra = (_anima_root,) if _os.path.exists(_anima_root) else ()
             policy = dataclasses.replace(
                 landlock.DEFAULT_BEING_ENVELOPE,
-                rw_paths=landlock.DEFAULT_BEING_ENVELOPE.rw_paths + rw_extra + wt_extra + rawos_extra,
+                rw_paths=landlock.DEFAULT_BEING_ENVELOPE.rw_paths + rw_extra + wt_extra + anima_extra,
             )
             return shell_cmd, {"preexec_fn": landlock.build_restrict_self_fn(policy)}
 
@@ -249,7 +249,7 @@ class LinuxFrontDoor:
     """Linux implementation of the FrontDoor Protocol.
 
     Mechanism: an sshd drop-in file at
-    /etc/ssh/sshd_config.d/50-rawos-frontdoor.conf containing a
+    /etc/ssh/sshd_config.d/50-anima-frontdoor.conf containing a
     `Match User root / ForceCommand ...` block.
 
     The drop-in dir keeps the main sshd_config pristine.  All mutations
@@ -261,7 +261,7 @@ class LinuxFrontDoor:
     the sentinel string "ABSENT" represents "no front-door installed".
     """
 
-    _MANAGED_COMMENT = "# Managed by rawos — do not edit manually.\n"
+    _MANAGED_COMMENT = "# Managed by anima — do not edit manually.\n"
     _ABSENT_SENTINEL = "ABSENT"
 
     def __init__(
@@ -270,7 +270,7 @@ class LinuxFrontDoor:
     ) -> None:
         from pathlib import Path
         self._dropin = Path(dropin_path) if dropin_path is not None else Path(
-            "/etc/ssh/sshd_config.d/50-rawos-frontdoor.conf"
+            "/etc/ssh/sshd_config.d/50-anima-frontdoor.conf"
         )
 
     # ------------------------------------------------------------------
@@ -380,16 +380,16 @@ class LinuxFrontDoor:
 
 
 
-_RAWOS_UNIT_FILE = "/etc/systemd/system/rawos.service"
-_RAWOS_FRONTDOOR_SSHD_CONFIG = "/etc/ssh/sshd_config.d/50-rawos-frontdoor.conf"
+_RAWOS_UNIT_FILE = "/etc/systemd/system/anima.service"
+_RAWOS_FRONTDOOR_SSHD_CONFIG = "/etc/ssh/sshd_config.d/50-anima-frontdoor.conf"
 
 
 class LinuxFileOperator:
     """Linux implementation of the FileOperator Protocol.
 
     Operates on absolute paths via plain filesystem calls. write()/restore()
-    refuse self-protected paths: the rawos systemd unit, the front-door sshd
-    drop-in (arch/linux.py LinuxFrontDoor), and anything under rawos's own
+    refuse self-protected paths: the anima systemd unit, the front-door sshd
+    drop-in (arch/linux.py LinuxFrontDoor), and anything under anima's own
     source tree (settings.rawos_source_root — this also covers the operator
     allowlist DB at <rawos_source_root>/data/rawos.db, so no separate special
     case is needed). read()/exists()/backup() are unrestricted (R0).
@@ -434,10 +434,10 @@ class LinuxFileOperator:
         normalized = os.path.normpath(path)
         if normalized in (_RAWOS_UNIT_FILE, _RAWOS_FRONTDOOR_SSHD_CONFIG):
             raise FileOperatorRefusalError(f"refused: {normalized} is self-protected")
-        rawos_root = os.path.normpath(settings.rawos_source_root)
-        if normalized == rawos_root or normalized.startswith(rawos_root + os.sep):
+        anima_root = os.path.normpath(settings.rawos_source_root)
+        if normalized == anima_root or normalized.startswith(anima_root + os.sep):
             raise FileOperatorRefusalError(
-                f"refused: {normalized} is within rawos's own source tree ({rawos_root})"
+                f"refused: {normalized} is within anima's own source tree ({anima_root})"
             )
 
 
@@ -477,7 +477,7 @@ class LinuxKernelObserver:
     """Linux implementation of KernelObserver — bpftrace subprocess emitting JSONL.
 
     Requires the `bpftrace` binary (apt package `bpftrace`) and CAP_BPF/root,
-    which rawos already runs as. Read-only: the probes only printf, never
+    which anima already runs as. Read-only: the probes only printf, never
     write/deny anything.
     """
 
@@ -506,7 +506,7 @@ class LinuxKernelEnforcer:
     """Linux implementation of BPF LSM enforcement supervision (Phase 24B).
 
     For 24B.0 (dormant), this is a documentation stub; the actual control
-    plane is rawos/kernel/bpf_lsm.py + BpfLsmSupervisor (api/app.py).
+    plane is anima/kernel/bpf_lsm.py + BpfLsmSupervisor (api/app.py).
 
     Post-24B.1 (when holder binary + lsm= GRUB cmdline are in place), this
     class will manage the holder daemon lifecycle (spawn, healthcheck, graceful
@@ -520,7 +520,7 @@ class LinuxKernelEnforcer:
       I-LSM11 — before spawning holder, verifies engine .o + binary checksums
                  (delegated to bpf_lsm._verify_artifact).
 
-    See rawos/kernel/bpf_lsm.py for full design.
+    See anima/kernel/bpf_lsm.py for full design.
     """
 
     supports_bpf_lsm_enforcement = True

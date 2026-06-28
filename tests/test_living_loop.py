@@ -1,6 +1,6 @@
 """Phase 19 — Close the Living Loop.
 
-Tests for three seams that give rawos continuous selfhood:
+Tests for three seams that give anima continuous selfhood:
   Seam A: _log_episodic indexes autonomous experience to semantic memory.
   Seam B: narrative consolidation loop writes being's self-narrative.
   Seam C: build_context surfaces being's autonomous life to owner conversations.
@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-# Environment must be set before any rawos import.
+# Environment must be set before any anima import.
 os.environ.setdefault("DB_PATH", str(Path(tempfile.mkdtemp()) / "test.db"))
 os.environ.setdefault("WORKSPACES_ROOT", str(Path(tempfile.mkdtemp())))
 os.environ.setdefault("JWT_SECRET", "test_secret_32chars_minimum_ok!")
@@ -47,10 +47,10 @@ def fresh_db(tmp_path, monkeypatch):
 
 @pytest.fixture
 def entity_user(fresh_db):
-    """Insert the rawos entity user so FK constraints pass in tests.
+    """Insert the anima entity user so FK constraints pass in tests.
 
     Uses raw SQL to bypass the email validator — the production entity identity
-    uses 'rawos-entity@internal' which lacks a dot in the domain.
+    uses 'anima-entity@internal' which lacks a dot in the domain.
     """
     import time
     with db._conn() as conn:
@@ -61,13 +61,13 @@ def entity_user(fresh_db):
                 stripe_customer_id, created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (
-                RAWOS_ENTITY_USER_ID, "rawos-entity@internal", "hashed",
+                RAWOS_ENTITY_USER_ID, "anima-entity@internal", "hashed",
                 "free", 100_000, 0, "", 0, None,
                 int(time.time()), int(time.time()),
             ),
         )
     # Return a minimal sentinel — tests only need entity_user as a fixture dep.
-    return {"id": RAWOS_ENTITY_USER_ID, "email": "rawos-entity@internal"}
+    return {"id": RAWOS_ENTITY_USER_ID, "email": "anima-entity@internal"}
 
 
 @pytest.fixture
@@ -221,7 +221,7 @@ class TestSeamC:
         """build_context for owner must include being's self-narrative in system_addition."""
         db.set_self_narrative(
             RAWOS_ENTITY_USER_ID,
-            "I am rawos. I repaired your disk at 3am last night.",
+            "I am anima. I repaired your disk at 3am last night.",
         )
         monkeypatch.setattr("anima.kernel.memory_index.search_memories", lambda *a, **kw: [])
         monkeypatch.setattr("anima.kernel.memory_index.search_files", lambda *a, **kw: [])
@@ -237,7 +237,7 @@ class TestSeamC:
         """build_context for RAWOS_ENTITY_USER_ID must not inject being narrative twice."""
         db.set_self_narrative(
             RAWOS_ENTITY_USER_ID,
-            "I am rawos. I repaired your disk at 3am last night.",
+            "I am anima. I repaired your disk at 3am last night.",
         )
         monkeypatch.setattr("anima.kernel.memory_index.search_memories", lambda *a, **kw: [])
         monkeypatch.setattr("anima.kernel.memory_index.search_files", lambda *a, **kw: [])
@@ -247,7 +247,7 @@ class TestSeamC:
             RAWOS_ENTITY_USER_ID, RAWOS_ENTITY_PROJECT_ID, "ops"
         )
 
-        count = system_addition.count("I am rawos")
+        count = system_addition.count("I am anima")
         assert count <= 1, f"being narrative must appear at most once, got {count}"
 
     def test_build_context_no_being_narrative_does_not_raise(

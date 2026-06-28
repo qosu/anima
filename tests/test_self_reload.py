@@ -1,4 +1,4 @@
-"""tests/test_self_reload.py — TDD for rawos/kernel/self_reload.py (Phase 25 Stage 1).
+"""tests/test_self_reload.py — TDD for anima/kernel/self_reload.py (Phase 25 Stage 1).
 
 TDD Iron Law: this file must go RED before self_reload.py is written.
 
@@ -62,7 +62,7 @@ class TestConfigDrivenStateDir:
         from anima.config import settings
 
         assert SELF_RELOAD_STATE_DIR == settings.self_reload_state_dir
-        assert settings.self_reload_state_dir == "/root/.rawos-selfreload"
+        assert settings.self_reload_state_dir == "/root/.anima-selfreload"
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +224,7 @@ class TestPreflightRefusals:
     def test_refuses_tier0_violation(self, tmp_path: Path) -> None:
         runner = _runner({
             ("git", "diff", "--name-only", "OLDSHA..NEWSHA"):
-                FakeResult(stdout="rawos/kernel/operator.py\n"),
+                FakeResult(stdout="anima/kernel/operator.py\n"),
         })
         with pytest.raises(SelfReloadRefusalError, match="TIER-0"):
             preflight_stage("NEWSHA", _source_root="/fake/repo", _runner=runner, _worktree=FakeWorktree())
@@ -232,7 +232,7 @@ class TestPreflightRefusals:
     def test_refuses_on_import_error(self, tmp_path: Path) -> None:
         runner = _runner({
             (sys.executable, "-c", "import anima.api.app"):
-                FakeResult(returncode=1, stderr="ModuleNotFoundError: no module named 'rawos'"),
+                FakeResult(returncode=1, stderr="ModuleNotFoundError: no module named 'anima'"),
         })
         with pytest.raises(SelfReloadPreflightError, match="import"):
             preflight_stage("NEWSHA", _source_root="/fake/repo", _runner=runner, _worktree=FakeWorktree())
@@ -348,7 +348,7 @@ class TestArmAndSwap:
         """A twin-prove harness must be able to point the deadman at a
         sandboxed revert script instead of the prod
         /usr/local/bin/rawos-selfreload-revert (which hardcodes /root/rawos
-        and `systemctl restart rawos`)."""
+        and `systemctl restart anima`)."""
         sd = FakeSelfReloadDeadman()
         runner = _runner()
         exit_fn = FakeExit()
@@ -637,8 +637,8 @@ class TestOperateOnSelfReload:
 # ---------------------------------------------------------------------------
 
 class TestRegressionSelfProtectionFloorUnchanged:
-    def test_self_protected_services_floor_includes_rawos_and_ssh(self) -> None:
+    def test_self_protected_services_floor_includes_anima_and_ssh(self) -> None:
         from anima.kernel.operator import _SELF_PROTECTED_SERVICES
 
-        for name in ("rawos.service", "rawos", "ssh.service", "ssh", "sshd.service", "sshd"):
+        for name in ("anima.service", "anima", "ssh.service", "ssh", "sshd.service", "sshd"):
             assert name in _SELF_PROTECTED_SERVICES

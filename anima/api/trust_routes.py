@@ -1,5 +1,5 @@
 """
-rawos Trust Engine API routes — Phase 2.
+anima Trust Engine API routes — Phase 2.
 
 Exposes autonomy track record and level management for the user.
 
@@ -145,7 +145,7 @@ def trust_commits(
     user=Depends(current_user),
     limit: int = 30,
 ) -> dict[str, Any]:
-    """Return all git commits rawos made autonomously, newest first."""
+    """Return all git commits anima made autonomously, newest first."""
     if limit > 200:
         limit = 200
     with db._conn() as conn:
@@ -194,7 +194,7 @@ def trust_tools_history(
     user=Depends(current_user),
     limit: int = 20,
 ) -> dict[str, Any]:
-    """Return last N tool calls made autonomously by rawos proactive agent."""
+    """Return last N tool calls made autonomously by anima proactive agent."""
     import json as _json
     if limit > 200:
         limit = 200

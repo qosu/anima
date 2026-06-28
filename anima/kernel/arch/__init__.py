@@ -1,9 +1,9 @@
-"""rawos kernel/arch — the driver layer.
+"""anima kernel/arch — the driver layer.
 
 Linux/macOS/Windows are arch backends, exactly like Linux kernel's
 arch/x86_64, arch/arm64, arch/riscv: interchangeable substrates the
-rawos kernel targets. This package's Protocols (kernel/arch/base.py)
-are rawos's stable ABI — the kernel never calls a raw OS command
+anima kernel targets. This package's Protocols (kernel/arch/base.py)
+are anima's stable ABI — the kernel never calls a raw OS command
 directly, only through these.
 """
 from __future__ import annotations

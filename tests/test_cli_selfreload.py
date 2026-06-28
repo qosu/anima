@@ -1,10 +1,10 @@
-"""tests/test_cli_selfreload.py — TDD for `rawos selfreload arm-and-go` CLI
+"""tests/test_cli_selfreload.py — TDD for `anima selfreload arm-and-go` CLI
 (Phase 25 Stage 1c: in-process self-reload trigger).
 
 `arm-and-go` must POST to the in-process /internal/self-reload/arm-and-go
 endpoint instead of calling execute_owner_self_reload (and os._exit) in the
-CLI's own process. The CLI process is not rawos.service's MainPID, so
-systemd would never respawn rawos against new_sha if the CLI process exits.
+CLI's own process. The CLI process is not anima.service's MainPID, so
+systemd would never respawn anima against new_sha if the CLI process exits.
 """
 from __future__ import annotations
 

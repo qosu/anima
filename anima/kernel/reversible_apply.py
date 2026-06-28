@@ -1,5 +1,5 @@
 """
-rawos reversible auto-apply — Stage 3 of "Earned, Reversible Autonomy"
+anima reversible auto-apply — Stage 3 of "Earned, Reversible Autonomy"
 (see docs/plans/squishy-watching-stroustrup.md).
 
 Applies a graduated (repo, anomaly_domain) class's proposed anima/fix-*
@@ -11,8 +11,8 @@ local HEAD only, so the audit trail (before_sha/after_sha in ApplyResult,
 plus the caller's autonomy_track_record/episodic_memory entries) fully
 reconstructs what happened.
 
-Refuses to operate on rawos's own source tree
-(kernel.tools._is_rawos_source_tree) — this module must never restart or
+Refuses to operate on anima's own source tree
+(kernel.tools._is_anima_source_tree) — this module must never restart or
 roll back the process running it.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Awaitable, Callable
 
 from anima.kernel.arch import get_arch
 from anima.kernel.sandbox import SandboxError, run_bash
-from anima.kernel.tools import _is_rawos_source_tree
+from anima.kernel.tools import _is_anima_source_tree
 
 log = logging.getLogger("anima.kernel.reversible_apply")
 
@@ -68,9 +68,9 @@ async def reversible_apply(
             f"(supports_reversible_apply=False): {type(arch.service_manager).__name__}"
         )
 
-    if await _is_rawos_source_tree(repo_root):
+    if await _is_anima_source_tree(repo_root):
         raise ReversibleApplyError(
-            f"refusing to reversible_apply against rawos's own source tree: {repo_root}"
+            f"refusing to reversible_apply against anima's own source tree: {repo_root}"
         )
 
     try:

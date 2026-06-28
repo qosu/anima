@@ -1,4 +1,4 @@
-"""Tests for LLM 429 fallback behavior in rawos.kernel.llm_client."""
+"""Tests for LLM 429 fallback behavior in anima.kernel.llm_client."""
 from __future__ import annotations
 
 import json

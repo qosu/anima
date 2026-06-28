@@ -1,5 +1,5 @@
 """
-rawos Intent Inference Benchmark — Phase 9.
+anima Intent Inference Benchmark — Phase 9.
 
 Evaluates three inference strategies against the labeled_examples ground truth:
   1. rule  — heuristic: return active_domains[0] (current production baseline)
@@ -126,7 +126,7 @@ def run_classifier_benchmark(
         from anima.inference.classifier import IntentClassifier
         classifier = IntentClassifier.load()
         if classifier is None:
-            raise RuntimeError("no trained classifier found — run rawos classifier train first")
+            raise RuntimeError("no trained classifier found — run anima classifier train first")
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     y_pred_int = cross_val_predict(classifier.model, X, y_true_int, cv=cv)
@@ -208,7 +208,7 @@ async def run_full_benchmark(llm_sample: int = 0) -> dict:
     ]
 
     if not examples:
-        return {"error": "no labeled examples — run rawos dataset build first"}
+        return {"error": "no labeled examples — run anima dataset build first"}
 
     results: dict = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Delete all load-test users and their data from rawos DB + workspaces.
+Delete all load-test users and their data from anima DB + workspaces.
 Run after every load-test session to keep SQLite clean.
 
     cd /root/rawos
@@ -21,8 +21,8 @@ os.environ.setdefault("RAWOS_SANDBOX_DOCKER", "false")
 from anima.config import settings  # noqa: E402
 import anima.db as db  # noqa: E402
 
-DOMAIN = "rawos.internal"
-POOL_FILE = Path("/tmp/rawos_loadtest_users.json")
+DOMAIN = "anima.internal"
+POOL_FILE = Path("/tmp/anima_loadtest_users.json")
 
 
 def main() -> None:

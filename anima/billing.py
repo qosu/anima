@@ -1,5 +1,5 @@
 """
-rawos Billing — Phase 5.
+anima Billing — Phase 5.
 
 Token quota enforcement, usage tracking, and Stripe subscription management.
 
@@ -76,7 +76,7 @@ def _get_stripe():
 
 
 def _tier_from_price(price_id: str) -> str | None:
-    """Map Stripe Price ID → rawos tier name."""
+    """Map Stripe Price ID → anima tier name."""
     if price_id == settings.stripe_price_pro:
         return UserTier.PRO.value
     if price_id == settings.stripe_price_enterprise:
@@ -91,7 +91,7 @@ def _get_or_create_stripe_customer(user: User) -> str:
     stripe = _get_stripe()
     customer = stripe.Customer.create(
         email=user.email,
-        metadata={"rawos_user_id": user.id},
+        metadata={"anima_user_id": user.id},
     )
     db.set_stripe_customer_id(user.id, customer.id)
     log.info("created Stripe customer %s for user %s", customer.id, user.id)

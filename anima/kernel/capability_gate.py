@@ -16,11 +16,11 @@ import logging
 log = logging.getLogger("anima.capability_gate")
 
 class CapabilityTier(enum.IntEnum):
-    """Privilege classification for rawos tool actions."""
+    """Privilege classification for anima tool actions."""
 
     TIER0 = 0  # Read-only / sandboxed output — no mutation
     TIER1 = 1  # Mutating within isolated user workspace
-    TIER2 = 2  # Privileged ops on rawos source / system resources — graduation-gated
+    TIER2 = 2  # Privileged ops on anima source / system resources — graduation-gated
     TIER3 = 3  # System-level / perimeter / authentication — always human-gated
 
 # manage_pam = PAM authentication config; always TIER3 regardless of action

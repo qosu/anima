@@ -1,6 +1,6 @@
 """anima/kernel/telegram_gate.py — Milestone 4: The window.
 
-Telegram front-door to the rawos being. Single-owner: only the configured
+Telegram front-door to the anima being. Single-owner: only the configured
 chat_id is accepted; all other senders are silently ignored.
 
 Polling mode (no webhook/TLS required).
@@ -30,7 +30,7 @@ class TelegramGateError(Exception):
 
 
 class TelegramGate:
-    """Connects a Telegram bot to the rawos being via direct orchestrator calls.
+    """Connects a Telegram bot to the anima being via direct orchestrator calls.
 
     Contract:
     - Only messages from `owner_chat_id` are processed; all others silently dropped.
@@ -178,7 +178,7 @@ class TelegramGate:
             except TelegramGateError as exc:
                 logger.error("TelegramGate: owner resolution failed: %s", exc)
                 await update.effective_message.reply_text(
-                    f"[rawos] configuration error: {exc}"
+                    f"[anima] configuration error: {exc}"
                 )
                 return
 
@@ -191,7 +191,7 @@ class TelegramGate:
                 text = await self._transcribe_voice(ogg_bytes)
             except Exception as exc:
                 logger.error("TelegramGate: voice transcription failed: %s", exc)
-                await message.reply_text("[rawos] voice transcription failed")
+                await message.reply_text("[anima] voice transcription failed")
                 return
         elif message.text:
             text = message.text
@@ -207,7 +207,7 @@ class TelegramGate:
             )
         except Exception as exc:
             logger.error("TelegramGate: agent turn failed: %s", exc)
-            await message.reply_text(f"[rawos] error: {exc}")
+            await message.reply_text(f"[anima] error: {exc}")
             return
 
         await message.reply_text(response or "(no response)")

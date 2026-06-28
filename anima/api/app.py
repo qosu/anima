@@ -1,4 +1,4 @@
-"""rawos FastAPI application — entry point."""
+"""anima FastAPI application — entry point."""
 from __future__ import annotations
 
 import asyncio
@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
     snapshot_task      = asyncio.create_task(_daily_snapshot_loop(),              name="study-daily-snapshot")
     calendar_task      = asyncio.create_task(_calendar_sync_loop_task(),          name="calendar-sync")
     autonomous_task    = asyncio.create_task(_start_autonomous_scan(),             name="autonomous-server-scan")
-    self_probe_task    = asyncio.create_task(_start_self_probe_loop(),             name="rawos-self-probe")
+    self_probe_task    = asyncio.create_task(_start_self_probe_loop(),             name="anima-self-probe")
     narrative_task     = asyncio.create_task(_start_narrative_consolidation_loop(), name="narrative-consolidation")
     operator_scan_task       = asyncio.create_task(_start_operator_scan_loop(),          name="operator-scan")
     system_fs_reflex_task = asyncio.create_task(_start_system_fs_reflex(),              name="system-fs-reflex")
@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI):
             "UPDATE intents SET status='failed' WHERE status='executing' AND created_at < ?",
             (_orphan_cutoff,),
         )
-    _log.info("rawos started — context collection active, proactive scheduler running, autonomous scan active")
+    _log.info("anima started — context collection active, proactive scheduler running, autonomous scan active")
 
     # SHP.5 I-SEC7: audit chain boot verify + startup record
     from anima.kernel import audit_chain as _audit_chain_mod
@@ -177,7 +177,7 @@ async def lifespan(app: FastAPI):
     await asyncio.gather(db_sync_task, proactive_task, watcher_task, snapshot_task, calendar_task, autonomous_task, self_probe_task, narrative_task, operator_scan_task, system_fs_reflex_task, kernel_perception_task, selfreload_task, venv_boot_task, bpf_lsm_heartbeat_task, audit_mirror_task, return_exceptions=True)
     stop_system_perception()
     stop_filesystem_watcher()
-    _log.info("rawos shutdown complete")
+    _log.info("anima shutdown complete")
 
 
 async def _start_proactive_scheduler() -> None:
@@ -249,7 +249,7 @@ async def _audit_mirror_loop() -> None:
 
 
 async def _self_reload_boot_commit_task() -> None:
-    """Resolve any pending self-reload from a prior `rawos selfreload arm-and-go`.
+    """Resolve any pending self-reload from a prior `anima selfreload arm-and-go`.
 
     Phase 25 Stage 1 (dormant unless an arm-and-go is in flight — see
     kernel/self_reload.py). Runs once at boot, AFTER this point in lifespan
@@ -260,9 +260,9 @@ async def _self_reload_boot_commit_task() -> None:
 
     On "committed"/"resurrected"/"liveness_failed" the outcome (with the
     old/new SHAs read from the pending state file before it is consumed) is
-    appended to the managed_self_reload ledger for `rawos selfreload status`
+    appended to the managed_self_reload ledger for `anima selfreload status`
     and Stage 2's future graduation check. Never raises — a failure here must
-    not prevent rawos from serving.
+    not prevent anima from serving.
     """
     import json as _json
     from pathlib import Path as _Path
@@ -337,7 +337,7 @@ async def _venv_boot_commit_task() -> None:
 
     On "committed"/"liveness_failed" the outcome is appended to the
     venv_operator_history ledger. Never raises — failure must not prevent
-    rawos from serving.
+    anima from serving.
     """
     import json as _json
     from pathlib import Path as _Path
@@ -466,7 +466,7 @@ async def _start_telegram_gate():
 
 
 app = FastAPI(
-    title="rawos",
+    title="anima",
     version="0.6.0",
     docs_url="/docs" if settings.debug else None,
     redoc_url=None,
@@ -535,9 +535,9 @@ async def internal_self_reload_arm_and_go(request: Request):
 
     Must run IN-PROCESS: execute_owner_self_reload()'s os._exit(0) has to
     kill THIS worker's MainPID -- that is the only way systemd
-    (Restart=always) respawns rawos.service against new_sha and
+    (Restart=always) respawns anima.service against new_sha and
     boot_liveness_commit (lifespan, above) can resolve the pending state
-    written here. See rawos/cli/main.py `selfreload arm-and-go`.
+    written here. See anima/cli/main.py `selfreload arm-and-go`.
     """
     from fastapi import HTTPException
 
@@ -578,11 +578,11 @@ async def internal_self_reload_debug_arm_and_swap(request: Request):
     /usr/local/bin/rawos-selfreload-revert), this calls preflight_stage +
     arm_and_swap directly with _revert_cmd overridden to
     /usr/local/bin/rawos-selfprobe-revert. The prod revert script hardcodes
-    REPO=/root/rawos + `systemctl restart rawos` -- armed by a twin process
+    REPO=/root/rawos + `systemctl restart anima` -- armed by a twin process
     (whose old_sha is a real commit in prod's history too, since the twin is
     a clone of prod), its deadman firing would reset PROD's repo and restart
-    rawos.service. _revert_cmd injection keeps the twin's deadman scoped to
-    /root/rawos-selfprobe-tree + rawos-selfprobe.
+    anima.service. _revert_cmd injection keeps the twin's deadman scoped to
+    /root/rawos-selfprobe-tree + anima-selfprobe.
     """
     from fastapi import HTTPException
 

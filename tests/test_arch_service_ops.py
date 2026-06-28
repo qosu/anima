@@ -33,8 +33,8 @@ class TestLinuxServiceManagerStartStop:
 
         monkeypatch.setattr(subprocess, "run", _fake_run)
 
-        assert self.mgr.start("rawos-svcprobe.service") is True
-        assert captured["args"] == ["systemctl", "start", "rawos-svcprobe.service"]
+        assert self.mgr.start("anima-svcprobe.service") is True
+        assert captured["args"] == ["systemctl", "start", "anima-svcprobe.service"]
 
     def test_start_returns_false_on_nonzero_exit(self, monkeypatch):
         def _fake_run(args, **kwargs):
@@ -42,7 +42,7 @@ class TestLinuxServiceManagerStartStop:
 
         monkeypatch.setattr(subprocess, "run", _fake_run)
 
-        assert self.mgr.start("rawos-svcprobe.service") is False
+        assert self.mgr.start("anima-svcprobe.service") is False
 
     def test_start_returns_false_on_exception(self, monkeypatch):
         def _raise(*args, **kwargs):
@@ -50,7 +50,7 @@ class TestLinuxServiceManagerStartStop:
 
         monkeypatch.setattr(subprocess, "run", _raise)
 
-        assert self.mgr.start("rawos-svcprobe.service") is False
+        assert self.mgr.start("anima-svcprobe.service") is False
 
     def test_stop_invokes_systemctl_stop_and_returns_true_on_success(self, monkeypatch):
         captured = {}
@@ -61,8 +61,8 @@ class TestLinuxServiceManagerStartStop:
 
         monkeypatch.setattr(subprocess, "run", _fake_run)
 
-        assert self.mgr.stop("rawos-svcprobe.service") is True
-        assert captured["args"] == ["systemctl", "stop", "rawos-svcprobe.service"]
+        assert self.mgr.stop("anima-svcprobe.service") is True
+        assert captured["args"] == ["systemctl", "stop", "anima-svcprobe.service"]
 
     def test_stop_returns_false_on_nonzero_exit(self, monkeypatch):
         def _fake_run(args, **kwargs):
@@ -70,7 +70,7 @@ class TestLinuxServiceManagerStartStop:
 
         monkeypatch.setattr(subprocess, "run", _fake_run)
 
-        assert self.mgr.stop("rawos-svcprobe.service") is False
+        assert self.mgr.stop("anima-svcprobe.service") is False
 
 
 class TestMacOSServiceManagerStartStop:

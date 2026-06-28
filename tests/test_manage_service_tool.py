@@ -22,7 +22,7 @@ from anima.kernel.billing_context import set_billing_context
 from anima.kernel.tools import execute
 from anima.models import User
 
-SERVICE_TARGET = "rawos-svcprobe.service"
+SERVICE_TARGET = "anima-svcprobe.service"
 RESTART_CLASS = "service_restart"
 
 
@@ -95,12 +95,12 @@ class TestManageServiceTool:
         result = await self._exec({
             "action": "add_target",
             "service_name": SERVICE_TARGET,
-            "validator_cmd": "systemctl is-active --quiet rawos-svcprobe",
+            "validator_cmd": "systemctl is-active --quiet anima-svcprobe",
         })
         assert result.success is True
         row = db.get_managed_service_target(self.user.id, SERVICE_TARGET)
         assert row is not None
-        assert "rawos-svcprobe" in row["validator_cmd"]
+        assert "anima-svcprobe" in row["validator_cmd"]
 
     async def test_add_target_missing_validator_fails(self):
         result = await self._exec({
@@ -174,14 +174,14 @@ class TestManageServiceTool:
         assert self.fake_mgr.calls == ["restart"]
 
     async def test_action_refuses_self_protected_service(self, monkeypatch):
-        db.add_managed_service_target(self.user.id, "rawos.service", "true")
-        _graduate(self.user.id, RESTART_CLASS, "rawos.service")
+        db.add_managed_service_target(self.user.id, "anima.service", "true")
+        _graduate(self.user.id, RESTART_CLASS, "anima.service")
         monkeypatch.setattr(operator_module.settings, "operator_service_enabled", True)
         self._patch_arch(monkeypatch)
 
         result = await self._exec({
             "action": "action",
-            "service_name": "rawos.service",
+            "service_name": "anima.service",
             "svc_action": "restart",
         })
         assert result.success is False

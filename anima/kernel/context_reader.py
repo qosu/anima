@@ -1,5 +1,5 @@
 """
-rawos Code Understanding Engine.
+anima Code Understanding Engine.
 Reads actual changed code for STUCK and JUST_FINISHED triggers.
 Uses direct subprocess calls — not the tool registry — to avoid import cycles.
 """

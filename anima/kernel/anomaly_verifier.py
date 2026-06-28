@@ -1,5 +1,5 @@
 """
-rawos anomaly verifier — independent re-detection of whether a proposed
+anima anomaly verifier — independent re-detection of whether a proposed
 fix resolves a ServerAnomaly.
 
 "Unfakeable verdict" (Stage 2 of the Earned, Reversible Autonomy design —
@@ -14,7 +14,7 @@ as resolved=True.
 Trust model — why this does not reuse kernel/sandbox.py:
 sandbox.run_bash() exists to contain commands an LLM CHOOSES to run (30s
 timeout, 512MB vmem cap, output truncation — defence against an adversarial
-or buggy agent). This module runs exactly ONE command rawos itself selects
+or buggy agent). This module runs exactly ONE command anima itself selects
 (the affected repo's test runner) against code already isolated in a
 disposable worktree. That is the same trust model as a CI job, not an agent
 tool call, so it uses its own subprocess runner with CI-appropriate limits
@@ -27,7 +27,7 @@ Stated limitations (do not hide):
   associated code change; verify_fix() raises ValueError for those.
 - If the repo has no discoverable pytest suite (no tests/ or test/ dir with
   test_*.py / *_test.py files), resolved=None ("unknown") is returned. This
-  is NOT a failure — it means rawos cannot independently confirm the fix and
+  is NOT a failure — it means anima cannot independently confirm the fix and
   a human must review the proposed branch manually.
 - A fail -> pass transition proves the fix resolves whatever the test suite
   exercises. It does NOT prove the LIVE systemd unit will report `is-active`
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 # associated code change — not verifiable here.
 VERIFIABLE_ANOMALY_KINDS: frozenset[str] = frozenset({"service_failed", "service_error"})
 
-# CI-style limits — generous, since this runs a known command rawos itself
+# CI-style limits — generous, since this runs a known command anima itself
 # selected (a test suite), not an agent-chosen one. Distinct from
 # kernel.sandbox's agent-facing 30s/512MB/50KB limits.
 _TEST_RUN_TIMEOUT_S = 180
@@ -219,7 +219,7 @@ async def verify_fix(
             evidence=(
                 f"no pytest suite discoverable under {worktree} "
                 f"(checked tests/ and test/ for test_*.py / *_test.py) — "
-                f"rawos cannot independently verify this fix; a human must "
+                f"anima cannot independently verify this fix; a human must "
                 f"review {fix_branch} manually"
             ),
         )
@@ -229,7 +229,7 @@ async def verify_fix(
             resolved=None,
             method="pytest-unavailable",
             evidence=(
-                f"interpreter {interpreter!r} cannot import pytest — rawos "
+                f"interpreter {interpreter!r} cannot import pytest — anima "
                 f"cannot independently run {worktree}'s test suite (pytest is "
                 f"not installed in this repo's environment). A human must "
                 f"review {fix_branch} manually."

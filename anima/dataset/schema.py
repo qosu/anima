@@ -1,5 +1,5 @@
 """
-rawos Dataset Schema — Phase 8.
+anima Dataset Schema — Phase 8.
 
 DatasetExample is the ground-truth record used to train and evaluate
 the intent inference engine (Phase 9). behavioral_context mirrors the

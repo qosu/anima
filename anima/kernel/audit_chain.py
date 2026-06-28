@@ -394,7 +394,7 @@ async def _push_telegram() -> None:
     ).isoformat()
 
     message = (
-        "\U0001f510 rawos audit chain\n"
+        "\U0001f510 anima audit chain\n"
         f"seq: {chain.last_seq}\n"
         f"hash: {chain.last_hash[:32]}...\n"
         f"ts: {ts_utc}\n"

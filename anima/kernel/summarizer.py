@@ -1,5 +1,5 @@
 """
-rawos Summarizer — compress old episodic memories into compact semantic summaries.
+anima Summarizer — compress old episodic memories into compact semantic summaries.
 Internal use only — never user-facing.
 """
 from __future__ import annotations

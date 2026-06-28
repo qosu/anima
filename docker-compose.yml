@@ -1,6 +1,6 @@
-# rawos — API tier compose file
+# Anima — API tier compose file
 #
-# Runs the rawos API service with Redis for session/cache backend.
+# Runs the Anima API service with Redis for session/cache backend.
 # Substrate features are NOT available in this configuration — see Dockerfile
 # header and README.md for what requires bare-metal/VM deployment.
 #
@@ -9,7 +9,7 @@
 #   docker compose up
 
 services:
-  rawos:
+  anima:
     build: .
     ports:
       - "8002:8002"

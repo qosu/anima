@@ -20,7 +20,7 @@ from anima.kernel.billing_context import set_billing_context
 from anima.kernel.tools import execute
 from anima.models import User
 
-PAM_TARGET = "rawos-guest"
+PAM_TARGET = "anima-guest"
 
 
 class FakePamDeadman:
@@ -151,7 +151,7 @@ class TestManagePamTool:
     async def test_approved_apply_not_allowlisted_fails(self) -> None:
         result = await self._exec(self._pam_params({
             "action": "approved_apply",
-            "pam_file": "rawos-tenant",
+            "pam_file": "anima-tenant",
             "new_content": "pam config",
             "_test_probe_fn": True,
         }))
@@ -163,7 +163,7 @@ class TestManagePamTool:
     async def test_commit_disarms_deadman(self) -> None:
         result = await self._exec(self._pam_params({"action": "commit"}))
         assert result.success is True
-        assert self.fake_sd.disarmed == ["rawos-pam-revert"]
+        assert self.fake_sd.disarmed == ["anima-pam-revert"]
 
     # --- error handling ---
 

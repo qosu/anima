@@ -1,5 +1,5 @@
 """
-rawos Dataset API Routes — Phase 8.
+anima Dataset API Routes — Phase 8.
 
 Provides read access to the labeled dataset and a build trigger.
 POST /dataset/build is protected: requires auth token.
@@ -100,6 +100,6 @@ def dataset_export(user: User = Depends(current_user)) -> FileResponse:
     return FileResponse(
         path=path,
         media_type="application/x-ndjson",
-        filename="rawos_dataset.jsonl",
+        filename="anima_dataset.jsonl",
         headers={"X-Example-Count": str(count)},
     )

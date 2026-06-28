@@ -1,14 +1,14 @@
 """anima/kernel/landlock.py — Phase 26: self-imposed kernel MAC via Landlock.
 
 The being voluntarily binds its own free-form-shell action surface
-(`rawos.kernel.sandbox.run_bash`) with a kernel-enforced (LSM) access-control
-ruleset. Unlike every other rawos safety mechanism, this is NOT Python checking
+(`anima.kernel.sandbox.run_bash`) with a kernel-enforced (LSM) access-control
+ruleset. Unlike every other anima safety mechanism, this is NOT Python checking
 itself -- the kernel refuses denied syscalls (open/connect) for the sandboxed
 process and ALL of its descendants, unconditionally, with no Python code in the
 enforcement path.
 
 Structurally zero-lockout: Landlock restricts only the calling process + its
-descendants (never sshd, never the rawos main process itself, never the host).
+descendants (never sshd, never the anima main process itself, never the host).
 A wrong policy can only break the being's OWN sandboxed commands -- it can never
 lock out the operator or the box. This is why Landlock (unlike eBPF-LSM
 machine-wide or PID1 authority) is buildable and provable without a reboot and
@@ -18,7 +18,7 @@ Reference: linux/landlock.h (kernel >= 5.13). Pure ctypes -- no compiled
 extension, no clang/libbpf dependency.
 
 Lifecycle (see kernel/arch/linux.py::LinuxShellPolicy.wrap):
-  PARENT (rawos main process, before fork):
+  PARENT (anima main process, before fork):
     - build_restrict_self_fn(policy) opens a ruleset fd, attaches every
       path-beneath / net-port rule declared by `policy`, and returns a closure
       capturing that fd.
@@ -230,7 +230,7 @@ def validate_boot_config(*, enabled: bool) -> None:
     raise immediately at boot rather than silently booting with
     `landlock_self_mac_enabled=True` while every run_bash call is, in fact,
     unsandboxed. Forces the operator to fix config explicitly instead of
-    rawos lying about its own security posture.
+    anima lying about its own security posture.
     """
     if not enabled:
         return

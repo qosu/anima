@@ -1,5 +1,5 @@
 """
-rawos push notification service — Expo Push API.
+anima push notification service — Expo Push API.
 
 Expo routes to FCM (Android) and APNs (iOS) without requiring a Firebase project.
 API docs: https://docs.expo.dev/push-notifications/sending-notifications/

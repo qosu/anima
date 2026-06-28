@@ -1,5 +1,5 @@
 """
-rawos Calendar Connector — Phase 4.
+anima Calendar Connector — Phase 4.
 
 Polls CalDAV calendars for upcoming events.
 Emits context_events of type 'calendar_event' for the proactive agent.

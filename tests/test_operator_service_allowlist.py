@@ -24,17 +24,17 @@ class TestManagedServiceTargetsDB:
         ))
 
     def test_get_returns_none_for_unregistered_target(self):
-        result = db.get_managed_service_target(self.user.id, "rawos-svcprobe.service")
+        result = db.get_managed_service_target(self.user.id, "anima-svcprobe.service")
         assert result is None
 
     def test_add_then_get_roundtrip(self):
         db.add_managed_service_target(
-            self.user.id, "rawos-svcprobe.service", "systemctl is-active --quiet rawos-svcprobe"
+            self.user.id, "anima-svcprobe.service", "systemctl is-active --quiet anima-svcprobe"
         )
-        row = db.get_managed_service_target(self.user.id, "rawos-svcprobe.service")
+        row = db.get_managed_service_target(self.user.id, "anima-svcprobe.service")
         assert row is not None
-        assert row["service_name"] == "rawos-svcprobe.service"
-        assert row["validator_cmd"] == "systemctl is-active --quiet rawos-svcprobe"
+        assert row["service_name"] == "anima-svcprobe.service"
+        assert row["validator_cmd"] == "systemctl is-active --quiet anima-svcprobe"
 
     def test_add_upserts_validator_cmd(self):
         db.add_managed_service_target(self.user.id, "probe.service", "validate-v1")
@@ -86,7 +86,7 @@ class TestServiceTrackRecordGraduation:
         ))
 
     def test_service_restart_graduates_after_threshold_successes(self):
-        target = "rawos-svcprobe.service"
+        target = "anima-svcprobe.service"
         operation_class = "service_restart"
         now = 1_700_000_000
         # _advance_state requires a 2-cycle stability window per success;
@@ -100,7 +100,7 @@ class TestServiceTrackRecordGraduation:
         assert track.graduated is True
 
     def test_service_track_record_independent_of_file_edit(self):
-        target = "rawos-svcprobe.service"
+        target = "anima-svcprobe.service"
         now = 1_700_000_000
 
         for i in range(GRADUATION_THRESHOLD * 2):

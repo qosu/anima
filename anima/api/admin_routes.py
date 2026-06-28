@@ -1,4 +1,4 @@
-"""rawos Admin API — Phase 5. All endpoints require is_admin=True."""
+"""anima Admin API — Phase 5. All endpoints require is_admin=True."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

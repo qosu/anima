@@ -47,20 +47,20 @@ FLOOR_UNIT_SEED: frozenset[str] = frozenset({
     "NetworkManager.service", "NetworkManager",
     "network.target", "network",
     "network-online.target", "network-online",
-    # rawos itself
-    "rawos.service", "rawos",
-    # rawos holder/revert units (24B + Phase 23/26)
+    # anima itself
+    "anima.service", "anima",
+    # anima holder/revert units (24B + Phase 23/26)
     "rawos-bpf-lsm-holder.service", "rawos-bpf-lsm-holder",
     "rawos-bpf-lsm-revert.service", "rawos-bpf-lsm-revert",
-    "rawos-pam-revert.service", "rawos-pam-revert",
-    "rawos-unit-topology-revert.service", "rawos-unit-topology-revert",
+    "anima-pam-revert.service", "anima-pam-revert",
+    "anima-unit-topology-revert.service", "anima-unit-topology-revert",
     "rawos-venv-revert.service", "rawos-venv-revert",
     # Login / getty / PAM
     "systemd-logind.service", "systemd-logind",
     "getty@.service", "getty@tty1.service",
     "getty@",
     # Frontdoor backstop (I-UT12)
-    "rawos-frontdoor.service", "rawos-frontdoor",
+    "anima-frontdoor.service", "anima-frontdoor",
     # Core systemd targets
     "basic.target", "sysinit.target", "multi-user.target",
     "default.target", "graphical.target",
@@ -195,7 +195,7 @@ def _get_default_target() -> str:
 
 
 def validate_boot_config(*, enabled: bool) -> None:
-    """Fail-fast check at rawos boot (I-UT9).
+    """Fail-fast check at anima boot (I-UT9).
 
     enabled=False → no-op (I-UT11: dormant on ship, never raises).
     enabled=True, systemd not supported → UnitTopologyUnsupportedError.
@@ -370,7 +370,7 @@ class ReversibleUnitTopologyAction:
 # Emit the shell command but never execute it (execution = human window step).
 # ---------------------------------------------------------------------------
 
-_REVERT_UNIT_NAME = "rawos-unit-topology-revert"
+_REVERT_UNIT_NAME = "anima-unit-topology-revert"
 
 
 def arm_boot_deadman(
@@ -384,7 +384,7 @@ def arm_boot_deadman(
     (after human review in a maintenance window, I-UT8).
 
     Example: arm_boot_deadman(300, "systemctl reboot") →
-      ["systemd-run", "--on-active", "300", "--unit=rawos-unit-topology-revert",
+      ["systemd-run", "--on-active", "300", "--unit=anima-unit-topology-revert",
        "--", "systemctl", "reboot"]
     """
     return [

@@ -48,8 +48,8 @@ def _init_python_repo(repo: Path) -> str:
     """Create a minimal git repo with a pytest suite testing toy.add(). Returns the initial commit SHA."""
     repo.mkdir(parents=True, exist_ok=True)
     _git("init", "-q", cwd=str(repo))
-    _git("config", "user.email", "test@rawos.local", cwd=str(repo))
-    _git("config", "user.name", "rawos-test", cwd=str(repo))
+    _git("config", "user.email", "test@anima.local", cwd=str(repo))
+    _git("config", "user.name", "anima-test", cwd=str(repo))
 
     (repo / "toy.py").write_text("def add(a, b):\n    return a + b - 1  # BUG\n")
     (repo / "tests").mkdir()
@@ -61,12 +61,12 @@ def _init_python_repo(repo: Path) -> str:
     _git("add", ".", cwd=str(repo))
     _git("commit", "-q", "-m", "init (buggy)", cwd=str(repo))
 
-    # Point _discover_python_interpreter at rawos's own venv, which has
+    # Point _discover_python_interpreter at anima's own venv, which has
     # pytest installed — repo_path/venv/bin/python3 takes priority over
     # bare "python3" (see anomaly_verifier._discover_python_interpreter).
-    rawos_venv = Path("/root/rawos/venv")
-    if rawos_venv.exists():
-        os.symlink(rawos_venv, repo / "venv")
+    anima_venv = Path("/root/rawos/venv")
+    if anima_venv.exists():
+        os.symlink(anima_venv, repo / "venv")
 
     return _git_out("rev-parse", "HEAD", cwd=str(repo))
 
@@ -88,7 +88,7 @@ class TestVerifyFixKindGuard:
 
         anomaly = _make_anomaly("/", kind="disk_critical")
         with pytest.raises(ValueError):
-            await verify_fix(anomaly, str(tmp_path), "rawos/fix-whatever")
+            await verify_fix(anomaly, str(tmp_path), "anima/fix-whatever")
 
 
 class TestVerifyFixOutcomes:
@@ -99,13 +99,13 @@ class TestVerifyFixOutcomes:
         repo, worktree_path, sha0 = toy_repo_worktree
         worktree = Path(worktree_path)
 
-        _git("checkout", "-q", "-b", "rawos/fix-toy-add", cwd=worktree_path)
+        _git("checkout", "-q", "-b", "anima/fix-toy-add", cwd=worktree_path)
         (worktree / "toy.py").write_text("def add(a, b):\n    return a + b\n")
         _git("add", "toy.py", cwd=worktree_path)
-        _git("commit", "-q", "-m", "rawos: fix off-by-one in add", cwd=worktree_path)
+        _git("commit", "-q", "-m", "anima: fix off-by-one in add", cwd=worktree_path)
 
         anomaly = _make_anomaly(str(repo))
-        result = await verify_fix(anomaly, worktree_path, "rawos/fix-toy-add", base_ref=sha0)
+        result = await verify_fix(anomaly, worktree_path, "anima/fix-toy-add", base_ref=sha0)
 
         assert result.resolved is True
         assert result.method.startswith("pytest:")
@@ -118,13 +118,13 @@ class TestVerifyFixOutcomes:
         repo, worktree_path, sha0 = toy_repo_worktree
         worktree = Path(worktree_path)
 
-        _git("checkout", "-q", "-b", "rawos/fix-toy-noop", cwd=worktree_path)
+        _git("checkout", "-q", "-b", "anima/fix-toy-noop", cwd=worktree_path)
         (worktree / "README.md").write_text("unrelated change\n")
         _git("add", "README.md", cwd=worktree_path)
-        _git("commit", "-q", "-m", "rawos: unrelated change, bug remains", cwd=worktree_path)
+        _git("commit", "-q", "-m", "anima: unrelated change, bug remains", cwd=worktree_path)
 
         anomaly = _make_anomaly(str(repo))
-        result = await verify_fix(anomaly, worktree_path, "rawos/fix-toy-noop", base_ref=sha0)
+        result = await verify_fix(anomaly, worktree_path, "anima/fix-toy-noop", base_ref=sha0)
 
         assert result.resolved is False
         assert "NOT RESOLVED" in result.evidence
@@ -143,13 +143,13 @@ class TestVerifyFixOutcomes:
         sha_fixed = _git_out("rev-parse", "master", cwd=str(repo))
 
         _git("checkout", "-q", sha_fixed, cwd=worktree_path)
-        _git("checkout", "-q", "-b", "rawos/fix-breaks-things", cwd=worktree_path)
+        _git("checkout", "-q", "-b", "anima/fix-breaks-things", cwd=worktree_path)
         (worktree / "toy.py").write_text("def add(a, b):\n    return a - b  # regression\n")
         _git("add", "toy.py", cwd=worktree_path)
-        _git("commit", "-q", "-m", "rawos: bad fix, breaks add", cwd=worktree_path)
+        _git("commit", "-q", "-m", "anima: bad fix, breaks add", cwd=worktree_path)
 
         anomaly = _make_anomaly(str(repo))
-        result = await verify_fix(anomaly, worktree_path, "rawos/fix-breaks-things", base_ref=sha_fixed)
+        result = await verify_fix(anomaly, worktree_path, "anima/fix-breaks-things", base_ref=sha_fixed)
 
         assert result.resolved is False
         assert "REGRESSION" in result.evidence
@@ -168,13 +168,13 @@ class TestVerifyFixOutcomes:
         sha_fixed = _git_out("rev-parse", "master", cwd=str(repo))
 
         _git("checkout", "-q", sha_fixed, cwd=worktree_path)
-        _git("checkout", "-q", "-b", "rawos/fix-cosmetic", cwd=worktree_path)
+        _git("checkout", "-q", "-b", "anima/fix-cosmetic", cwd=worktree_path)
         (worktree / "README.md").write_text("cosmetic\n")
         _git("add", "README.md", cwd=worktree_path)
-        _git("commit", "-q", "-m", "rawos: cosmetic change", cwd=worktree_path)
+        _git("commit", "-q", "-m", "anima: cosmetic change", cwd=worktree_path)
 
         anomaly = _make_anomaly(str(repo))
-        result = await verify_fix(anomaly, worktree_path, "rawos/fix-cosmetic", base_ref=sha_fixed)
+        result = await verify_fix(anomaly, worktree_path, "anima/fix-cosmetic", base_ref=sha_fixed)
 
         assert result.resolved is None
         assert "INCONCLUSIVE" in result.evidence
@@ -186,8 +186,8 @@ class TestVerifyFixOutcomes:
         repo = tmp_path / "no-tests-repo"
         repo.mkdir()
         _git("init", "-q", cwd=str(repo))
-        _git("config", "user.email", "test@rawos.local", cwd=str(repo))
-        _git("config", "user.name", "rawos-test", cwd=str(repo))
+        _git("config", "user.email", "test@anima.local", cwd=str(repo))
+        _git("config", "user.name", "anima-test", cwd=str(repo))
         (repo / "README.md").write_text("no tests here\n")
         _git("add", ".", cwd=str(repo))
         _git("commit", "-q", "-m", "init", cwd=str(repo))
@@ -196,10 +196,10 @@ class TestVerifyFixOutcomes:
         worktree_path = await create_worktree(str(repo))
         assert worktree_path is not None
         try:
-            _git("checkout", "-q", "-b", "rawos/fix-something", cwd=worktree_path)
+            _git("checkout", "-q", "-b", "anima/fix-something", cwd=worktree_path)
 
             anomaly = _make_anomaly(str(repo))
-            result = await verify_fix(anomaly, worktree_path, "rawos/fix-something", base_ref=sha0)
+            result = await verify_fix(anomaly, worktree_path, "anima/fix-something", base_ref=sha0)
 
             assert result.resolved is None
             assert result.method == "none"
@@ -231,7 +231,7 @@ class TestInterpreterDiscovery:
 
 class TestPytestAvailability:
     @pytest.mark.asyncio
-    async def test_pytest_available_with_rawos_venv(self):
+    async def test_pytest_available_with_anima_venv(self):
         from anima.kernel.anomaly_verifier import _pytest_available
 
         assert await _pytest_available("/root/rawos/venv/bin/python3", dict(os.environ)) is True
@@ -257,8 +257,8 @@ class TestVerifyFixPytestUnavailable:
         repo = tmp_path / "repo-broken-venv"
         repo.mkdir()
         _git("init", "-q", cwd=str(repo))
-        _git("config", "user.email", "test@rawos.local", cwd=str(repo))
-        _git("config", "user.name", "rawos-test", cwd=str(repo))
+        _git("config", "user.email", "test@anima.local", cwd=str(repo))
+        _git("config", "user.name", "anima-test", cwd=str(repo))
         (repo / "toy.py").write_text("def add(a, b):\n    return a + b\n")
         (repo / "tests").mkdir()
         (repo / "tests" / "test_toy.py").write_text(
@@ -280,13 +280,13 @@ class TestVerifyFixPytestUnavailable:
         worktree_path = await create_worktree(str(repo))
         assert worktree_path is not None
         try:
-            _git("checkout", "-q", "-b", "rawos/fix-noop", cwd=worktree_path)
+            _git("checkout", "-q", "-b", "anima/fix-noop", cwd=worktree_path)
             (Path(worktree_path) / "README.md").write_text("noop\n")
             _git("add", "README.md", cwd=worktree_path)
-            _git("commit", "-q", "-m", "rawos: noop", cwd=worktree_path)
+            _git("commit", "-q", "-m", "anima: noop", cwd=worktree_path)
 
             anomaly = _make_anomaly(str(repo))
-            result = await verify_fix(anomaly, worktree_path, "rawos/fix-noop", base_ref=sha0)
+            result = await verify_fix(anomaly, worktree_path, "anima/fix-noop", base_ref=sha0)
 
             assert result.resolved is None
             assert result.method == "pytest-unavailable"

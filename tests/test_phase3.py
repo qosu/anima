@@ -185,13 +185,13 @@ class TestContextBuilder:
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (self.user.id, "Ship the checkout flow", 0.82, "feature",
                  json.dumps(["feature", "api"]), json.dumps([]),
-                 "I am rawos, and I have been tending the checkout flow."),
+                 "I am anima, and I have been tending the checkout flow."),
             )
         from anima.kernel.context_builder import build_context
         _, sys_ctx = build_context(self.user.id, self.project.id, "test")
         assert "<continuity>" in sys_ctx
-        assert "I am rawos, and I have been tending the checkout flow." in sys_ctx
-        narrative_idx = sys_ctx.index("I am rawos, and I have been tending the checkout flow.")
+        assert "I am anima, and I have been tending the checkout flow." in sys_ctx
+        narrative_idx = sys_ctx.index("I am anima, and I have been tending the checkout flow.")
         goal_idx = sys_ctx.index("Ship the checkout flow")
         continuity_idx = sys_ctx.index("<continuity>")
         assert continuity_idx < narrative_idx < goal_idx

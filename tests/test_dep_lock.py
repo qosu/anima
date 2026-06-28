@@ -1,6 +1,6 @@
 """tests/test_dep_lock.py — SHP.7 dep lock drift detection.
 
-Tests for rawos.kernel.dep_lock.verify_dep_lock().
+Tests for anima.kernel.dep_lock.verify_dep_lock().
 All tests inject _pip_freeze_output to avoid real pip invocations.
 """
 from __future__ import annotations

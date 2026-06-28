@@ -1,7 +1,7 @@
 """anima/cli/frontdoor_entry.py — lockout-proof SSH ForceCommand entrypoint.
 
-This module is the ONLY thing `rawos frontdoor install` points ForceCommand at.
-It must stay syntactically trivial and defer importing `rawos.cli.main` to
+This module is the ONLY thing `anima frontdoor install` points ForceCommand at.
+It must stay syntactically trivial and defer importing `anima.cli.main` to
 call-time: if that module ever fails to import (syntax error, broken import
 chain), the except branch below is the owner's only way back into a shell.
 Keep this file minimal and rarely touched.

@@ -21,7 +21,7 @@ def _fresh_db(tmp_path: Path) -> sqlite3.Connection:
 
 
 def _apply_schema(tmp_path: Path) -> None:
-    db_path = str(tmp_path / "anima.db")
+    db_path = str(tmp_path / "rawos.db")
     db.init(db_path)
 
 

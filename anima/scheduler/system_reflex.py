@@ -85,7 +85,7 @@ async def _run_system_fs_reflex_scan() -> None:
             continue
 
         log.info(
-            "rawos system_fs_reflex: event_type=%s severity=%d path=%s",
+            "anima system_fs_reflex: event_type=%s severity=%d path=%s",
             event["event_type"], event["severity"], path,
         )
 
@@ -96,7 +96,7 @@ async def _run_system_fs_reflex_scan() -> None:
             source="system_fs",
             suggested_actions=[
                 f"investigate {event['event_type']}",
-                "assess impact on rawos operation",
+                "assess impact on anima operation",
                 "respond if action is needed",
             ],
         )

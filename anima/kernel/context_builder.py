@@ -1,5 +1,5 @@
 """
-rawos Context Builder — enrich intent context with semantic memory retrieval.
+anima Context Builder — enrich intent context with semantic memory retrieval.
 
 Build strategy per intent:
   1. Recent episodic memories (last 20, chronological — exact recency)
@@ -224,7 +224,7 @@ def _build_being_block(user_id: str, query: str) -> str:
 
         return (
             "\n\n<being_life>\n"
-            "Being's autonomous life — what rawos has been doing on its own:\n\n"
+            "Being's autonomous life — what anima has been doing on its own:\n\n"
             + "\n".join(lines)
             + "\n</being_life>"
         )

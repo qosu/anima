@@ -6,7 +6,7 @@ auto-rollback on a throwaway service; assert a deliberately-bad fix
 auto-reverts and the live service ends healthy on the prior version").
 
 Each test creates its own uniquely-named oneshot unit
-(/etc/systemd/system/rawos-canary-test-<id>.service) whose ExecStart runs a
+(/etc/systemd/system/anima-canary-test-<id>.service) whose ExecStart runs a
 health.sh script committed in the test repo, and removes the unit file +
 daemon-reloads in a finally block — no existing unit is touched.
 """
@@ -36,14 +36,14 @@ def canary(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
     _git("init", "-q", "-b", "main", cwd=str(repo))
-    _git("config", "user.email", "test@rawos.local", cwd=str(repo))
-    _git("config", "user.name", "rawos-test", cwd=str(repo))
+    _git("config", "user.email", "test@anima.local", cwd=str(repo))
+    _git("config", "user.name", "anima-test", cwd=str(repo))
 
-    service = f"rawos-canary-test-{uuid.uuid4().hex[:8]}.service"
+    service = f"anima-canary-test-{uuid.uuid4().hex[:8]}.service"
     unit_path = f"/etc/systemd/system/{service}"
     unit = (
         "[Unit]\n"
-        "Description=rawos reversible_apply canary test (throwaway)\n\n"
+        "Description=anima reversible_apply canary test (throwaway)\n\n"
         "[Service]\n"
         "Type=oneshot\n"
         f"ExecStart=/bin/bash {repo}/health.sh\n"
@@ -78,18 +78,18 @@ class TestReversibleApplyCanary:
         _git("add", ".", cwd=str(repo))
         _git("commit", "-q", "-m", "init: broken", cwd=str(repo))
 
-        _git("checkout", "-q", "-b", "rawos/fix-good", cwd=str(repo))
+        _git("checkout", "-q", "-b", "anima/fix-good", cwd=str(repo))
         _write_health(repo, 0, "fixed")
         _git("add", ".", cwd=str(repo))
-        _git("commit", "-q", "-m", "rawos: fix it", cwd=str(repo))
+        _git("commit", "-q", "-m", "anima: fix it", cwd=str(repo))
         _git("checkout", "-q", "main", cwd=str(repo))
-        fix_sha = _git_out("rev-parse", "rawos/fix-good", cwd=str(repo))
+        fix_sha = _git_out("rev-parse", "anima/fix-good", cwd=str(repo))
 
         async def health_check() -> bool:
             return await _is_healthy(str(repo), service)
 
         result = await reversible_apply(
-            str(repo), "rawos/fix-good", service,
+            str(repo), "anima/fix-good", service,
             health_check=health_check,
             timeout_s=5, poll_interval_s=0.5,
         )
@@ -108,17 +108,17 @@ class TestReversibleApplyCanary:
         _git("commit", "-q", "-m", "init: healthy", cwd=str(repo))
         before_sha = _git_out("rev-parse", "HEAD", cwd=str(repo))
 
-        _git("checkout", "-q", "-b", "rawos/fix-bad", cwd=str(repo))
+        _git("checkout", "-q", "-b", "anima/fix-bad", cwd=str(repo))
         _write_health(repo, 1, "this fix is bad")
         _git("add", ".", cwd=str(repo))
-        _git("commit", "-q", "-m", "rawos: deliberately bad fix", cwd=str(repo))
+        _git("commit", "-q", "-m", "anima: deliberately bad fix", cwd=str(repo))
         _git("checkout", "-q", "main", cwd=str(repo))
 
         async def health_check() -> bool:
             return await _is_healthy(str(repo), service)
 
         result = await reversible_apply(
-            str(repo), "rawos/fix-bad", service,
+            str(repo), "anima/fix-bad", service,
             health_check=health_check,
             timeout_s=2, poll_interval_s=0.5,
         )

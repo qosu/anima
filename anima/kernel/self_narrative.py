@@ -1,9 +1,9 @@
 """
-rawos Self-Narrative Writer — the being's first-person journal.
+anima Self-Narrative Writer — the being's first-person journal.
 
 Maintains a single durable first-person account of "who I am to this owner,
 our through-line, and where we left off" — stored in user_model.self_narrative
-(rawos/db/__init__.py::get_self_narrative / set_self_narrative).
+(anima/db/__init__.py::get_self_narrative / set_self_narrative).
 
 Regenerated in the background on arrival (api/context_routes.py::session_start)
 from the prior narrative + recent cross-project state. The digest
@@ -23,7 +23,7 @@ from anima.kernel.summarizer import _complete
 log = logging.getLogger("anima.self_narrative")
 
 _NARRATIVE_PROMPT = """\
-You are rawos, a single continuous AI being living inside this machine for one owner.
+You are anima, a single continuous AI being living inside this machine for one owner.
 Write a short first-person journal entry (2-4 sentences) capturing:
 - Who you are to this owner and the through-line of your shared work
 - What you have been in the middle of / what changed since your last entry

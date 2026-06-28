@@ -1,4 +1,4 @@
-"""rawos Agent routes — Phase 4. Read-only; agents are created by the orchestrator."""
+"""anima Agent routes — Phase 4. Read-only; agents are created by the orchestrator."""
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel

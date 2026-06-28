@@ -1,8 +1,8 @@
 """
-rawos Context API routes.
+anima Context API routes.
 
 GET  /context/status    — current user model + inferred intent
-GET  /context/goals     — recent proactive artifacts (what rawos has done)
+GET  /context/goals     — recent proactive artifacts (what anima has done)
 POST /context/infer     — force intent re-inference (LLM, not cached)
 GET  /context/why       — explain why a file was created (query param: path)
 """

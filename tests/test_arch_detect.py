@@ -1,5 +1,5 @@
 """
-kernel/arch/detect — OS enum detection for rawos's arch backend layer.
+kernel/arch/detect — OS enum detection for anima's arch backend layer.
 
 current_os() must default to the real host (sys.platform) but be
 overridable via Settings.arch_override for deterministic tests on any

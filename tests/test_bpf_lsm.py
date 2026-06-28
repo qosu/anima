@@ -1,4 +1,4 @@
-"""tests/test_bpf_lsm.py — TDD for rawos/kernel/bpf_lsm.py (Phase 24B).
+"""tests/test_bpf_lsm.py — TDD for anima/kernel/bpf_lsm.py (Phase 24B).
 
 TDD Iron Law: this file must go RED before bpf_lsm.py is written
 (ModuleNotFoundError: No module named 'anima.kernel.bpf_lsm').
@@ -8,7 +8,7 @@ list via GRUB cmdline + reboot (Fact A, inert alone) then supervises an
 unpinned BPF LSM link held by a killable holder daemon (Fact B). Holder
 death → kernel auto-detach → enforce reverts instantly, no reboot (I-LSM2).
 
-The floor (sshd, systemd, holder, rawos, self-reload, git) is compiled into
+The floor (sshd, systemd, holder, anima, self-reload, git) is compiled into
 the immutable engine bytecode and checked BEFORE any policy-map lookup (I-LSM5).
 Policy maps are the dynamic control plane the being writes at runtime.
 
@@ -190,8 +190,8 @@ def test_floor_comm_is_frozenset():
 
 
 def test_floor_comm_contains_critical_processes():
-    # These must ALL be on the floor — operator shell, PID1, holder, rawos.
-    for required in ("sshd", "systemd", "rawos-bpf-lsm-h", "rawos", "git"):
+    # These must ALL be on the floor — operator shell, PID1, holder, anima.
+    for required in ("sshd", "systemd", "rawos-bpf-lsm-h", "anima", "git"):
         assert required in bpf_lsm.FLOOR_COMM, (
             f"{required!r} missing from FLOOR_COMM — I-LSM5 violation"
         )
@@ -309,7 +309,7 @@ def test_compose_grub_custom_entry_raises_on_missing_uuid():
 
 
 # ---------------------------------------------------------------------------
-# BpfLsmSupervisor — rawos-side heartbeat loop (I-LSM7)
+# BpfLsmSupervisor — anima-side heartbeat loop (I-LSM7)
 # ---------------------------------------------------------------------------
 async def test_supervisor_run_is_noop_when_disabled():
     # enabled=False → run() returns immediately without calling heartbeat.
@@ -377,8 +377,8 @@ async def test_socket_client_detach_raises_on_no_holder():
 async def test_supervisor_continues_after_heartbeat_failure():
     """I-LSM7: supervisor must not crash on heartbeat exception, continues loop.
 
-    Mirrors 24B.3 deadman drill: rawos survived holder death; heartbeats
-    failed (ConnectionRefusedError) and were caught silently. rawos stayed up.
+    Mirrors 24B.3 deadman drill: anima survived holder death; heartbeats
+    failed (ConnectionRefusedError) and were caught silently. anima stayed up.
     """
     import asyncio
     calls: list[str] = []

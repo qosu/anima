@@ -50,17 +50,17 @@ class TestTrackRecordDB:
         update_track_record(
             self.user.id, "/root/some-repo", "service_failed:foo.service",
             anomaly_present=False, branch_merged=True,
-            fix_branch="rawos/fix-a", fix_sha="aaa", now=100,
+            fix_branch="anima/fix-a", fix_sha="aaa", now=100,
         )
         state = get_track_record(self.user.id, "/root/some-repo", "service_failed:foo.service")
         assert state.pending_since == 100
-        assert state.last_fix_branch == "rawos/fix-a"
+        assert state.last_fix_branch == "anima/fix-a"
         assert state.last_outcome == "merged_pending_stability"
 
         update_track_record(
             self.user.id, "/root/some-repo", "service_failed:foo.service",
             anomaly_present=False, branch_merged=True,
-            fix_branch="rawos/fix-a", fix_sha="aaa", now=200,
+            fix_branch="anima/fix-a", fix_sha="aaa", now=200,
         )
         state = get_track_record(self.user.id, "/root/some-repo", "service_failed:foo.service")
         assert state.verified_successes == 1
@@ -70,7 +70,7 @@ class TestTrackRecordDB:
         update_track_record(
             self.user.id, "/root/some-repo", "service_failed:bar.service",
             anomaly_present=True, branch_merged=False,
-            fix_branch="rawos/fix-z", fix_sha="zzz", now=100,
+            fix_branch="anima/fix-z", fix_sha="zzz", now=100,
         )
         state = get_track_record(self.user.id, "/root/some-repo", "service_failed:bar.service")
         assert state.verified_successes == 0
@@ -79,7 +79,7 @@ class TestTrackRecordDB:
     def test_class_graduates_after_three_verified_successes(self):
         assert GRADUATION_THRESHOLD == 3
         domain = "service_failed:baz.service"
-        for cycle, branch in enumerate(["rawos/fix-1", "rawos/fix-2", "rawos/fix-3"]):
+        for cycle, branch in enumerate(["anima/fix-1", "anima/fix-2", "anima/fix-3"]):
             update_track_record(
                 self.user.id, "/root/some-repo", domain,
                 anomaly_present=False, branch_merged=True,
@@ -101,8 +101,8 @@ class TestIsBranchMerged:
         origin = tmp_path / "origin"
         origin.mkdir()
         _git("init", "-q", "-b", "main", cwd=str(origin))
-        _git("config", "user.email", "test@rawos.local", cwd=str(origin))
-        _git("config", "user.name", "rawos-test", cwd=str(origin))
+        _git("config", "user.email", "test@anima.local", cwd=str(origin))
+        _git("config", "user.name", "anima-test", cwd=str(origin))
         _git("config", "receive.denyCurrentBranch", "updateInstead", cwd=str(origin))
         (origin / "README.md").write_text("init\n")
         _git("add", ".", cwd=str(origin))
@@ -110,18 +110,18 @@ class TestIsBranchMerged:
 
         clone = tmp_path / "clone"
         _git("clone", "-q", str(origin), str(clone), cwd=str(tmp_path))
-        _git("config", "user.email", "test@rawos.local", cwd=str(clone))
-        _git("config", "user.name", "rawos-test", cwd=str(clone))
+        _git("config", "user.email", "test@anima.local", cwd=str(clone))
+        _git("config", "user.name", "anima-test", cwd=str(clone))
         return origin, clone
 
     @pytest.mark.asyncio
     async def test_unmerged_branch_returns_false(self, origin_and_clone):
         _origin, clone = origin_and_clone
 
-        _git("checkout", "-q", "-b", "rawos/fix-x", cwd=str(clone))
+        _git("checkout", "-q", "-b", "anima/fix-x", cwd=str(clone))
         (clone / "fix.txt").write_text("fix\n")
         _git("add", "fix.txt", cwd=str(clone))
-        _git("commit", "-q", "-m", "rawos: fix x", cwd=str(clone))
+        _git("commit", "-q", "-m", "anima: fix x", cwd=str(clone))
         sha = _git_out("rev-parse", "HEAD", cwd=str(clone))
 
         assert await is_branch_merged(str(clone), sha) is False
@@ -130,16 +130,16 @@ class TestIsBranchMerged:
     async def test_merged_branch_returns_true_after_fetch(self, origin_and_clone):
         origin, clone = origin_and_clone
 
-        _git("checkout", "-q", "-b", "rawos/fix-x", cwd=str(clone))
+        _git("checkout", "-q", "-b", "anima/fix-x", cwd=str(clone))
         (clone / "fix.txt").write_text("fix\n")
         _git("add", "fix.txt", cwd=str(clone))
-        _git("commit", "-q", "-m", "rawos: fix x", cwd=str(clone))
+        _git("commit", "-q", "-m", "anima: fix x", cwd=str(clone))
         sha = _git_out("rev-parse", "HEAD", cwd=str(clone))
 
         # Simulate a human merging the fix branch into origin's default branch.
-        _git("push", "-q", "origin", "rawos/fix-x", cwd=str(clone))
+        _git("push", "-q", "origin", "anima/fix-x", cwd=str(clone))
         _git("checkout", "-q", "main", cwd=str(clone))
-        _git("merge", "-q", "--no-ff", "-m", "merge fix", "rawos/fix-x", cwd=str(clone))
+        _git("merge", "-q", "--no-ff", "-m", "merge fix", "anima/fix-x", cwd=str(clone))
         _git("push", "-q", "origin", "main", cwd=str(clone))
         _git("fetch", "-q", "origin", cwd=str(clone))
 
@@ -150,8 +150,8 @@ class TestIsBranchMerged:
         repo = tmp_path / "no-origin"
         repo.mkdir()
         _git("init", "-q", cwd=str(repo))
-        _git("config", "user.email", "test@rawos.local", cwd=str(repo))
-        _git("config", "user.name", "rawos-test", cwd=str(repo))
+        _git("config", "user.email", "test@anima.local", cwd=str(repo))
+        _git("config", "user.name", "anima-test", cwd=str(repo))
         (repo / "README.md").write_text("init\n")
         _git("add", ".", cwd=str(repo))
         _git("commit", "-q", "-m", "init", cwd=str(repo))

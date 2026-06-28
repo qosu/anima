@@ -1,5 +1,5 @@
 """
-rawos Timing Model — Phase 10.
+anima Timing Model — Phase 10.
 
 Converts TimingSignals into a scalar timeliness_score ∈ [0, 1].
 

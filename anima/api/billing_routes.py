@@ -1,4 +1,4 @@
-"""rawos Billing API — Phase 5. Stripe checkout, webhook, and portal endpoints."""
+"""anima Billing API — Phase 5. Stripe checkout, webhook, and portal endpoints."""
 from __future__ import annotations
 
 import logging

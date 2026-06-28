@@ -16,7 +16,7 @@ A clear description of what the bug is and what you expected to happen.
 
 ## Environment
 
-- rawos version / commit:
+- anima version / commit:
 - Python version:
 - Linux kernel version:
 - Deployment: bare-metal / VM / Docker (API-tier only)

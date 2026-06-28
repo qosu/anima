@@ -1,4 +1,4 @@
-"""rawos runtime configuration — all values from environment, never hardcoded."""
+"""anima runtime configuration — all values from environment, never hardcoded."""
 from __future__ import annotations
 from pathlib import Path
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, Settings
 # ---------------------------------------------------------------------------
 # SHP.2 I-SEC3: systemd LoadCredential source — highest priority for secrets
 # ---------------------------------------------------------------------------
-_CRED_RUNTIME_DIR: str = "/run/credentials/rawos.service"
+_CRED_RUNTIME_DIR: str = "/run/credentials/anima.service"
 _CREDENTIAL_FIELDS: frozenset[str] = frozenset({
     "jwt_secret",
     "stripe_key",
@@ -87,12 +87,12 @@ class Settings(BaseSettings):
     # Arch backend layer (kernel/arch) — overrides host OS detection for tests
     arch_override: str | None = None
     # Arch paths — configurable so non-Linux backends can point to their own roots
-    worktree_root: str = "/root/.rawos-worktrees"
+    worktree_root: str = "/root/.anima-worktrees"
     rawos_source_root: str = "/root/rawos"
     # Phase 25 self-reload pending-state dir -- config-driven so a
     # twin-prove process (separate .env) gets its own state dir without
     # per-call injection (mirrors rawos_source_root above).
-    self_reload_state_dir: str = "/root/.rawos-selfreload"
+    self_reload_state_dir: str = "/root/.anima-selfreload"
 
     # Database
     db_path: str = "/root/rawos/data/rawos.db"
@@ -182,13 +182,13 @@ class Settings(BaseSettings):
 
     # Phase 25 Stage 1+2 ('The Ouroboros') — safe self-reload (R-self)
     self_reload_enabled: bool = False   # dormant: owner-triggered path only.
-    # Owner: `rawos selfreload arm-and-go <sha>`. Stage 2 autonomous path (I-SR10)
+    # Owner: `anima selfreload arm-and-go <sha>`. Stage 2 autonomous path (I-SR10)
     # is a SEPARATE gate — operate_on_self_reload() checks self_reload_enabled AND
     # self_reload_autonomous_enabled AND graduation; both must be True to auto-apply.
     self_reload_autonomous_enabled: bool = False  # I-SR10: dormant until graduation proven
     # Twin-prove only (Phase 25 verification step 3) -- gates
     # /internal/self-reload/_debug-arm-and-swap. False on prod; the
-    # rawos-selfprobe twin's .env sets this True. Default False means the
+    # anima-selfprobe twin's .env sets this True. Default False means the
     # route 404s everywhere except the twin.
     self_reload_debug_endpoint_enabled: bool = False
 
@@ -212,7 +212,7 @@ class Settings(BaseSettings):
 
     # Phase 20 — system perception
     system_perception_enabled: bool = False
-    system_perception_paths: list[str] = ["/root/rawos", "/etc/rawos", "/etc/systemd/system"]
+    system_perception_paths: list[str] = ["/root/rawos", "/etc/anima", "/etc/systemd/system"]
     system_perception_debounce_s: float = 2.0
 
     # Phase 21 — system fs reflex
@@ -232,7 +232,7 @@ class Settings(BaseSettings):
     # only when True AND landlock.supported() >= landlock.MIN_ABI (validated
     # at boot -- I-LL4, see api/app.py lifespan). Self+descendants only
     # (I-LL6): a bad envelope can only break the being's own sandboxed
-    # commands, never sshd/boot/operator. See rawos/kernel/landlock.py.
+    # commands, never sshd/boot/operator. See anima/kernel/landlock.py.
 
     # Phase 24B — BPF LSM machine-wide MAC (active enforcement, dormant)
     # Ships DORMANT (I-LSM12): all bpf_lsm_* flags are no-ops until the
@@ -240,7 +240,7 @@ class Settings(BaseSettings):
     # human-gated, NOT autonomous). Fact A (bpf in LSM list, needs GRUB+reboot)
     # and Fact B (attached holder) are independently gated; holder death →
     # kernel auto-detach → enforce gone without reboot (I-LSM2). Floor
-    # (sshd/systemd/holder/rawos/git) compiled into immutable engine bytecode,
+    # (sshd/systemd/holder/anima/git) compiled into immutable engine bytecode,
     # checked BEFORE policy maps — policy-map writes CANNOT deny floor (I-LSM5).
     bpf_lsm_enabled: bool = True           # 24B.2 ACTIVATED + 24B.4 GRADUATED 2026-06-15 (lsm= in GRUB_CMDLINE_LINUX, holder auto-start)
     bpf_lsm_mode: str = "enforce"              # audit (log-only) or enforce

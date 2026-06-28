@@ -1,5 +1,5 @@
 """
-rawos database store — thin async wrapper over SQLite.
+anima database store — thin async wrapper over SQLite.
 All public methods enforce user_id scoping by construction.
 """
 from __future__ import annotations

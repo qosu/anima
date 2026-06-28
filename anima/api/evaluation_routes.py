@@ -1,5 +1,5 @@
 """
-rawos Evaluation API routes — Phase 7.
+anima Evaluation API routes — Phase 7.
 
 POST /evaluation/rate      — submit artifact relevance rating (1-5)
 GET  /evaluation/report    — precision, relevance, breakdown stats

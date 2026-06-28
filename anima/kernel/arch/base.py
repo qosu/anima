@@ -1,6 +1,6 @@
-"""kernel/arch/base — rawos's ABI.
+"""kernel/arch/base — anima's ABI.
 
-These Protocols are the ONLY interface the rawos kernel uses to talk to
+These Protocols are the ONLY interface the anima kernel uses to talk to
 the host. Every arch backend (linux.py, macos.py, windows.py, and any
 future backend) implements them exactly. The kernel never calls a raw
 OS command directly.
@@ -120,7 +120,7 @@ class FrontDoorState:
 
 
 class FrontDoor(Protocol):
-    """OS-specific mechanism for making an interactive login invoke rawos.
+    """OS-specific mechanism for making an interactive login invoke anima.
 
     The kernel uses only this Protocol; every arch backend implements it.
     install() must validate the configuration before persisting (never write
@@ -173,8 +173,8 @@ class FileSnapshot:
 class FileOperatorRefusalError(Exception):
     """Raised when a FileOperator refuses to write/restore a self-protected path.
 
-    Self-protected paths (the rawos unit file, the §5 front-door sshd config,
-    and the rawos source tree itself — which also covers the operator
+    Self-protected paths (the anima unit file, the §5 front-door sshd config,
+    and the anima source tree itself — which also covers the operator
     allowlist DB under it) can never be mutated through this Protocol, even
     if an owner allowlist entry would otherwise permit it. read()/exists()/
     backup() remain available (R0, read-only).

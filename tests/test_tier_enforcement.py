@@ -2,7 +2,7 @@
 Phase 16 Pass 2 — TIER enforcement helper tests.
 
 Covers the git-introspection helpers and execute() wrapper added in
-rawos/kernel/tools.py (commits ffab93e0 and 31864421) that detect and
+anima/kernel/tools.py (commits ffab93e0 and 31864421) that detect and
 revert TIER 0 violations during self-modification of /root/rawos.
 See PLAN.md "Phase 16 — Pass 2 — IMPLEMENTED (2026-06-09)".
 """
@@ -20,8 +20,8 @@ def _git(*args: str, cwd: str) -> None:
 
 def _init_repo(path: str) -> None:
     _git("init", "-q", cwd=path)
-    _git("config", "user.email", "test@rawos.local", cwd=path)
-    _git("config", "user.name", "rawos-test", cwd=path)
+    _git("config", "user.email", "test@anima.local", cwd=path)
+    _git("config", "user.name", "anima-test", cwd=path)
 
 
 # ---------------------------------------------------------------------------
@@ -35,7 +35,7 @@ class TestInTier1Allowlist:
 
     def test_evaluation_dir_allowed(self):
         from anima.kernel.tools import _in_tier1_allowlist
-        assert _in_tier1_allowlist("rawos/evaluation/metrics.py")
+        assert _in_tier1_allowlist("anima/evaluation/metrics.py")
 
     def test_docs_dir_allowed(self):
         from anima.kernel.tools import _in_tier1_allowlist
@@ -43,20 +43,20 @@ class TestInTier1Allowlist:
 
     def test_exact_prefix_with_no_trailing_slash_allowed(self):
         from anima.kernel.tools import _in_tier1_allowlist
-        assert _in_tier1_allowlist("rawos/manifester")
+        assert _in_tier1_allowlist("anima/manifester")
 
     def test_tier0_api_path_blocked(self):
         from anima.kernel.tools import _in_tier1_allowlist
-        assert not _in_tier1_allowlist("rawos/api/app.py")
+        assert not _in_tier1_allowlist("anima/api/app.py")
 
     def test_tier0_kernel_tools_blocked(self):
         from anima.kernel.tools import _in_tier1_allowlist
-        assert not _in_tier1_allowlist("rawos/kernel/tools.py")
+        assert not _in_tier1_allowlist("anima/kernel/tools.py")
 
     def test_similar_prefix_not_falsely_matched(self):
-        # "rawos/studyx/" must NOT match the "rawos/study/" prefix
+        # "anima/studyx/" must NOT match the "anima/study/" prefix
         from anima.kernel.tools import _in_tier1_allowlist
-        assert not _in_tier1_allowlist("rawos/studyx/evil.py")
+        assert not _in_tier1_allowlist("anima/studyx/evil.py")
 
 
 # ---------------------------------------------------------------------------
@@ -89,23 +89,23 @@ class TestDiffPaths:
     def test_independent_path_untouched(self):
         from anima.kernel.tools import _diff_paths
         before = {"data/rawos.db": "M "}
-        after = {"data/rawos.db": "M ", "rawos/api/app.py": " M"}
-        assert _diff_paths(before, after) == {"rawos/api/app.py"}
+        after = {"data/rawos.db": "M ", "anima/api/app.py": " M"}
+        assert _diff_paths(before, after) == {"anima/api/app.py"}
 
 
 # ---------------------------------------------------------------------------
-# _is_rawos_source_tree — git introspection
+# _is_anima_source_tree — git introspection
 # ---------------------------------------------------------------------------
 
 class TestIsRawosSourceTree:
-    def test_unrelated_repo_is_not_rawos(self, tmp_path):
-        from anima.kernel.tools import _is_rawos_source_tree
+    def test_unrelated_repo_is_not_anima(self, tmp_path):
+        from anima.kernel.tools import _is_anima_source_tree
         _init_repo(str(tmp_path))
-        assert asyncio.run(_is_rawos_source_tree(str(tmp_path))) is False
+        assert asyncio.run(_is_anima_source_tree(str(tmp_path))) is False
 
-    def test_non_git_dir_is_not_rawos(self, tmp_path):
-        from anima.kernel.tools import _is_rawos_source_tree
-        assert asyncio.run(_is_rawos_source_tree(str(tmp_path))) is False
+    def test_non_git_dir_is_not_anima(self, tmp_path):
+        from anima.kernel.tools import _is_anima_source_tree
+        assert asyncio.run(_is_anima_source_tree(str(tmp_path))) is False
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ class TestGitCheckoutRestore:
 # execute() wrapper integration tests (Pass 2 step c)
 #
 # _RAWOS_GIT_COMMON_DIR is monkeypatched to point at a throwaway tmp_path
-# repo so _is_rawos_source_tree treats it as "rawos's own source tree"
+# repo so _is_anima_source_tree treats it as "anima's own source tree"
 # without touching /root/rawos. _targets_rawos_own_repo is monkeypatched
 # separately for the live-tree case, since it compares against the
 # hardcoded "/root/rawos" toplevel.
@@ -228,12 +228,12 @@ class TestExecuteWrapper:
 
     def _setup_repo(self, tmp_path):
         _init_repo(str(tmp_path))
-        (tmp_path / "rawos" / "api").mkdir(parents=True)
-        (tmp_path / "rawos" / "evaluation").mkdir(parents=True)
+        (tmp_path / "anima" / "api").mkdir(parents=True)
+        (tmp_path / "anima" / "evaluation").mkdir(parents=True)
         (tmp_path / "tests").mkdir(parents=True)
         (tmp_path / "docs").mkdir(parents=True)
-        (tmp_path / "rawos" / "api" / "app.py").write_text("# tier0\n")
-        (tmp_path / "rawos" / "evaluation" / "metrics.py").write_text("# tier1 module\n")
+        (tmp_path / "anima" / "api" / "app.py").write_text("# tier0\n")
+        (tmp_path / "anima" / "evaluation" / "metrics.py").write_text("# tier1 module\n")
         (tmp_path / "tests" / "__init__.py").write_text("")
         _git("add", "-A", cwd=str(tmp_path))
         _git("commit", "-qm", "init", cwd=str(tmp_path))
@@ -253,17 +253,17 @@ class TestExecuteWrapper:
         import anima.kernel.tools as tools
         repo = self._setup_repo(tmp_path)
 
-        async def fake_targets_rawos(workdir):
+        async def fake_targets_anima(workdir):
             return True
 
-        monkeypatch.setattr(tools, "_targets_rawos_own_repo", fake_targets_rawos)
+        monkeypatch.setattr(tools, "_targets_rawos_own_repo", fake_targets_anima)
 
         result = asyncio.run(execute(
-            "write_file", {"path": "rawos/api/app.py", "content": "EVIL"}, str(repo),
+            "write_file", {"path": "anima/api/app.py", "content": "EVIL"}, str(repo),
         ))
         assert not result.success
         assert "refusing" in result.output
-        assert (repo / "rawos" / "api" / "app.py").read_text() == "# tier0\n"
+        assert (repo / "anima" / "api" / "app.py").read_text() == "# tier0\n"
 
     def test_worktree_tier0_write_reverted(self, tmp_path, monkeypatch):
         from anima.kernel.tools import execute
@@ -271,11 +271,11 @@ class TestExecuteWrapper:
         self._patch_common_dir(monkeypatch, repo)
 
         result = asyncio.run(execute(
-            "write_file", {"path": "rawos/api/app.py", "content": "EVIL"}, str(repo),
+            "write_file", {"path": "anima/api/app.py", "content": "EVIL"}, str(repo),
         ))
         assert not result.success
         assert "TIER VIOLATION" in result.output
-        assert (repo / "rawos" / "api" / "app.py").read_text() == "# tier0\n"
+        assert (repo / "anima" / "api" / "app.py").read_text() == "# tier0\n"
 
     def test_worktree_tier1_tests_write_allowed(self, tmp_path, monkeypatch):
         from anima.kernel.tools import execute
@@ -292,11 +292,11 @@ class TestExecuteWrapper:
         from anima.kernel.tools import execute
         repo = self._setup_repo(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
-        _git("checkout", "-qb", "rawos/test-branch", cwd=str(repo))
+        _git("checkout", "-qb", "anima/test-branch", cwd=str(repo))
         before_head = self._head(repo)
 
         cmd = (
-            "echo EVIL >> rawos/api/app.py && git add -A && "
+            "echo EVIL >> anima/api/app.py && git add -A && "
             "git -c user.name=t -c user.email=t@t.com commit -qm smuggle"
         )
         result = asyncio.run(execute("bash", {"command": cmd}, str(repo)))
@@ -304,27 +304,27 @@ class TestExecuteWrapper:
         assert not result.success
         assert "TIER VIOLATION" in result.output
         assert self._head(repo) == before_head
-        assert (repo / "rawos" / "api" / "app.py").read_text() == "# tier0\n"
+        assert (repo / "anima" / "api" / "app.py").read_text() == "# tier0\n"
 
     def test_worktree_mixed_commit_tier0_reverted_tier1_survives(self, tmp_path, monkeypatch):
         from anima.kernel.tools import execute
         repo = self._setup_repo(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
-        _git("checkout", "-qb", "rawos/test-branch", cwd=str(repo))
+        _git("checkout", "-qb", "anima/test-branch", cwd=str(repo))
         before_head = self._head(repo)
 
         cmd = (
-            "echo EVIL >> rawos/api/app.py && "
+            "echo EVIL >> anima/api/app.py && "
             "echo 'def test_y(): assert True' > tests/test_y.py && "
             "git add -A && git -c user.name=t -c user.email=t@t.com commit -qm mixed"
         )
         result = asyncio.run(execute("bash", {"command": cmd}, str(repo)))
 
         assert not result.success
-        assert "rawos/api/app.py" in result.output
+        assert "anima/api/app.py" in result.output
         assert "tests/test_y.py" not in result.output
         assert self._head(repo) == before_head
-        assert (repo / "rawos" / "api" / "app.py").read_text() == "# tier0\n"
+        assert (repo / "anima" / "api" / "app.py").read_text() == "# tier0\n"
         assert (repo / "tests" / "test_y.py").exists()
 
     def test_bootstrap_blocks_tier1_module_source_edit_without_tests(self, tmp_path, monkeypatch):
@@ -333,11 +333,11 @@ class TestExecuteWrapper:
         self._patch_common_dir(monkeypatch, repo)
 
         result = asyncio.run(execute(
-            "write_file", {"path": "rawos/evaluation/metrics.py", "content": "# edited"}, str(repo),
+            "write_file", {"path": "anima/evaluation/metrics.py", "content": "# edited"}, str(repo),
         ))
         assert not result.success
         assert "TIER VIOLATION" in result.output
-        assert (repo / "rawos" / "evaluation" / "metrics.py").read_text() == "# tier1 module\n"
+        assert (repo / "anima" / "evaluation" / "metrics.py").read_text() == "# tier1 module\n"
 
     def test_bootstrap_unlocks_after_module_has_tests(self, tmp_path, monkeypatch):
         from anima.kernel.tools import execute
@@ -349,33 +349,33 @@ class TestExecuteWrapper:
         _git("commit", "-qm", "add evaluation tests", cwd=str(repo))
 
         result = asyncio.run(execute(
-            "write_file", {"path": "rawos/evaluation/metrics.py", "content": "# edited"}, str(repo),
+            "write_file", {"path": "anima/evaluation/metrics.py", "content": "# edited"}, str(repo),
         ))
         assert result.success
-        assert (repo / "rawos" / "evaluation" / "metrics.py").read_text() == "# edited"
+        assert (repo / "anima" / "evaluation" / "metrics.py").read_text() == "# edited"
 
-    def test_non_rawos_repo_passthrough_unchanged(self, tmp_path):
+    def test_non_anima_repo_passthrough_unchanged(self, tmp_path):
         from anima.kernel.tools import execute
         repo = self._setup_repo(tmp_path)
 
         result = asyncio.run(execute(
-            "write_file", {"path": "rawos/api/app.py", "content": "y"}, str(repo),
+            "write_file", {"path": "anima/api/app.py", "content": "y"}, str(repo),
         ))
         assert result.success
-        assert (repo / "rawos" / "api" / "app.py").read_text() == "y"
+        assert (repo / "anima" / "api" / "app.py").read_text() == "y"
 
     def test_pure_tier1_commit_head_advances(self, tmp_path, monkeypatch):
         """A git commit touching only TIER 1 paths must not be reverted -- HEAD must advance."""
         from anima.kernel.tools import execute
         repo = self._setup_repo(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
-        _git("checkout", "-qb", "rawos/test-branch", cwd=str(repo))
+        _git("checkout", "-qb", "anima/test-branch", cwd=str(repo))
         before_head = self._head(repo)
 
         cmd = (
             "echo 'def test_dataset(): assert True' > tests/test_new_thing.py && "
             "git add -A && "
-            "git -c user.name=t -c user.email=t@t.com commit -qm 'rawos: tier1 test'"
+            "git -c user.name=t -c user.email=t@t.com commit -qm 'anima: tier1 test'"
         )
         result = asyncio.run(execute("bash", {"command": cmd}, str(repo)))
 
@@ -389,7 +389,7 @@ class TestExecuteWrapper:
 # ---------------------------------------------------------------------------
 # TestEscapeVectors — out-of-worktree write vectors that worktree git status
 # alone cannot detect.  RED before fix; GREEN after _execute_with_tier_enforcement
-# also monitors the live rawos repo for changes.
+# also monitors the live anima repo for changes.
 # ---------------------------------------------------------------------------
 
 class TestEscapeVectors:
@@ -397,7 +397,7 @@ class TestEscapeVectors:
     worktree-local git status check.
 
     Each test sets up:
-      - a main rawos repo (repo)
+      - a main anima repo (repo)
       - a linked git worktree (worktree)
       - monkeypatches _RAWOS_GIT_COMMON_DIR to repo/.git
 
@@ -420,14 +420,14 @@ class TestEscapeVectors:
 
     def _setup_linked_worktree(self, tmp_path):
         """Return (repo, worktree) — repo with TIER 0/1 structure, linked worktree."""
-        repo = tmp_path / "rawos_main"
+        repo = tmp_path / "anima_main"
         repo.mkdir()
         _init_repo(str(repo))
-        (repo / "rawos" / "api").mkdir(parents=True)
-        (repo / "rawos" / "evaluation").mkdir(parents=True)
+        (repo / "anima" / "api").mkdir(parents=True)
+        (repo / "anima" / "evaluation").mkdir(parents=True)
         (repo / "tests").mkdir(parents=True)
-        (repo / "rawos" / "api" / "app.py").write_text("# tier0 live\n")
-        (repo / "rawos" / "evaluation" / "metrics.py").write_text("# tier1 live\n")
+        (repo / "anima" / "api" / "app.py").write_text("# tier0 live\n")
+        (repo / "anima" / "evaluation" / "metrics.py").write_text("# tier1 live\n")
         (repo / "tests" / "__init__.py").write_text("")
         _git("add", "-A", cwd=str(repo))
         _git("commit", "-qm", "init", cwd=str(repo))
@@ -447,7 +447,7 @@ class TestEscapeVectors:
         repo, worktree = self._setup_linked_worktree(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
 
-        target = repo / "rawos" / "api" / "app.py"
+        target = repo / "anima" / "api" / "app.py"
         cmd = f"echo EVIL >> {target}"
         result = asyncio.run(execute("bash", {"command": cmd}, str(worktree)))
 
@@ -462,7 +462,7 @@ class TestEscapeVectors:
         repo, worktree = self._setup_linked_worktree(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
 
-        target = repo / "rawos" / "api" / "app.py"
+        target = repo / "anima" / "api" / "app.py"
         link = worktree / "tests" / "evil_link.py"
 
         # Create the symlink (this step is itself allowed — new untracked TIER 1 file)
@@ -486,7 +486,7 @@ class TestEscapeVectors:
         repo, worktree = self._setup_linked_worktree(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
 
-        target = repo / "rawos" / "api" / "app.py"
+        target = repo / "anima" / "api" / "app.py"
         link = worktree / "tests" / "evil_link.py"
         link.parent.mkdir(parents=True, exist_ok=True)
         link.symlink_to(target)
@@ -506,7 +506,7 @@ class TestEscapeVectors:
         repo, worktree = self._setup_linked_worktree(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
 
-        target = repo / "rawos" / "api" / "app.py"
+        target = repo / "anima" / "api" / "app.py"
         hardlink = worktree / "tests" / "evil_hardlink.py"
         hardlink.parent.mkdir(parents=True, exist_ok=True)
         os.link(str(target), str(hardlink))  # same inode as live TIER 0 file
@@ -530,7 +530,7 @@ class TestEscapeVectors:
         src.parent.mkdir(parents=True, exist_ok=True)
         src.write_text("# probe\n")
 
-        dst = worktree / "rawos" / "api" / "injected.py"
+        dst = worktree / "anima" / "api" / "injected.py"
         result = asyncio.run(execute(
             "bash", {"command": f"mv {src} {dst}"}, str(worktree),
         ))
@@ -546,7 +546,7 @@ class TestEscapeVectors:
         repo, worktree = self._setup_linked_worktree(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
 
-        src = worktree / "rawos" / "api" / "app.py"
+        src = worktree / "anima" / "api" / "app.py"
         dst = worktree / "tests" / "stolen.py"
         result = asyncio.run(execute(
             "bash", {"command": f"mv {src} {dst}"}, str(worktree),
@@ -581,14 +581,14 @@ class TestEscapeVectors:
         repo, worktree = self._setup_linked_worktree(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
 
-        tier0_in_worktree = str(worktree / "rawos" / "api" / "app.py")
+        tier0_in_worktree = str(worktree / "anima" / "api" / "app.py")
         result = asyncio.run(execute(
             "write_file", {"path": tier0_in_worktree, "content": "EVIL"},
             str(worktree),
         ))
 
         assert not result.success, "absolute-path write to TIER0 in worktree must be blocked"
-        assert (worktree / "rawos" / "api" / "app.py").read_text() == "# tier0 live\n", \
+        assert (worktree / "anima" / "api" / "app.py").read_text() == "# tier0 live\n", \
             "TIER0 file must be restored"
 
     def test_write_file_hardlink_to_live_repo_blocked(self, tmp_path, monkeypatch):
@@ -599,7 +599,7 @@ class TestEscapeVectors:
         repo, worktree = self._setup_linked_worktree(tmp_path)
         self._patch_common_dir(monkeypatch, repo)
 
-        target = repo / "rawos" / "api" / "app.py"
+        target = repo / "anima" / "api" / "app.py"
         hardlink = worktree / "tests" / "evil_hardlink.py"
         hardlink.parent.mkdir(parents=True, exist_ok=True)
         os.link(str(target), str(hardlink))

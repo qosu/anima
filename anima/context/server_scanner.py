@@ -1,9 +1,9 @@
 """
-rawos Server Scanner — autonomous server state collection.
+anima Server Scanner — autonomous server state collection.
 
-rawos scans the ENTIRE server independently. No human trigger required.
+anima scans the ENTIRE server independently. No human trigger required.
 Sources: systemd service failures, critical log errors, resource pressure.
-Returns severity-ranked anomalies rawos can act on.
+Returns severity-ranked anomalies anima can act on.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from anima.config import settings
 # Map known service names to their source repos (for workdir resolution)
 _SERVICE_TO_REPO: dict[str, str] = {
     "exocortex":          "/root/exocortex",
-    "rawos":              settings.rawos_source_root,
+    "anima":              settings.rawos_source_root,
     "sovereign":          "/root/sovereign",
     "prometheus-nimgen":  "/root/prometheus",
     "prometheus-status":  "/root/prometheus",
@@ -28,7 +28,7 @@ _SERVICE_TO_REPO: dict[str, str] = {
     "liveproof-agent":    "/root/liveproof-agent",
 }
 
-# Services rawos actively monitors for recent errors
+# Services anima actively monitors for recent errors
 _MONITORED_SERVICES = list(_SERVICE_TO_REPO.keys())
 
 # Severity thresholds
@@ -65,7 +65,7 @@ class ServerAnomaly:
 
     def to_context_summary(self) -> str:
         parts = [
-            f"[SERVER_SCAN — autonomous rawos observation]",
+            f"[SERVER_SCAN — autonomous anima observation]",
             f"Anomaly type: {self.kind}",
             f"Detail: {self.detail}",
         ]

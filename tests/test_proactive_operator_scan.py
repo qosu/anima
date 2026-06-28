@@ -4,7 +4,7 @@ Wires the proven `operate_on_file` gate (kernel/operator.py) into the proactive
 scheduler so the being autonomously detects config-anomalies on its
 owner-allowlisted managed_file_targets and proposes/applies reversible fixes.
 
-Mocks ONLY the LLM boundary (rawos.kernel.summarizer._complete) for the fix
+Mocks ONLY the LLM boundary (anima.kernel.summarizer._complete) for the fix
 generator — everything else (DB, validator subprocess, FileOperator) runs
 against real code on real temp-file targets.
 
@@ -281,7 +281,7 @@ class TestRunOperatorScanCycle:
         self._set_owner(monkeypatch)
         monkeypatch.setattr(settings, "operator_enabled", True)
 
-        protected = "/etc/systemd/system/rawos.service"
+        protected = "/etc/systemd/system/anima.service"
         db.add_managed_file_target(self.owner.id, protected, "false")
         self._graduate(protected)
 

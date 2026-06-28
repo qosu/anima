@@ -1,8 +1,8 @@
 """
-rawos Filesystem Manifester.
+anima Filesystem Manifester.
 
 Writes proactive agent results directly into the user's project workspace.
-Every file is tagged with HTML comment provenance so `rawos why <file>` works.
+Every file is tagged with HTML comment provenance so `anima why <file>` works.
 
 Naming: RAWOS_{domain}_{slug}_{ts}.md
 """
@@ -74,7 +74,7 @@ async def manifest_agent_result(
     file_path = out_dir / filename
 
     header = (
-        f"<!-- rawos proactive analysis -->\n"
+        f"<!-- anima proactive analysis -->\n"
         f"<!-- goal: {goal} -->\n"
         f"<!-- domain: {domain} -->\n"
         f"<!-- generated: {ts} -->\n\n"
@@ -143,7 +143,7 @@ async def manifest_code_fix(
 ) -> tuple[str, str | None]:
     """
     Write a code fix file to {workdir}/RAWOS_fix_{slug}_{ts}{ext}.
-    Header encodes target path so rawos apply can find and patch it.
+    Header encodes target path so anima apply can find and patch it.
     Returns (absolute_file_path, artifact_id).
     """
     ext = Path(target_file).suffix or ".py"
@@ -153,10 +153,10 @@ async def manifest_code_fix(
     file_path = Path(workdir) / filename
 
     header = (
-        f"# rawos:target={target_file}\n"
-        f"# rawos:ts={ts}\n"
-        f"# rawos:description={goal}\n"
-        f"# rawos:type=code_fix\n\n"
+        f"# anima:target={target_file}\n"
+        f"# anima:ts={ts}\n"
+        f"# anima:description={goal}\n"
+        f"# anima:type=code_fix\n\n"
     )
     full_content = header + corrected_content.strip()
 

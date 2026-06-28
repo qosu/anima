@@ -5,9 +5,9 @@ Tests for:
   - _render_event   (pure render dispatch, no network)
   - _api_stream     (streaming SSE iterator, httpx mocked)
   - _resolve_project_id  (project fallback logic, _api mocked)
-  - `rawos ask`     (CliRunner end-to-end, mocked stream)
-  - `rawos chat`    (CliRunner REPL, mocked stream)
-  - `rawos goal`    (regression: now calls _api_stream, not hollow)
+  - `anima ask`     (CliRunner end-to-end, mocked stream)
+  - `anima chat`    (CliRunner REPL, mocked stream)
+  - `anima goal`    (regression: now calls _api_stream, not hollow)
 
 All tests are network-free.
 """
@@ -103,9 +103,9 @@ class TestRenderEvent:
     def test_chunk_prints_text(self):
         buf = io.StringIO()
         c = _console(buf)
-        _render_event({"type": "chunk", "text": "Hello from rawos"}, c)
+        _render_event({"type": "chunk", "text": "Hello from anima"}, c)
         out = _read(buf)
-        assert "Hello from rawos" in out
+        assert "Hello from anima" in out
 
     def test_tool_call_prints_tool_name(self):
         buf = io.StringIO()
@@ -379,7 +379,7 @@ class TestResolveProjectId:
 
 
 # ---------------------------------------------------------------------------
-# 4. `rawos ask`
+# 4. `anima ask`
 # ---------------------------------------------------------------------------
 
 class TestAskCommand:
@@ -427,7 +427,7 @@ class TestAskCommand:
 
 
 # ---------------------------------------------------------------------------
-# 5. `rawos chat`
+# 5. `anima chat`
 # ---------------------------------------------------------------------------
 
 class TestChatCommand:
@@ -440,11 +440,11 @@ class TestChatCommand:
 
     def test_chat_sends_user_message_to_stream(self):
         events = [{"type": "chunk", "text": "Hello back!"}]
-        result, mock_stream = self._run("hello rawos\n:q\n", events)
+        result, mock_stream = self._run("hello anima\n:q\n", events)
         # Verify _api_stream was called with the user's message
         mock_stream.assert_called_once_with(
             "/intent",
-            {"project_id": "proj-test", "message": "hello rawos"},
+            {"project_id": "proj-test", "message": "hello anima"},
         )
 
     def test_chat_renders_response_in_output(self):
@@ -470,7 +470,7 @@ class TestChatCommand:
 
 
 # ---------------------------------------------------------------------------
-# 6. `rawos goal` regression — now calls _api_stream (hollow no-op removed)
+# 6. `anima goal` regression — now calls _api_stream (hollow no-op removed)
 # ---------------------------------------------------------------------------
 
 class TestGoalRegression:
@@ -495,19 +495,19 @@ class TestGoalRegression:
         assert "Restarting nginx now." in result.output
 
     def test_goal_no_longer_echoes_old_hollow_message(self):
-        """Regression: the old no-op said 'Goal submitted … Use rawos show'. Gone."""
+        """Regression: the old no-op said 'Goal submitted … Use anima show'. Gone."""
         runner = CliRunner()
         events = []
         with patch("anima.cli.main._resolve_project_id", return_value="proj-rg"), \
              patch("anima.cli.main._api_stream", return_value=iter(events)):
             result = runner.invoke(cli, ["goal", "do something"])
-        assert "Use `rawos show`" not in result.output
+        assert "Use `anima show`" not in result.output
         assert "Full streaming available" not in result.output
 
 
 
 # ---------------------------------------------------------------------------
-# 7. `rawos chat` digest greeting — "While you were away"
+# 7. `anima chat` digest greeting — "While you were away"
 # ---------------------------------------------------------------------------
 
 class TestChatDigestGreeting:
@@ -542,10 +542,10 @@ class TestChatDigestGreeting:
         session = {
             "last_chat_at": 1_000_000,
             "artifacts": [],
-            "self_narrative": "I am rawos, and I have been tending the checkout flow.",
+            "self_narrative": "I am anima, and I have been tending the checkout flow.",
         }
         result, _ = self._run(":q\n", session)
-        assert "I am rawos, and I have been tending the checkout flow." in result.output
+        assert "I am anima, and I have been tending the checkout flow." in result.output
 
     def test_chat_shows_no_narrative_line_when_absent(self):
         session = {"last_chat_at": 0, "artifacts": [], "self_narrative": None}
@@ -554,11 +554,11 @@ class TestChatDigestGreeting:
 
     def test_chat_continues_to_repl_after_digest(self):
         session = {"last_chat_at": 0, "artifacts": []}
-        events = [{"type": "chunk", "text": "hello from rawos"}]
+        events = [{"type": "chunk", "text": "hello from anima"}]
         with patch("anima.cli.main._resolve_project_id", return_value="proj-test"), \
              patch("anima.cli.main._api_stream", return_value=iter(events)), \
              patch("anima.cli.main._api", return_value=session):
             runner = CliRunner()
             result = runner.invoke(cli, ["chat"], input="hi\n:q\n")
-        assert "hello from rawos" in result.output
+        assert "hello from anima" in result.output
         assert result.exit_code == 0

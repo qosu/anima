@@ -1,17 +1,17 @@
 """
-rawos CLI — intent-native OS shell interface.
+anima CLI — intent-native OS shell interface.
 
 Commands:
-  rawos status   — current inferred intent + confidence
-  rawos show     — proactive artifacts rawos has created
-  rawos goal     — submit an explicit goal, stream response live
-  rawos ask      — one-shot question, stream response live
-  rawos chat     — interactive multi-turn REPL
-  rawos why      — explain why rawos created a file
-  rawos watch    — live TUI (rich Live display)
-  rawos login    — authenticate and save credentials
+  anima status   — current inferred intent + confidence
+  anima show     — proactive artifacts anima has created
+  anima goal     — submit an explicit goal, stream response live
+  anima ask      — one-shot question, stream response live
+  anima chat     — interactive multi-turn REPL
+  anima why      — explain why anima created a file
+  anima watch    — live TUI (rich Live display)
+  anima login    — authenticate and save credentials
 
-Config stored at ~/.rawos/credentials.json
+Config stored at ~/.anima/credentials.json
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ import httpx
 from anima.kernel.arch.linux import LinuxLogReader, LinuxServiceManager
 from anima.installer.setup import SetupWizard
 
-_CONFIG_DIR  = Path.home() / ".rawos"
+_CONFIG_DIR  = Path.home() / ".anima"
 _CREDS_FILE  = _CONFIG_DIR / "credentials.json"
 _DEFAULT_URL = os.environ.get("RAWOS_URL", "http://127.0.0.1:8002")
 
@@ -66,7 +66,7 @@ def _refresh_if_expired(creds: dict) -> dict:
     """Auto-refresh access_token when expired or within 5 minutes of expiry.
 
     Returns updated creds (saved to disk) on success, original dict on failure.
-    Requires rawos service to be reachable — only call when healthy=True.
+    Requires anima service to be reachable — only call when healthy=True.
     """
     refresh_token = creds.get("refresh_token", "")
     if not refresh_token:
@@ -105,7 +105,7 @@ def _get_token() -> str:
     creds = _load_creds()
     token = creds.get("access_token", "")
     if not token:
-        click.echo("Not authenticated. Run: rawos login", err=True)
+        click.echo("Not authenticated. Run: anima login", err=True)
         sys.exit(1)
     return token
 
@@ -120,7 +120,7 @@ def _api(method: str, path: str, **kwargs: Any) -> dict:
             **kwargs,
         )
     if resp.status_code == 401:
-        click.echo("Session expired. Run: rawos login", err=True)
+        click.echo("Session expired. Run: anima login", err=True)
         sys.exit(1)
     if resp.status_code >= 400:
         click.echo(f"API error {resp.status_code}: {resp.text[:200]}", err=True)
@@ -169,7 +169,7 @@ def _api_stream(path: str, payload: dict) -> Iterator[dict]:
             try:
                 with client.stream(method, request_url, **stream_kwargs) as resp:
                     if resp.status_code == 401:
-                        click.echo("Session expired. Run: rawos login", err=True)
+                        click.echo("Session expired. Run: anima login", err=True)
                         sys.exit(1)
                     if resp.status_code >= 400:
                         click.echo(
@@ -273,7 +273,7 @@ def _render_event(event: dict, console: Any) -> None:
 
 @click.group()
 def cli() -> None:
-    """rawos — intent-native operating system"""
+    """anima — intent-native operating system"""
 
 
 @cli.command()
@@ -340,7 +340,7 @@ def status() -> None:
 @cli.command()
 @click.option("--limit", "-n", default=10, show_default=True, help="Max results")
 def show(limit: int) -> None:
-    """List proactive artifacts rawos has created."""
+    """List proactive artifacts anima has created."""
     from rich.console import Console
     from rich.table import Table
     from rich import box
@@ -379,7 +379,7 @@ def show(limit: int) -> None:
 @cli.command()
 @click.argument("goal_text")
 def goal(goal_text: str) -> None:
-    """Submit an explicit goal to rawos and stream the response live."""
+    """Submit an explicit goal to anima and stream the response live."""
     from rich.console import Console
     console = Console()
     project_id = _resolve_project_id()
@@ -391,7 +391,7 @@ def goal(goal_text: str) -> None:
 @cli.command()
 @click.argument("file_path")
 def why(file_path: str) -> None:
-    """Explain why rawos created a file."""
+    """Explain why anima created a file."""
     from rich.console import Console
     from rich import box
     from rich.table import Table
@@ -443,7 +443,7 @@ def watch(interval: float) -> None:
         conf_color = "green" if conf >= 0.7 else "yellow" if conf >= 0.4 else "red"
 
         t = Table(
-            title="[bold cyan]rawos[/bold cyan] — live",
+            title="[bold cyan]anima[/bold cyan] — live",
             box=box.SIMPLE, show_header=False, padding=(0, 2),
         )
         t.add_column("key", style="dim", no_wrap=True)
@@ -515,7 +515,7 @@ def evaluation() -> None:
         f'inferences    {total_inf:>10}',
         f'rated         {total_rated:>10}',
     ]
-    console.print(Panel('\n'.join(summary_lines), title='[bold cyan]rawos eval[/bold cyan]', border_style='dim'))
+    console.print(Panel('\n'.join(summary_lines), title='[bold cyan]anima eval[/bold cyan]', border_style='dim'))
 
     domain_bd = data.get('domain_breakdown', {})
     if domain_bd:
@@ -570,7 +570,7 @@ def dataset_stats() -> None:
         f"[bold]Domain coverage:[/bold] {data['domain_coverage']}\n"
         f"[bold]Avg confidence:[/bold] {data['avg_confidence']:.3f}\n"
         f"[bold]Avg quality:[/bold] {data['avg_quality']:.2f}",
-        title="[bold cyan]rawos dataset stats[/bold cyan]",
+        title="[bold cyan]anima dataset stats[/bold cyan]",
         border_style="dim",
     ))
 
@@ -696,7 +696,7 @@ def classifier_benchmark(llm_sample: int) -> None:
     from anima.inference.classifier import IntentClassifier
     clf = IntentClassifier.load()
     if clf is None:
-        console.print("[red]No trained classifier found. Run `rawos classifier train` first.[/red]")
+        console.print("[red]No trained classifier found. Run `anima classifier train` first.[/red]")
         return
 
     # Load classifier into engine for benchmark
@@ -761,7 +761,7 @@ def timing_status() -> None:
 
     creds = _load_creds()
     if not creds:
-        console.print("[red]Not logged in. Run `rawos login` first.[/red]")
+        console.print("[red]Not logged in. Run `anima login` first.[/red]")
         return
 
     resp = _api("GET", "/timing/score")
@@ -786,7 +786,7 @@ def timing_status() -> None:
         f"[bold]Status:[/bold]           {status_text}\n"
         f"[bold]Explanation:[/bold]      {explanation}\n"
         f"[bold]Fallback mode:[/bold]    {fallback}",
-        title="[bold cyan]rawos timing status[/bold cyan]",
+        title="[bold cyan]anima timing status[/bold cyan]",
         border_style=status_color,
     ))
 
@@ -811,14 +811,14 @@ def study() -> None:
 def study_setup(watch_paths: tuple, label: tuple) -> None:
     """Register workspace paths for context monitoring.
 
-    Example: rawos study setup /root/rawos /root/sovereign --label rawos --label sovereign
+    Example: anima study setup /root/rawos /root/sovereign --label anima --label sovereign
     """
     from rich.console import Console
     console = Console()
 
     if not watch_paths:
         console.print("[red]Provide at least one path to watch.[/red]")
-        console.print("Example: rawos study setup /root/rawos /root/sovereign")
+        console.print("Example: anima study setup /root/rawos /root/sovereign")
         return
 
     resp = _api("POST", "/study/setup", json={
@@ -873,7 +873,7 @@ def study_status_cmd() -> None:
         f"[bold]Inferences:[/bold]     {resp.get('inferences', 0)}\n"
         f"[bold]Artifacts:[/bold]      {resp.get('artifacts', 0)}\n"
         f"[bold]Rated:[/bold]          {resp.get('rated', 0)}",
-        title="[bold cyan]rawos study status[/bold cyan]",
+        title="[bold cyan]anima study status[/bold cyan]",
         border_style="cyan",
     ))
 
@@ -886,7 +886,7 @@ def study_status_cmd() -> None:
             t.add_row(w["path"], w["label"])
         console.print(t)
     else:
-        console.print("[yellow]No watched paths. Run: rawos study setup <path>[/yellow]")
+        console.print("[yellow]No watched paths. Run: anima study setup <path>[/yellow]")
 
 
 @study.command('report')
@@ -921,7 +921,7 @@ def study_report_cmd() -> None:
         f"[bold]Total rated:[/bold]    {stats.get('total_rated', 0)}\n"
         f"[bold]Total artifacts:[/bold]{stats.get('total_artifacts', 0)}\n"
         f"[bold]Total inferences:[/bold]{stats.get('total_inferences', 0)}",
-        title="[bold cyan]rawos study report[/bold cyan]",
+        title="[bold cyan]anima study report[/bold cyan]",
         border_style="cyan",
     ))
 
@@ -963,7 +963,7 @@ def study_report_cmd() -> None:
 @cli.command("apply")
 @click.argument("fix_file")
 def apply_cmd(fix_file: str) -> None:
-    """Apply a rawos code fix: show diff, confirm, patch the target file."""
+    """Apply a anima code fix: show diff, confirm, patch the target file."""
     import difflib
     import shutil
     from rich.console import Console
@@ -977,16 +977,16 @@ def apply_cmd(fix_file: str) -> None:
 
     fix_text = fix_path.read_text(encoding="utf-8", errors="replace")
 
-    # Parse rawos: metadata header — all lines starting with "# rawos:"
+    # Parse anima: metadata header — all lines starting with "# anima:"
     target_file: str | None = None
     fix_description: str = ""
     content_lines: list[str] = []
     past_header = False
     for line in fix_text.splitlines():
-        if not past_header and line.startswith("# rawos:"):
-            if line.startswith("# rawos:target="):
+        if not past_header and line.startswith("# anima:"):
+            if line.startswith("# anima:target="):
                 target_file = line.split("=", 1)[1].strip()
-            elif line.startswith("# rawos:description="):
+            elif line.startswith("# anima:description="):
                 fix_description = line.split("=", 1)[1].strip()
         elif not past_header and line.strip() == "":
             past_header = True  # blank line ends the header
@@ -996,14 +996,14 @@ def apply_cmd(fix_file: str) -> None:
 
     corrected_content = "\n".join(content_lines)
     if not corrected_content.strip():
-        # Fallback: strip all rawos: lines
+        # Fallback: strip all anima: lines
         corrected_content = "\n".join(
             l for l in fix_text.splitlines()
-            if not l.startswith("# rawos:")
+            if not l.startswith("# anima:")
         ).lstrip("\n")
 
     if not target_file:
-        console.print("[red]No rawos:target= metadata found in fix file header.[/red]")
+        console.print("[red]No anima:target= metadata found in fix file header.[/red]")
         raise SystemExit(1)
 
     target_path = Path(target_file)
@@ -1017,7 +1017,7 @@ def apply_cmd(fix_file: str) -> None:
         original_content.splitlines(),
         corrected_content.splitlines(),
         fromfile=f"a/{target_path.name}",
-        tofile=f"b/{target_path.name} (rawos fix)",
+        tofile=f"b/{target_path.name} (anima fix)",
         lineterm="",
     ))
 
@@ -1026,7 +1026,7 @@ def apply_cmd(fix_file: str) -> None:
         return
 
     console.print()
-    console.print(f"[bold cyan]rawos apply → {target_path.name}[/bold cyan]")
+    console.print(f"[bold cyan]anima apply → {target_path.name}[/bold cyan]")
     if fix_description:
         console.print(f"  Fix: {fix_description}")
     console.print(f"  Source: {fix_path.name}")
@@ -1038,7 +1038,7 @@ def apply_cmd(fix_file: str) -> None:
         console.print("[dim]Aborted.[/dim]")
         return
 
-    backup_suffix = f".rawos_backup_{int(time.time())}"
+    backup_suffix = f".anima_backup_{int(time.time())}"
     backup_path = target_path.with_name(target_path.name + backup_suffix)
     shutil.copy2(str(target_path), str(backup_path))
 
@@ -1070,7 +1070,7 @@ def trust_status_cmd() -> None:
         console.print("[dim]No trust records found.[/dim]")
         return
 
-    t = Table(title="rawos Autonomy Trust Status", box=box.SIMPLE_HEAVY)
+    t = Table(title="anima Autonomy Trust Status", box=box.SIMPLE_HEAVY)
     t.add_column("Action Type", style="cyan")
     t.add_column("Level", justify="center")
     t.add_column("Good", justify="right", style="green")
@@ -1092,7 +1092,7 @@ def trust_status_cmd() -> None:
         eligible = g.get("eligible_for_upgrade", False)
         threshold = g.get("next_threshold")
         at = g.get("action_type", "")
-        eligible_str = f"[green]YES — rawos trust grant {at}[/green]" if eligible else "—"
+        eligible_str = f"[green]YES — anima trust grant {at}[/green]" if eligible else "—"
         next_str = str(threshold) if threshold else "[dim]max[/dim]"
         t.add_row(at, str(level), str(g.get("good_count", 0)), str(g.get("bad_count", 0)), next_str, eligible_str)
 
@@ -1128,7 +1128,7 @@ def trust_status_cmd() -> None:
             nl = locked[0]
             console.print(
                 f"[dim]Next unlock: [cyan]{nl['name']}[/cyan] at Level {nl['level_required']}"
-                f" — run 'rawos trust grant analysis'[/dim]"
+                f" — run 'anima trust grant analysis'[/dim]"
             )
     console.print()
 
@@ -1136,7 +1136,7 @@ def trust_status_cmd() -> None:
 @trust.command("history")
 @click.option("--limit", default=20, help="Number of artifacts to show.")
 def trust_history_cmd(limit: int) -> None:
-    """Recent rawos artifacts and their ratings."""
+    """Recent anima artifacts and their ratings."""
     import os
     from rich.console import Console
     from rich.table import Table
@@ -1150,10 +1150,10 @@ def trust_history_cmd(limit: int) -> None:
 
     history = resp.get("history", [])
     if not history:
-        console.print("[dim]No artifacts found. rawos will generate them as you work.[/dim]")
+        console.print("[dim]No artifacts found. anima will generate them as you work.[/dim]")
         return
 
-    t = Table(title="rawos Action History", box=box.SIMPLE)
+    t = Table(title="anima Action History", box=box.SIMPLE)
     t.add_column("Type",    style="dim",  max_width=10)
     t.add_column("File",    style="cyan", max_width=36)
     t.add_column("Goal",    max_width=36)
@@ -1180,7 +1180,7 @@ def trust_history_cmd(limit: int) -> None:
 
     console.print()
     console.print(t)
-    console.print("\n  [dim]Rate artifacts: rawos rate <file> 1-5[/dim]")
+    console.print("\n  [dim]Rate artifacts: anima rate <file> 1-5[/dim]")
 
 
 @trust.command("grant")
@@ -1198,10 +1198,10 @@ def trust_grant_cmd(action_type: str) -> None:
     old = resp.get("old_level", 0)
     new = resp.get("new_level", 0)
     _LEVEL_UNLOCK = {
-        1: ("write_file",  "rawos can now create and edit files autonomously in your project"),
-        2: ("bash",        "rawos can now run any shell command in your workdir (30s timeout, path-isolated)"),
-        3: ("fetch_url",   "rawos can now fetch external URLs for context"),
-        4: ("deploy",      "rawos can now publish your project workspace to the web"),
+        1: ("write_file",  "anima can now create and edit files autonomously in your project"),
+        2: ("bash",        "anima can now run any shell command in your workdir (30s timeout, path-isolated)"),
+        3: ("fetch_url",   "anima can now fetch external URLs for context"),
+        4: ("deploy",      "anima can now publish your project workspace to the web"),
     }
     console.print(f"\n[green]Granted: {action_type} Level {old} → {new}[/green]")
     if new in _LEVEL_UNLOCK:
@@ -1210,7 +1210,7 @@ def trust_grant_cmd(action_type: str) -> None:
         console.print(f"  Capability:    {desc}")
     else:
         console.print(f"  Level {new} reached.")
-    console.print(f"\n[dim]Run 'rawos tools status' to see all active tools.[/dim]")
+    console.print(f"\n[dim]Run 'anima tools status' to see all active tools.[/dim]")
 
 
 @trust.command("revoke")
@@ -1245,7 +1245,7 @@ def calendar_connect_cmd() -> None:
     from rich.console import Console
     console = Console()
 
-    console.print("[bold]rawos Calendar Connect[/bold]")
+    console.print("[bold]anima Calendar Connect[/bold]")
     console.print("[dim]Supports any CalDAV provider: Google, Apple, Fastmail, Nextcloud ...[/dim]\n")
 
     console.print("[dim]Google CalDAV URL example: https://www.google.com/calendar/dav/EMAIL/events[/dim]")
@@ -1266,7 +1266,7 @@ def calendar_connect_cmd() -> None:
 
     synced = resp.get("events_synced", 0)
     console.print(f"\n[green]Connected.[/green] Synced {synced} upcoming events.")
-    console.print("[dim]rawos will now include calendar context and NEEDS_ATTENTION briefings.[/dim]")
+    console.print("[dim]anima will now include calendar context and NEEDS_ATTENTION briefings.[/dim]")
 
 
 @calendar.command("status")
@@ -1288,7 +1288,7 @@ def calendar_status_cmd() -> None:
 
     if not connected:
         console.print("[dim]No calendar connected.[/dim]")
-        console.print("  Run [bold]rawos calendar connect[/bold] to connect a CalDAV calendar.")
+        console.print("  Run [bold]anima calendar connect[/bold] to connect a CalDAV calendar.")
         return
 
     import datetime as _dt
@@ -1364,12 +1364,12 @@ def calendar_disconnect_cmd() -> None:
 
 @cli.group()
 def tools() -> None:
-    """Inspect rawos tool access — what it can do and what it has done."""
+    """Inspect anima tool access — what it can do and what it has done."""
 
 
 @tools.command("status")
 def tools_status_cmd() -> None:
-    """Show every tool rawos knows, the trust level required, and whether active now."""
+    """Show every tool anima knows, the trust level required, and whether active now."""
     from rich.console import Console
     from rich.table import Table
     from rich import box
@@ -1384,7 +1384,7 @@ def tools_status_cmd() -> None:
     tools_list = resp.get("tools", [])
 
     t = Table(
-        title=f"rawos Tool Access  (analysis trust level: {current_level})",
+        title=f"anima Tool Access  (analysis trust level: {current_level})",
         box=box.SIMPLE_HEAVY,
     )
     t.add_column("Tool",           style="cyan")
@@ -1410,7 +1410,7 @@ def tools_status_cmd() -> None:
         nl = locked[0]
         console.print(
             f"\n[dim]Next unlock: [cyan]{nl['name']}[/cyan] at Level {nl['level_required']}"
-            f" — run 'rawos trust grant analysis'[/dim]"
+            f" — run 'anima trust grant analysis'[/dim]"
         )
     console.print()
 
@@ -1418,7 +1418,7 @@ def tools_status_cmd() -> None:
 @tools.command("history")
 @click.option("--limit", "-n", default=20, show_default=True, help="Number of tool calls to show.")
 def tools_history_cmd(limit: int) -> None:
-    """Show tool calls rawos made autonomously, grouped by the artifact they produced."""
+    """Show tool calls anima made autonomously, grouped by the artifact they produced."""
     import datetime as _dt
     from collections import OrderedDict
     from rich.console import Console
@@ -1433,7 +1433,7 @@ def tools_history_cmd(limit: int) -> None:
     if not calls:
         console.print(
             "[dim]No autonomous tool calls recorded yet. "
-            "rawos logs every tool it uses — check back after the next proactive artifact.[/dim]"
+            "anima logs every tool it uses — check back after the next proactive artifact.[/dim]"
         )
         return
 
@@ -1445,7 +1445,7 @@ def tools_history_cmd(limit: int) -> None:
         groups.setdefault(key, []).append(c)
 
     console.print()
-    console.print(f"[bold]rawos Autonomous Tool Calls[/bold] — last {limit}")
+    console.print(f"[bold]anima Autonomous Tool Calls[/bold] — last {limit}")
     console.print()
 
     for artifact_name, group_calls in groups.items():
@@ -1483,7 +1483,7 @@ def tools_history_cmd(limit: int) -> None:
 @cli.command("commits")
 @click.option("--limit", "-n", default=20, show_default=True, help="Number of commits to show.")
 def commits_cmd(limit: int) -> None:
-    """Show git commits rawos made autonomously, newest first."""
+    """Show git commits anima made autonomously, newest first."""
     import datetime as _dt
     from rich.console import Console
     from rich.table import Table
@@ -1499,13 +1499,13 @@ def commits_cmd(limit: int) -> None:
     if not commits:
         console.print(
             "[dim]No autonomous commits yet. "
-            "rawos commits fixes at trust Level 2 — "
-            "run 'rawos trust status' to check your level.[/dim]"
+            "anima commits fixes at trust Level 2 — "
+            "run 'anima trust status' to check your level.[/dim]"
         )
         return
 
     t = Table(
-        title=f"rawos Autonomous Commits — last {limit}",
+        title=f"anima Autonomous Commits — last {limit}",
         box=box.SIMPLE_HEAVY,
     )
     t.add_column("When",    style="dim")
@@ -1537,7 +1537,7 @@ def commits_cmd(limit: int) -> None:
 @cli.command()
 @click.argument("message")
 def ask(message: str) -> None:
-    """Ask rawos a question or give a goal; stream the response live."""
+    """Ask anima a question or give a goal; stream the response live."""
     from rich.console import Console
     console = Console()
     project_id = _resolve_project_id()
@@ -1576,7 +1576,7 @@ def chat() -> None:
     _show_session_digest(console)
     while True:
         try:
-            message = click.prompt("rawos>", prompt_suffix=" ")
+            message = click.prompt("anima>", prompt_suffix=" ")
         except (click.Abort, EOFError):
             break
         if message.strip() in (":q", "exit"):
@@ -1596,9 +1596,9 @@ def chat() -> None:
 
 @cli.group()
 def frontdoor() -> None:
-    """Manage the rawos front-door (login = being).
+    """Manage the anima front-door (login = being).
 
-    When installed, an interactive SSH login to this host launches the rawos
+    When installed, an interactive SSH login to this host launches the anima
     AI session instead of a raw shell. Any explicit SSH command (scp, rsync,
     git, bash) passes through unchanged — the front-door never breaks tooling.
     """
@@ -1608,7 +1608,7 @@ def frontdoor() -> None:
 def frontdoor_enter() -> None:
     """ForceCommand target — decides and exec()s the entry action.
 
-    Called by sshd for every login after `rawos frontdoor install` has
+    Called by sshd for every login after `anima frontdoor install` has
     activated.  Must not be called manually; has no interactive UI.
 
     Exit codes mirror standard shell conventions so scp/rsync/git see no
@@ -1634,12 +1634,12 @@ def frontdoor_enter() -> None:
             _DEFAULT_URL.rstrip("/") + "/health",
             timeout=2.0,
         )
-        rawos_healthy = resp.status_code == 200
+        anima_healthy = resp.status_code == 200
     except Exception:
-        rawos_healthy = False
+        anima_healthy = False
 
     # Auto-refresh expired token if service is reachable
-    if rawos_healthy:
+    if anima_healthy:
         creds = _refresh_if_expired(creds)
     has_token = bool(creds.get("access_token", ""))
 
@@ -1652,7 +1652,7 @@ def frontdoor_enter() -> None:
     )
     ctx = {
         "ssh_original_command": ssh_cmd,
-        "rawos_healthy": rawos_healthy,
+        "anima_healthy": anima_healthy,
         "has_token": has_token,
     }
     action = decide_entry(ctx, policy)
@@ -1669,14 +1669,14 @@ def frontdoor_enter() -> None:
             os.execvp(shell, [shell, "-c", action.command])
 
     elif action.kind == EntryActionKind.LAUNCH_CHAT:
-        # exec into rawos chat — replaces this process so the session
+        # exec into anima chat — replaces this process so the session
         # becomes the chat process (no double shell)
-        rawos_bin = sys.argv[0]
-        os.execvp(rawos_bin, [rawos_bin, "chat"])
+        anima_bin = sys.argv[0]
+        os.execvp(anima_bin, [anima_bin, "chat"])
 
     else:  # FAIL_OPEN_SHELL
         click.echo(
-            "\n⚠  rawos is unavailable or not authenticated. "
+            "\n⚠  anima is unavailable or not authenticated. "
             "Dropping to raw shell.\n",
             err=True,
         )
@@ -1684,22 +1684,22 @@ def frontdoor_enter() -> None:
 
 
 def _resolve_frontdoor_binary() -> str:
-    """Resolve the lockout-proof `rawos-frontdoor` console script.
+    """Resolve the lockout-proof `anima-frontdoor` console script.
 
-    `frontdoor install` must NEVER point ForceCommand at the plain `rawos`
-    entrypoint (no exception handling around the rawos.cli.main import — a
-    broken main.py would brick SSH). `rawos-frontdoor` (rawos.cli.frontdoor_entry)
+    `frontdoor install` must NEVER point ForceCommand at the plain `anima`
+    entrypoint (no exception handling around the anima.cli.main import — a
+    broken main.py would brick SSH). `anima-frontdoor` (anima.cli.frontdoor_entry)
     is the only entrypoint with a lockout-proof bash fallback.
     """
     import shutil
 
-    rawos_bin = shutil.which("rawos-frontdoor")
-    if rawos_bin is None:
+    anima_bin = shutil.which("anima-frontdoor")
+    if anima_bin is None:
         raise click.ClickException(
-            "rawos-frontdoor entrypoint not found on PATH. "
+            "anima-frontdoor entrypoint not found on PATH. "
             "Run `pip install -e .` to generate it before installing the front-door."
         )
-    return rawos_bin
+    return anima_bin
 
 
 @frontdoor.command("install")
@@ -1713,23 +1713,23 @@ def frontdoor_install(revert_after: int) -> None:
     """Install the front-door with an auto-revert safety harness.
 
     The front-door goes LIVE immediately but will self-revert in --revert-after
-    seconds unless you run `rawos frontdoor commit`.
+    seconds unless you run `anima frontdoor commit`.
 
     Verify sequence (do this in a NEW terminal before committing):
     \b
-      ssh root@<host>                  → should land in rawos chat
+      ssh root@<host>                  → should land in anima chat
       ssh -t root@<host> bash          → should drop to raw shell (escape)
       scp / rsync / git                → should still work
-      systemctl stop rawos && ssh ...  → should drop to shell + notice (fail-open)
-      systemctl start rawos
+      systemctl stop anima && ssh ...  → should drop to shell + notice (fail-open)
+      systemctl start anima
 
-    Once all checks pass:  rawos frontdoor commit
+    Once all checks pass:  anima frontdoor commit
     """
     from anima.kernel.arch.linux import LinuxFrontDoor
     from anima.kernel.frontdoor import FrontDoorInstallError, install_with_deadman
 
-    rawos_bin = _resolve_frontdoor_binary()
-    entry_cmd = f"{rawos_bin} frontdoor enter"
+    anima_bin = _resolve_frontdoor_binary()
+    entry_cmd = f"{anima_bin} frontdoor enter"
 
     arch = LinuxFrontDoor()
 
@@ -1741,7 +1741,7 @@ def frontdoor_install(revert_after: int) -> None:
         raise SystemExit(1) from exc
 
     click.echo("✓ Front-door LIVE and armed.")
-    click.echo(f"  Verify in a NEW terminal, then:  rawos frontdoor commit")
+    click.echo(f"  Verify in a NEW terminal, then:  anima frontdoor commit")
     click.echo(f"  Auto-reverts in {revert_after}s if you do nothing.")
 
 
@@ -1825,10 +1825,10 @@ def selfreload() -> None:
     kernel/self_reload.py exposes no `operate_on_self_reload` (I-SR6).
 
     `arm-and-go` swaps /root/rawos to <new_sha> and kills this process
-    (os._exit). systemd (Restart=always) respawns rawos against the new
+    (os._exit). systemd (Restart=always) respawns anima against the new
     source ~5s later. A deadman timer (rawos-selfreload-revert) is armed
     BEFORE the swap: if the new self never reports healthy, the timer
-    reverts the source and restarts rawos at the old sha (I-SR2/I-SR3).
+    reverts the source and restarts anima at the old sha (I-SR2/I-SR3).
     """
 
 
@@ -1868,44 +1868,44 @@ def selfreload_stage(new_sha: str) -> None:
     help="Skip the confirmation prompt.",
 )
 def selfreload_arm_and_go(new_sha: str, yes: bool) -> None:
-    """Preflight, arm the revert deadman, swap to NEW_SHA, and let rawos exit.
+    """Preflight, arm the revert deadman, swap to NEW_SHA, and let anima exit.
 
-    Posts to rawos.service's own /internal/self-reload/arm-and-go (loopback
-    only). The reload MUST happen inside rawos.service's worker process --
+    Posts to anima.service's own /internal/self-reload/arm-and-go (loopback
+    only). The reload MUST happen inside anima.service's worker process --
     that is the process systemd (Restart=always) respawns. Running
     preflight+arm+exit in this CLI process would exit the wrong PID and
     systemd would never pick up new_sha.
 
     On success the worker process dies (os._exit) mid-response, so the HTTP
     connection drops -- that dropped connection IS the success signal.
-    systemd respawns rawos against the new source in ~5s. The new self
+    systemd respawns anima against the new source in ~5s. The new self
     verifies its own liveness at boot (boot_liveness_commit); if that fails
     before the deadman deadline, the deadman reverts to the current sha and
-    restarts rawos automatically.
+    restarts anima automatically.
 
-    Run `rawos selfreload status` after ~10s to see the outcome.
+    Run `anima selfreload status` after ~10s to see the outcome.
     """
     if not yes:
         click.confirm(
             f"This will swap /root/rawos to {new_sha} and kill the running "
-            "rawos process (deadman-protected). Continue?",
+            "anima process (deadman-protected). Continue?",
             abort=True,
         )
 
     from anima.config import settings
 
     url = f"http://127.0.0.1:{settings.port}/internal/self-reload/arm-and-go"
-    click.echo(f"Arming deadman and swapping to {new_sha} -- rawos will exit on success…")
+    click.echo(f"Arming deadman and swapping to {new_sha} -- anima will exit on success…")
     try:
         resp = httpx.post(url, json={"new_sha": new_sha}, timeout=30.0)
     except httpx.TransportError:
-        click.echo("✓ armed -- rawos process exited (connection dropped, as expected).")
-        click.echo("Run `rawos selfreload status` after ~10s to see the outcome.")
+        click.echo("✓ armed -- anima process exited (connection dropped, as expected).")
+        click.echo("Run `anima selfreload status` after ~10s to see the outcome.")
         return
 
     if resp.status_code == 200:
-        click.echo("✓ armed -- rawos will exit and systemd will respawn it shortly.")
-        click.echo("Run `rawos selfreload status` after ~10s to see the outcome.")
+        click.echo("✓ armed -- anima will exit and systemd will respawn it shortly.")
+        click.echo("Run `anima selfreload status` after ~10s to see the outcome.")
         return
 
     try:
@@ -1962,7 +1962,7 @@ def selfreload_status() -> None:
 
 
 @cli.command("setup")
-@click.option("--base-dir", required=True, help="Directory where rawos will be installed")
+@click.option("--base-dir", required=True, help="Directory where anima will be installed")
 @click.option("--llm-api-key", required=True, help="LLM provider API key")
 @click.option("--llm-agent-model", required=True, help="Model id for the agent/reasoning path")
 @click.option("--llm-summarizer-model", required=True, help="Model id for the summarizer/compression path")
@@ -1973,10 +1973,10 @@ def selfreload_status() -> None:
 @click.option("--telegram-enabled", is_flag=True, default=False, help="Enable the Telegram window")
 @click.option("--telegram-bot-token", default="", help="Telegram bot token")
 @click.option("--telegram-owner-chat-id", default=0, show_default=True, help="Telegram owner chat id")
-@click.option("--source-root", default=None, help="Path to the rawos source tree (default: --base-dir)")
+@click.option("--source-root", default=None, help="Path to the anima source tree (default: --base-dir)")
 @click.option("--exec-start", required=True, help="ExecStart path for the systemd unit")
-@click.option("--port", default=8002, show_default=True, help="Port rawos listens on")
-@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--port", default=8002, show_default=True, help="Port anima listens on")
+@click.option("--name", default="anima", show_default=True, help="Service unit name")
 @click.option("--unit-dir", default="/etc/systemd/system", hidden=True)
 @click.option("--no-service", is_flag=True, default=False, help="Skip systemd unit installation")
 @click.option("--force", is_flag=True, default=False, help="Overwrite existing .env")
@@ -2000,7 +2000,7 @@ def setup(
     no_service: bool,
     force: bool,
 ) -> None:
-    """Run the rawos installation wizard."""
+    """Run the anima installation wizard."""
     wizard = SetupWizard(base_dir=base_dir)
     wizard.create_dirs()
     click.echo(f"Created directories under {base_dir}")
@@ -2028,7 +2028,7 @@ def setup(
         mgr.install_unit(name, content, unit_dir=unit_dir)
         click.echo(f"Installed systemd unit '{name}.service'")
 
-    click.echo("rawos setup complete.")
+    click.echo("anima setup complete.")
 
 
 
@@ -2037,17 +2037,17 @@ def setup(
 
 @cli.group()
 def service() -> None:
-    """Manage the rawos systemd service."""
+    """Manage the anima systemd service."""
 
 
 @service.command("install")
-@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--name", default="anima", show_default=True, help="Service unit name")
 @click.option("--exec-start", required=True, help="ExecStart for the unit")
 @click.option("--working-dir", required=True, help="WorkingDirectory for the unit")
 @click.option("--env-file", required=True, help="EnvironmentFile for the unit")
 @click.option("--unit-dir", default="/etc/systemd/system", hidden=True)
 def service_install(name: str, exec_start: str, working_dir: str, env_file: str, unit_dir: str) -> None:
-    """Install rawos as a systemd service."""
+    """Install anima as a systemd service."""
     mgr = LinuxServiceManager()
     content = mgr.generate_unit(
         name=name,
@@ -2056,23 +2056,23 @@ def service_install(name: str, exec_start: str, working_dir: str, env_file: str,
         env_file=env_file,
     )
     mgr.install_unit(name, content, unit_dir=unit_dir)
-    click.echo(f"rawos service '{name}' installed and enabled.")
+    click.echo(f"anima service '{name}' installed and enabled.")
 
 
 @service.command("uninstall")
-@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--name", default="anima", show_default=True, help="Service unit name")
 @click.option("--unit-dir", default="/etc/systemd/system", hidden=True)
 def service_uninstall(name: str, unit_dir: str) -> None:
-    """Disable and remove the rawos systemd service."""
+    """Disable and remove the anima systemd service."""
     mgr = LinuxServiceManager()
     mgr.uninstall_unit(name, unit_dir=unit_dir)
-    click.echo(f"rawos service '{name}' uninstalled.")
+    click.echo(f"anima service '{name}' uninstalled.")
 
 
 @service.command("status")
-@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--name", default="anima", show_default=True, help="Service unit name")
 def service_status(name: str) -> None:
-    """Show whether the rawos service is active."""
+    """Show whether the anima service is active."""
     mgr = LinuxServiceManager()
     active = mgr.is_active(name)
     status_str = "active" if active else "inactive"
@@ -2080,23 +2080,23 @@ def service_status(name: str) -> None:
 
 
 @service.command("restart")
-@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--name", default="anima", show_default=True, help="Service unit name")
 def service_restart(name: str) -> None:
-    """Restart the rawos service."""
+    """Restart the anima service."""
     mgr = LinuxServiceManager()
     ok = mgr.restart(name)
     if ok:
-        click.echo(f"rawos service '{name}' restarted ok.")
+        click.echo(f"anima service '{name}' restarted ok.")
     else:
         click.echo(f"failed to restart '{name}'.", err=True)
         raise SystemExit(1)
 
 
 @service.command("logs")
-@click.option("--name", default="rawos", show_default=True, help="Service unit name")
+@click.option("--name", default="anima", show_default=True, help="Service unit name")
 @click.option("-n", "--lines", default=50, show_default=True, help="Number of log lines")
 def service_logs(name: str, lines: int) -> None:
-    """Tail journal logs for the rawos service."""
+    """Tail journal logs for the anima service."""
     reader = LinuxLogReader()
     output = reader.tail(name, lines)
     if output:

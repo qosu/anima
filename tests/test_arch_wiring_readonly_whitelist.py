@@ -30,9 +30,9 @@ def test_uses_arch_whitelist_to_allow_extra_systemctl_subcmd():
         journalctl_blocked=(),
     )
     with patch("anima.kernel.tools.get_arch", return_value=_mock_arch(whitelist)):
-        assert _is_bash_readonly_safe("systemctl reload-or-restart rawos.service")
+        assert _is_bash_readonly_safe("systemctl reload-or-restart anima.service")
         # Default subcommand no longer present in arch whitelist -> rejected
-        assert not _is_bash_readonly_safe("systemctl status rawos.service")
+        assert not _is_bash_readonly_safe("systemctl status anima.service")
 
 
 def test_uses_arch_whitelist_for_journalctl_blocked_flags():
@@ -41,6 +41,6 @@ def test_uses_arch_whitelist_for_journalctl_blocked_flags():
         journalctl_blocked=("--custom-blocked-flag",),
     )
     with patch("anima.kernel.tools.get_arch", return_value=_mock_arch(whitelist)):
-        assert not _is_bash_readonly_safe("journalctl -u rawos.service --custom-blocked-flag")
+        assert not _is_bash_readonly_safe("journalctl -u anima.service --custom-blocked-flag")
         # Default-blocked flag no longer in arch whitelist -> now allowed
-        assert _is_bash_readonly_safe("journalctl -u rawos.service -f")
+        assert _is_bash_readonly_safe("journalctl -u anima.service -f")

@@ -1,27 +1,27 @@
 """anima/kernel/self_reload.py — Phase 25 Stage 1: safe self-reload (R-self).
 
 The Ouroboros. The being can already AUTHOR a new version of its own source
-(operator R1 can target /root/rawos, which is rawos.service's WorkingDirectory)
-but cannot BECOME it — rawos.service restart is hard-floored in
+(operator R1 can target /root/rawos, which is anima.service's WorkingDirectory)
+but cannot BECOME it — anima.service restart is hard-floored in
 _SELF_PROTECTED_SERVICES (kernel/operator.py) and every proactive path
 explicitly forbids self-restart. This module closes that joint *safely*,
-without relaxing the floor: instead of `systemctl restart rawos` (which stays
+without relaxing the floor: instead of `systemctl restart anima` (which stays
 floored), the current process simply dies (os._exit(0)); systemd
 (Restart=always, RestartUSec=5s) respawns it ~5s later against whatever
 source is on disk.
 
 Safety invariants (Stage 1):
-  I-SR1  Narrow dedicated path. The operator floor (rawos/ssh/sshd in
+  I-SR1  Narrow dedicated path. The operator floor (anima/ssh/sshd in
          _SELF_PROTECTED_SERVICES) is never touched. Additionally, preflight
-         refuses to change a fixed set of TIER-0 files that define rawos's
+         refuses to change a fixed set of TIER-0 files that define anima's
          own safety mechanisms (this module, operator.py, pam_operator.py) —
          self-reload cannot rewrite its own guardrails.
   I-SR2  Deadman armed before swap; swap before exit. If any pre-exit step
          after arming raises, disarm + leave source untouched + re-raise.
          Never exit into an un-armed swapped state.
   I-SR3  Revert runs in systemd root context via a standalone script with no
-         rawos import (/usr/local/bin/rawos-selfreload-revert, mirrors
-         rawos-pam-restore).
+         anima import (/usr/local/bin/rawos-selfreload-revert, mirrors
+         anima-pam-restore).
   I-SR4  Migration-monotonicity refusal: preflight refuses ANY diff under
          migrations/ between old_sha and new_sha. Self-reload changes code,
          never schema — schema changes go through human-merge + manual
@@ -91,7 +91,7 @@ SOURCE_ROOT = settings.rawos_source_root
 
 SELF_RELOAD_STATE_DIR = settings.self_reload_state_dir
 SELF_RELOAD_STATE_FILENAME = "pending.json"
-SELF_RELOAD_WORKTREE_ROOT = "/root/.rawos-selfreload-worktrees"
+SELF_RELOAD_WORKTREE_ROOT = "/root/.anima-selfreload-worktrees"
 
 SELF_RELOAD_DEADMAN_UNIT = "rawos-selfreload-revert"
 # Calibrated on-box per the plan's twin-verification procedure (§Verification):
@@ -105,13 +105,13 @@ SELF_RELOAD_PROBE_INTERVAL_S = 2.0
 # new_sha refuses the reload — self-reload is pure-Python source only.
 _DEPENDENCY_FILES: tuple[str, ...] = ("pyproject.toml",)
 
-# TIER-0: files that define rawos's own safety floors. A self-reload that
+# TIER-0: files that define anima's own safety floors. A self-reload that
 # would change any of these is refused outright (I-SR1) — the being cannot
 # rewrite its own guardrails via the unattended reload path.
 _TIER0_PROTECTED_FILES: frozenset[str] = frozenset({
-    "rawos/kernel/self_reload.py",
-    "rawos/kernel/operator.py",
-    "rawos/kernel/pam_operator.py",
+    "anima/kernel/self_reload.py",
+    "anima/kernel/operator.py",
+    "anima/kernel/pam_operator.py",
 })
 
 

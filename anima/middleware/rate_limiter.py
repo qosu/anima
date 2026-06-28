@@ -1,5 +1,5 @@
 """
-rawos Rate Limiter — Phase 5.
+anima Rate Limiter — Phase 5.
 
 Redis-based sliding window rate limiter implemented as a Starlette middleware.
 

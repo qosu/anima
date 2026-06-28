@@ -33,8 +33,8 @@ def repo(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
     _git("init", "-q", "-b", "main", cwd=str(root))
-    _git("config", "user.email", "test@rawos.local", cwd=str(root))
-    _git("config", "user.name", "rawos-test", cwd=str(root))
+    _git("config", "user.email", "test@anima.local", cwd=str(root))
+    _git("config", "user.name", "anima-test", cwd=str(root))
     (root / "app.txt").write_text("v1\n")
     _git("add", ".", cwd=str(root))
     _git("commit", "-q", "-m", "init", cwd=str(root))
@@ -47,10 +47,10 @@ async def _always_healthy() -> bool:
 
 @pytest.mark.asyncio
 class TestReversibleApplySafety:
-    async def test_refuses_rawos_own_source_tree(self):
+    async def test_refuses_anima_own_source_tree(self):
         with pytest.raises(ReversibleApplyError):
             await reversible_apply(
-                "/root/rawos", "rawos/fix-x", "rawos",
+                "/root/rawos", "anima/fix-x", "anima",
                 health_check=_always_healthy,
             )
 
@@ -58,11 +58,11 @@ class TestReversibleApplySafety:
 @pytest.mark.asyncio
 class TestReversibleApplyMerge:
     async def test_non_fast_forward_branch_is_not_applied(self, repo):
-        # rawos/fix-x branches off the initial commit...
-        _git("checkout", "-q", "-b", "rawos/fix-x", cwd=str(repo))
+        # anima/fix-x branches off the initial commit...
+        _git("checkout", "-q", "-b", "anima/fix-x", cwd=str(repo))
         (repo / "fix.txt").write_text("fix\n")
         _git("add", "fix.txt", cwd=str(repo))
-        _git("commit", "-q", "-m", "rawos: fix x", cwd=str(repo))
+        _git("commit", "-q", "-m", "anima: fix x", cwd=str(repo))
 
         # ...but main moves on with an unrelated commit, so fix-x is no
         # longer a fast-forward of main's new HEAD.
@@ -73,7 +73,7 @@ class TestReversibleApplyMerge:
         before_sha = _git_out("rev-parse", "HEAD", cwd=str(repo))
 
         result = await reversible_apply(
-            str(repo), "rawos/fix-x", "rawos-nonexistent-test-unit",
+            str(repo), "anima/fix-x", "anima-nonexistent-test-unit",
             health_check=_always_healthy,
         )
 
@@ -89,14 +89,14 @@ class TestReversibleApplyRollback:
     async def test_restart_failure_rolls_back_to_before_sha(self, repo):
         before_sha = _git_out("rev-parse", "HEAD", cwd=str(repo))
 
-        _git("checkout", "-q", "-b", "rawos/fix-x", cwd=str(repo))
+        _git("checkout", "-q", "-b", "anima/fix-x", cwd=str(repo))
         (repo / "app.txt").write_text("v2\n")
         _git("add", "app.txt", cwd=str(repo))
-        _git("commit", "-q", "-m", "rawos: fix x", cwd=str(repo))
+        _git("commit", "-q", "-m", "anima: fix x", cwd=str(repo))
         _git("checkout", "-q", "main", cwd=str(repo))
 
         result = await reversible_apply(
-            str(repo), "rawos/fix-x", "rawos-nonexistent-test-unit",
+            str(repo), "anima/fix-x", "anima-nonexistent-test-unit",
             health_check=_always_healthy,
             timeout_s=2, poll_interval_s=0.5,
         )

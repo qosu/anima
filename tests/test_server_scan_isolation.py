@@ -28,8 +28,8 @@ def _git_out(*args: str, cwd: str) -> str:
 
 def _init_repo(path: str) -> None:
     _git("init", "-q", cwd=path)
-    _git("config", "user.email", "test@rawos.local", cwd=path)
-    _git("config", "user.name", "rawos-test", cwd=path)
+    _git("config", "user.email", "test@anima.local", cwd=path)
+    _git("config", "user.name", "anima-test", cwd=path)
     (path_obj := __import__("pathlib").Path(path) / "README.md").write_text("init\n")
     _git("add", "README.md", cwd=path)
     _git("commit", "-q", "-m", "init", cwd=path)
@@ -50,11 +50,11 @@ class TestBashReadonlySystemctl:
 
     def test_is_active_allowed(self):
         from anima.kernel.tools import _is_bash_readonly_safe
-        assert _is_bash_readonly_safe("systemctl is-active rawos.service")
+        assert _is_bash_readonly_safe("systemctl is-active anima.service")
 
     def test_is_failed_allowed(self):
         from anima.kernel.tools import _is_bash_readonly_safe
-        assert _is_bash_readonly_safe("systemctl is-failed rawos.service")
+        assert _is_bash_readonly_safe("systemctl is-failed anima.service")
 
     def test_list_units_allowed(self):
         from anima.kernel.tools import _is_bash_readonly_safe
@@ -66,15 +66,15 @@ class TestBashReadonlySystemctl:
 
     def test_stop_rejected(self):
         from anima.kernel.tools import _is_bash_readonly_safe
-        assert not _is_bash_readonly_safe("systemctl stop rawos.service")
+        assert not _is_bash_readonly_safe("systemctl stop anima.service")
 
     def test_start_rejected(self):
         from anima.kernel.tools import _is_bash_readonly_safe
-        assert not _is_bash_readonly_safe("systemctl start rawos.service")
+        assert not _is_bash_readonly_safe("systemctl start anima.service")
 
     def test_enable_rejected(self):
         from anima.kernel.tools import _is_bash_readonly_safe
-        assert not _is_bash_readonly_safe("systemctl enable rawos.service")
+        assert not _is_bash_readonly_safe("systemctl enable anima.service")
 
     def test_daemon_reload_rejected(self):
         from anima.kernel.tools import _is_bash_readonly_safe
@@ -92,11 +92,11 @@ class TestBashReadonlyJournalctl:
 
     def test_follow_short_flag_rejected(self):
         from anima.kernel.tools import _is_bash_readonly_safe
-        assert not _is_bash_readonly_safe("journalctl -u rawos.service -f")
+        assert not _is_bash_readonly_safe("journalctl -u anima.service -f")
 
     def test_follow_long_flag_rejected(self):
         from anima.kernel.tools import _is_bash_readonly_safe
-        assert not _is_bash_readonly_safe("journalctl -u rawos.service --follow")
+        assert not _is_bash_readonly_safe("journalctl -u anima.service --follow")
 
     def test_vacuum_size_rejected(self):
         from anima.kernel.tools import _is_bash_readonly_safe
@@ -194,18 +194,18 @@ class TestWorktreeLifecycle:
         worktree_path = await create_worktree(str(repo))
         assert worktree_path is not None
 
-        _git("checkout", "-q", "-b", "rawos/fix-test", cwd=worktree_path)
+        _git("checkout", "-q", "-b", "anima/fix-test", cwd=worktree_path)
         (__import__("pathlib").Path(worktree_path) / "fix.txt").write_text("fix\n")
         _git("add", "fix.txt", cwd=worktree_path)
-        _git("commit", "-q", "-m", "rawos: fix test", cwd=worktree_path)
+        _git("commit", "-q", "-m", "anima: fix test", cwd=worktree_path)
 
         await remove_worktree(worktree_path)
 
         branches = subprocess.run(
-            ["git", "branch", "--list", "rawos/fix-test"], cwd=str(repo),
+            ["git", "branch", "--list", "anima/fix-test"], cwd=str(repo),
             check=True, capture_output=True, text=True,
         )
-        assert "rawos/fix-test" in branches.stdout
+        assert "anima/fix-test" in branches.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +213,7 @@ class TestWorktreeLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestManifestTarget:
-    def test_server_scan_redirects_under_rawos_data_manifests(self):
+    def test_server_scan_redirects_under_anima_data_manifests(self):
         from anima.scheduler.proactive import _manifest_target
         target = _manifest_target("/root/liveproof-agent", "SERVER_SCAN")
         assert target is not None

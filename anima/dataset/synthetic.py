@@ -1,5 +1,5 @@
 """
-rawos Synthetic Dataset Generator — Phase 8.
+anima Synthetic Dataset Generator — Phase 8.
 
 Uses DeepSeek to generate realistic (behavioral_context, true_goal, true_domain)
 triples for each valid domain. These form the majority of the training dataset.

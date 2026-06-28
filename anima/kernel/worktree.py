@@ -1,11 +1,11 @@
 """
-rawos worktree manager — disposable git worktrees for autonomous repo investigation.
+anima worktree manager — disposable git worktrees for autonomous repo investigation.
 
-SERVER_SCAN runs operate on repos rawos does not own and whose live working
+SERVER_SCAN runs operate on repos anima does not own and whose live working
 trees are continuously used by other processes (e.g. research-foundry.timer
 checks out branches in /root/liveproof-agent's main working copy). All
 autonomous fix-investigation work for such repos happens in a disposable
-worktree under _WORKTREE_ROOT — never the live tree — so rawos can never
+worktree under _WORKTREE_ROOT — never the live tree — so anima can never
 collide with whatever that repo's own automation is doing.
 
 A worktree is just an additional checkout sharing the same object database

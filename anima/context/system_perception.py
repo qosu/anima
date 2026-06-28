@@ -1,6 +1,6 @@
 """anima/context/system_perception.py — Phase 20: Being's real-time filesystem senses.
 
-Watches system-critical paths (rawos source, /etc/rawos*, systemd units) and persists
+Watches system-critical paths (anima source, /etc/anima*, systemd units) and persists
 change events to context_events under RAWOS_ENTITY_USER_ID (source_type="system_fs").
 
 Perception-only: events are never routed to agent action in this phase.
@@ -26,9 +26,9 @@ _log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Severity constants — no magic numbers (mirrors server_scanner.py convention)
 # ---------------------------------------------------------------------------
-SEVERITY_SOURCE_MODIFY: int = 3   # rawos own source modified — notable
-SEVERITY_SOURCE_DELETE: int = 6   # rawos own source deleted — high
-SEVERITY_CONFIG_MODIFY: int = 5   # /etc/rawos* or systemd unit modified — high
+SEVERITY_SOURCE_MODIFY: int = 3   # anima own source modified — notable
+SEVERITY_SOURCE_DELETE: int = 6   # anima own source deleted — high
+SEVERITY_CONFIG_MODIFY: int = 5   # /etc/anima* or systemd unit modified — high
 SEVERITY_CONFIG_DELETE: int = 8   # config/systemd unit deleted — critical
 
 # Event type names
@@ -90,7 +90,7 @@ def _classify(path: str, deleted: bool) -> tuple[str, int]:
 
     try:
         p.relative_to(settings.rawos_source_root)
-        # Path is under rawos source tree
+        # Path is under anima source tree
         if deleted:
             return EVENT_TYPE_SOURCE_CHANGE, SEVERITY_SOURCE_DELETE
         return EVENT_TYPE_SOURCE_CHANGE, SEVERITY_SOURCE_MODIFY

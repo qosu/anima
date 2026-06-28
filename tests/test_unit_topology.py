@@ -1,4 +1,4 @@
-"""tests/test_unit_topology.py — TDD for rawos/kernel/unit_topology.py (Phase 23-full).
+"""tests/test_unit_topology.py — TDD for anima/kernel/unit_topology.py (Phase 23-full).
 
 TDD Iron Law: this file must go RED before unit_topology.py is written
 (ModuleNotFoundError: No module named 'anima.kernel.unit_topology').
@@ -141,9 +141,9 @@ def test_compute_floor_closure_returns_frozenset():
 
 def test_compute_floor_closure_normalizes_bare_service_names():
     closure = unit_topology.compute_floor_closure("")
-    # FLOOR_UNIT_SEED contains "rawos.service" → both forms must be present.
-    assert "rawos.service" in closure
-    assert "rawos" in closure
+    # FLOOR_UNIT_SEED contains "anima.service" → both forms must be present.
+    assert "anima.service" in closure
+    assert "anima" in closure
 
 
 # ---------------------------------------------------------------------------
@@ -162,8 +162,8 @@ def test_is_floor_protected_true_for_systemd():
     assert unit_topology.is_floor_protected("systemd", _FLOOR) is True
 
 
-def test_is_floor_protected_true_for_rawos_service():
-    assert unit_topology.is_floor_protected("rawos.service", _FLOOR) is True
+def test_is_floor_protected_true_for_anima_service():
+    assert unit_topology.is_floor_protected("anima.service", _FLOOR) is True
 
 
 def test_is_floor_protected_false_for_non_floor():
@@ -175,7 +175,7 @@ def test_is_floor_protected_false_for_non_floor():
 # ReversibleUnitTopologyAction construction — floor guard (I-UT3)
 # ---------------------------------------------------------------------------
 
-_UNIT_CONTENT = "[Unit]\nDescription=rawos test service\n\n[Service]\nType=oneshot\nExecStart=/bin/true\n"
+_UNIT_CONTENT = "[Unit]\nDescription=anima test service\n\n[Service]\nType=oneshot\nExecStart=/bin/true\n"
 
 
 def test_construction_refuses_sshd_service_author():
@@ -193,14 +193,14 @@ def test_construction_refuses_ssh_bare_enable():
         )
 
 
-def test_construction_refuses_rawos_service_disable():
+def test_construction_refuses_anima_service_disable():
     with pytest.raises(unit_topology.UnitTopologyRefusalError):
         unit_topology.ReversibleUnitTopologyAction(
-            _fake_mgr(), "rawos.service", "disable", _FLOOR,
+            _fake_mgr(), "anima.service", "disable", _FLOOR,
         )
 
 
-def test_construction_refuses_rawos_bpf_lsm_holder_delete():
+def test_construction_refuses_anima_bpf_lsm_holder_delete():
     with pytest.raises(unit_topology.UnitTopologyRefusalError):
         unit_topology.ReversibleUnitTopologyAction(
             _fake_mgr(), "rawos-bpf-lsm-holder.service", "delete", _FLOOR,
@@ -532,7 +532,7 @@ def test_arm_boot_deadman_delay_follows_on_active():
 
 def test_arm_boot_deadman_includes_unit_name():
     cmd = unit_topology.arm_boot_deadman(delay_s=300, revert_cmd="systemctl reboot")
-    assert any("rawos-unit-topology-revert" in p for p in cmd)
+    assert any("anima-unit-topology-revert" in p for p in cmd)
 
 
 def test_arm_boot_deadman_custom_delay():
@@ -549,7 +549,7 @@ def test_disarm_boot_deadman_emits_systemctl_stop():
 
 def test_disarm_boot_deadman_references_revert_unit():
     cmd = unit_topology.disarm_boot_deadman()
-    assert "rawos-unit-topology-revert" in cmd
+    assert "anima-unit-topology-revert" in cmd
 
 
 def test_arm_and_disarm_reference_same_unit():

@@ -8,7 +8,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-_ctx: ContextVar[dict | None] = ContextVar("rawos_billing_context", default=None)
+_ctx: ContextVar[dict | None] = ContextVar("anima_billing_context", default=None)
 
 
 @contextmanager

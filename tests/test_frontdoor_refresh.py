@@ -136,12 +136,12 @@ class TestRefreshIfExpired:
 
     def test_preserves_email_in_new_creds(self):
         creds = {
-            "email": "owner@rawos.io",
+            "email": "owner@anima.io",
             "access_token": _make_jwt(time.time() - 60),
             "refresh_token": "refresh-tok",
         }
         result, _, _ = self._fn(creds, post_return=self._ok_response())
-        assert result["email"] == "owner@rawos.io"
+        assert result["email"] == "owner@anima.io"
 
     # --- fail-open cases ---
 

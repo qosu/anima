@@ -1,5 +1,5 @@
 """
-rawos Proactive Scheduler.
+anima Proactive Scheduler.
 
 Background asyncio task. Every SCAN_INTERVAL_S:
   1. Find users with recent activity
@@ -156,11 +156,11 @@ OPERATOR_SCAN_COOLDOWN_S = 1800  # 30 min cooldown per managed file target
 # Phase 16 self-modification probe — dormant until settings.self_probe_enabled
 SELF_PROBE_INTERVAL_S = 21600  # 6 hours
 
-# rawos entity user — used for autonomous actions not tied to human activity
+# anima entity user — used for autonomous actions not tied to human activity
 RAWOS_ENTITY_USER_ID    = "6eb6de1d-f5c9-4ae5-9aac-ce095b674823"
 RAWOS_ENTITY_PROJECT_ID = "51c880d3-3576-4aca-8616-74cb51a6f727"
 
-# Path to rawos own source repo — self-probe cycles create isolated worktrees of this.
+# Path to anima own source repo — self-probe cycles create isolated worktrees of this.
 # Tests override this via monkeypatch to avoid touching the live /root/rawos tree.
 _SELF_PROBE_RAWOS_REPO = settings.rawos_source_root
 
@@ -457,7 +457,7 @@ def _probe_repo_for_issues(workdir: str) -> dict:
 
 async def _select_entity_probe_target(user_id: str) -> dict | None:
     """
-    Pick the most recently active watched repo (excluding rawos itself) and probe it.
+    Pick the most recently active watched repo (excluding anima itself) and probe it.
     Returns probe dict with evidence if repo has commit activity in last 7 days.
     Returns None if no active repo found.
     """
@@ -479,7 +479,7 @@ async def _select_entity_probe_target(user_id: str) -> dict | None:
             return 0.0
 
     cutoff = time.time() - 7 * 86400
-    # Sort by recency, skip rawos own repo to prevent self-patching loop
+    # Sort by recency, skip anima own repo to prevent self-patching loop
     candidates = sorted(
         (r[0] for r in rows if r[0] != "/root/rawos"),
         key=_last_commit_ts,
@@ -506,7 +506,7 @@ def _log_episodic(
     self_confidence: float = 0.0,
     project_id: str = "",
 ) -> str | None:
-    """Record rawos decision to episodic_memory. Returns row id for outcome updates.
+    """Record anima decision to episodic_memory. Returns row id for outcome updates.
 
     Seam A: when project_id provided, also indexes the experience into the semantic
     store (best-effort — index failure must never break episodic row creation).
@@ -555,7 +555,7 @@ def _update_episodic_outcome(episodic_id: str, outcome: str) -> None:
                 "UPDATE episodic_memory SET outcome = ? WHERE id = ?",
                 (outcome, episodic_id),
             )
-        log.info("rawos self-rate: outcome=%s id=%s", outcome, episodic_id)
+        log.info("anima self-rate: outcome=%s id=%s", outcome, episodic_id)
     except Exception:
         log.debug("episodic outcome update failed (non-fatal): id=%s", episodic_id)
 
@@ -563,11 +563,11 @@ def _update_episodic_outcome(episodic_id: str, outcome: str) -> None:
 def _evaluate_domain_confidence(user_id: str, domain: str) -> float:
     """
     Read historical RATED outcomes (good/bad only — not unrated) for this domain.
-    Returns 0.0-1.0. Below CONFIDENCE_THRESHOLD causes rawos to self-suppress.
+    Returns 0.0-1.0. Below CONFIDENCE_THRESHOLD causes anima to self-suppress.
 
     Feedback loop:
-      rawos CONTRIBUTEs → tests fail → outcome=bad → next trigger suppressed
-      Human fixes code → rawos tries again → tests pass → outcome=good → trust restored
+      anima CONTRIBUTEs → tests fail → outcome=bad → next trigger suppressed
+      Human fixes code → anima tries again → tests pass → outcome=good → trust restored
     """
     cutoff = int(time.time()) - 604800  # 7-day window
     with db._conn() as conn:
@@ -652,7 +652,7 @@ _AUTONOMOUS_SYSTEM_PROMPT = (
     "  2. git_branch: create anima/fix-[description].\n"
     "  3. write_file: make the minimum correct fix.\n"
     "  4. git_commit with format:\n"
-    "       rawos: fix [what]\n\n"
+    "       anima: fix [what]\n\n"
     "       Root cause: [file:line or unit — specific]\n"
     "       Fix: [what changed]\n"
     "       Confidence: 0.X\n"
@@ -664,7 +664,7 @@ _AUTONOMOUS_SYSTEM_PROMPT = (
     "  (credentials, secrets, external API state, restarting/enabling a\n"
     "  service, business-logic decisions). State: what is broken, what is\n"
     "  missing, what you found.\n\n"
-    "SILENCE — false alarm, already resolved, or outside rawos's ability to\n"
+    "SILENCE — false alarm, already resolved, or outside anima's ability to\n"
     "  diagnose from logs + source alone.\n\n"
     "Rules:\n"
     "  - You initiated this scan. No human asked you to look.\n"
@@ -688,9 +688,9 @@ _SELF_PROBE_SYSTEM_PROMPT = (
     "You are Anima, running a SELF-IMPROVEMENT cycle against your own source tree.\n"
     "Your workdir is a DISPOSABLE, ISOLATED git worktree of /root/rawos — never the\n"
     "live working tree. TIER enforcement is active: writes outside the TIER 1\n"
-    "allowlist (tests/, rawos/evaluation/, rawos/dataset/, rawos/study/,\n"
-    "rawos/timing/, rawos/manifester/, docs/) are automatically reverted.\n\n"
-    "BRANCH STATUS: You are ALREADY on a rawos/self-improve-* branch created\n"
+    "allowlist (tests/, anima/evaluation/, anima/dataset/, anima/study/,\n"
+    "anima/timing/, anima/manifester/, docs/) are automatically reverted.\n\n"
+    "BRANCH STATUS: You are ALREADY on a anima/self-improve-* branch created\n"
     "before this agent started. git_branch is NOT in the tool list. Use git_commit directly.\n\n"
     "TASK: Execute the user instructions EXACTLY. Minimum tool calls possible.\n\n"
     "COMMIT FORMAT:\n"
@@ -698,8 +698,8 @@ _SELF_PROBE_SYSTEM_PROMPT = (
     "    Self-probe: [what was added/improved]\n"
     "    Confidence: 0.X\n\n"
     "RULES:\n"
-    "- Write only to TIER 1 paths (tests/, docs/, rawos/study/, etc.).\n"
-    "- Do NOT restart rawos.service. Do NOT merge. Do NOT write to TIER 0 paths.\n"
+    "- Write only to TIER 1 paths (tests/, docs/, anima/study/, etc.).\n"
+    "- Do NOT restart anima.service. Do NOT merge. Do NOT write to TIER 0 paths.\n"
     "- Begin response with CONTRIBUTE (will commit) or SILENCE (nothing viable).\n"
 )
 
@@ -813,11 +813,11 @@ def _resolve_proactive_workdir(
 def _manifest_target(workdir: str, trigger_type: str | None) -> str | None:
     """Return the directory proactive artifacts should be written to.
 
-    SERVER_SCAN runs operate on a repo rawos does not own (workdir is the
+    SERVER_SCAN runs operate on a repo anima does not own (workdir is the
     *scanned* repo's path). Writing RAWOS_*.md into that tree pollutes a
-    repo rawos has no business modifying and can break the target's own
+    repo anima has no business modifying and can break the target's own
     git-cleanliness checks (e.g. research-foundry's
-    require_clean_or_agent_branch). Redirect those artifacts under rawos's
+    require_clean_or_agent_branch). Redirect those artifacts under anima's
     own gitignored data/ dir, namespaced by repo. All other trigger types
     keep writing into the user's own project workdir (that is the product).
     """
@@ -848,7 +848,7 @@ def _get_tools_for_autonomy_level(level: int) -> list[dict]:
 
 
 # SERVER_SCAN runs in a disposable worktree (kernel/worktree.py) of a repo
-# rawos does not own. write_file/git_branch/git_commit are scoped by
+# anima does not own. write_file/git_branch/git_commit are scoped by
 # validate_path(workdir=worktree) and so cannot escape that worktree — but
 # "bash" (full shell, level 2+) and "deploy"/"fetch_url" are deliberately
 # excluded even though the worktree is disposable, since they could affect
@@ -880,7 +880,7 @@ def _get_tools_for_self_probe() -> list[dict]:
     """Toolset for SELF_PROBE cycles inside an isolated worktree.
 
     Narrower than _get_tools_for_server_scan: git_branch is excluded because
-    _run_self_probe_cycle() pre-creates the rawos/self-improve-<ts> branch before
+    _run_self_probe_cycle() pre-creates the anima/self-improve-<ts> branch before
     invoking the agent. Giving the agent git_branch wastes a round creating a
     redundant branch.
     """
@@ -951,7 +951,7 @@ def _live_health_check(
 
     anomaly_domain is accepted (not yet used beyond future logging) so the
     closure signature can grow to re-run the original symptom check
-    (rawos.context.server_scanner) without changing call sites.
+    (anima.context.server_scanner) without changing call sites.
     """
 
     async def _check() -> bool:
@@ -1043,7 +1043,7 @@ def _record_git_commits(
             branch_name = m_hash.group(1) if m_hash else "unknown"
             commit_hash = m_hash.group(2) if m_hash else "unknown"
             m_msg = _re.search(r"\[[^\]]+\]\s+(.+)", output)
-            message = m_msg.group(1).strip() if m_msg else "rawos: autonomous fix"
+            message = m_msg.group(1).strip() if m_msg else "anima: autonomous fix"
             conn.execute(
                 "INSERT INTO rawos_commits "
                 "(user_id, project_id, branch, commit_hash, message, workdir, "
@@ -1072,7 +1072,7 @@ async def _run_proactive_loop(
 
     Returns final assembled text, or None on failure (DB already updated on None).
 
-    SERVER_SCAN runs against a repo rawos does not own. Those run inside a
+    SERVER_SCAN runs against a repo anima does not own. Those run inside a
     disposable worktree (kernel/worktree.py) of that repo — never its live
     tree, which other automation (e.g. research-foundry.timer) depends on —
     and get a wider toolset (write_file/git_branch/git_commit) scoped to that
@@ -1204,7 +1204,7 @@ async def _run_proactive_loop(
                         timeout=VERIFICATION_TIMEOUT_S,
                     )
                     result_text += (
-                        f"\n\n[INDEPENDENT VERIFICATION — rawos.kernel.anomaly_verifier]\n"
+                        f"\n\n[INDEPENDENT VERIFICATION — anima.kernel.anomaly_verifier]\n"
                         f"resolved={verdict.resolved} method={verdict.method}\n{verdict.evidence}"
                     )
 
@@ -1219,13 +1219,13 @@ async def _run_proactive_loop(
                                 user_id, fix_branch,
                             )
                             result_text += (
-                                "\n\n[AUTO-APPLY — rawos.kernel.reversible_apply raised an "
-                                "exception, see rawos logs. Fix remains propose-only.]"
+                                "\n\n[AUTO-APPLY — anima.kernel.reversible_apply raised an "
+                                "exception, see anima logs. Fix remains propose-only.]"
                             )
                         else:
                             if apply_result is not None:
                                 result_text += (
-                                    f"\n\n[AUTO-APPLY — rawos.kernel.reversible_apply]\n"
+                                    f"\n\n[AUTO-APPLY — anima.kernel.reversible_apply]\n"
                                     f"applied={apply_result.applied} healthy={apply_result.healthy} "
                                     f"rolled_back={apply_result.rolled_back}\n{apply_result.detail}"
                                 )
@@ -1244,7 +1244,7 @@ async def _run_proactive_loop(
                     )
                     result_text += (
                         "\n\n[INDEPENDENT VERIFICATION — verifier raised an "
-                        "exception, see rawos logs. Treat fix as UNVERIFIED.]"
+                        "exception, see anima logs. Treat fix as UNVERIFIED.]"
                     )
 
         return result_text
@@ -1298,7 +1298,7 @@ async def _run_proactive_agent(
             project_id=project_id or "",
         )
         log.info(
-            "rawos: self-suppressed user=%s domain=%s conf=%.2f",
+            "anima: self-suppressed user=%s domain=%s conf=%.2f",
             user_id, intent_obj.domain, _domain_conf,
         )
         return
@@ -1318,11 +1318,11 @@ async def _run_proactive_agent(
                 "silence", "entity-probe: no watched repo with recent activity",
                 project_id=project_id or "",
             )
-            log.info("rawos entity-probe: no target — SILENCE user=%s", user_id)
+            log.info("anima entity-probe: no target — SILENCE user=%s", user_id)
             return
         workdir = _entity_probe["workdir"]
         log.info(
-            "rawos entity-probe: target=%s has_failures=%s user=%s",
+            "anima entity-probe: target=%s has_failures=%s user=%s",
             workdir, _entity_probe["has_failures"], user_id,
         )
 
@@ -1378,7 +1378,7 @@ async def _run_proactive_agent(
         _ep_workdir = _entity_probe["workdir"]
         _ep_commits = _entity_probe["commits"] or "(none)"
         trigger_block = (
-            "\n[TRIGGER: ENTITY PROBE — rawos autonomous scan]\n"
+            "\n[TRIGGER: ENTITY PROBE — anima autonomous scan]\n"
             f"Target: {_ep_workdir}\n"
             f"\nRecent commits:\n{_ep_commits}\n"
         )
@@ -1433,7 +1433,7 @@ async def _run_proactive_agent(
         )
     elif trigger_type == "SERVER_SCAN":
         trigger_block = (
-            f"\n[SERVER_SCAN — autonomous rawos observation]\n"
+            f"\n[SERVER_SCAN — autonomous anima observation]\n"
             f"Anomaly type: {tc.get('anomaly_kind', 'unknown')}\n"
             f"Detail: {tc.get('anomaly_detail', 'unknown')}\n"
         )
@@ -1512,7 +1512,7 @@ async def _run_proactive_agent(
     )
 
     if _decision == "SILENCE":
-        log.info("rawos: SILENCE for user=%s domain=%s", user_id, intent_obj.domain)
+        log.info("anima: SILENCE for user=%s domain=%s", user_id, intent_obj.domain)
         _record_proactive_artifact(
             user_id, intent_obj.goal, _confidence,
             "", None, None,
@@ -1522,7 +1522,7 @@ async def _run_proactive_agent(
         return
     if _decision == "CONTRIBUTE" and _confidence < CONFIDENCE_THRESHOLD:
         log.info(
-            "rawos: CONTRIBUTE suppressed conf=%.2f < %.2f for user=%s domain=%s",
+            "anima: CONTRIBUTE suppressed conf=%.2f < %.2f for user=%s domain=%s",
             _confidence, CONFIDENCE_THRESHOLD, user_id, intent_obj.domain,
         )
         return
@@ -1534,12 +1534,12 @@ async def _run_proactive_agent(
             tier=MemoryTier.EPISODIC, role=MessageRole.ASSISTANT, content=result_text,
         ))
         # Agent verifies inline per system prompt — parse result synchronously.
-        # No human gate: rawos is accountable for its own outcome.
+        # No human gate: anima is accountable for its own outcome.
         _verification = _parse_verification_result(result_text)
         if _verification and _episodic_id:
             _update_episodic_outcome(_episodic_id, _verification)
             log.info(
-                "rawos CONTRIBUTE: outcome=%s user=%s domain=%s",
+                "anima CONTRIBUTE: outcome=%s user=%s domain=%s",
                 _verification, user_id, intent_obj.domain,
             )
         elif _episodic_id and workdir:
@@ -1581,16 +1581,16 @@ async def _run_proactive_agent(
             increment_anima_action(user_id)
             # Push notification to mobile devices (fire-and-forget)
             _PUSH_TITLES = {
-                "STUCK":            "rawos — suggestion ready",
-                "JUST_FINISHED":    "rawos — session summary",
-                "NEEDS_ATTENTION":  "rawos — attention needed",
-                "IDLE_OPPORTUNITY": "rawos — insight",
+                "STUCK":            "anima — suggestion ready",
+                "JUST_FINISHED":    "anima — session summary",
+                "NEEDS_ATTENTION":  "anima — attention needed",
+                "IDLE_OPPORTUNITY": "anima — insight",
             }
             try:
                 from anima.push.service import send_push_to_user
                 asyncio.create_task(send_push_to_user(
                     user_id=user_id,
-                    title=_PUSH_TITLES.get(trigger_type, "rawos"),
+                    title=_PUSH_TITLES.get(trigger_type, "anima"),
                     body=intent_obj.goal[:200],
                     data={
                         "artifact_id":  pa_id,
@@ -1637,15 +1637,15 @@ def _is_autonomous_cooldown(anomaly_kind: str) -> bool:
 async def _update_earned_autonomy_track_records(snapshot) -> None:
     """Stage 3 (observational): advance the earned-autonomy ladder.
 
-    For every (repo_root, anomaly_domain) rawos has previously proposed a
+    For every (repo_root, anomaly_domain) anima has previously proposed a
     anima/fix-* branch for (rawos_commits.repo_root/anomaly_domain), check
     whether a human has merged that branch (is_branch_merged) and whether
     the anomaly is currently present in , then advance that
     class's autonomy_track_record. A class only graduates after
     GRADUATION_THRESHOLD merged-and-stayed-resolved cycles
-    (rawos.kernel.track_record) — this function never auto-applies
+    (anima.kernel.track_record) — this function never auto-applies
     anything, it only records outcomes. Read-only with respect to the
-    scanned repos (git rev-parse/merge-base only); never the live rawos
+    scanned repos (git rev-parse/merge-base only); never the live anima
     tree.
     """
     present = {
@@ -1685,7 +1685,7 @@ async def _update_earned_autonomy_track_records(snapshot) -> None:
 
 async def _run_autonomous_scan() -> None:
     """
-    rawos examines the entire server. No human trigger.
+    anima examines the entire server. No human trigger.
     Finds the highest-severity actionable anomaly and acts on it.
     One action per scan cycle — prioritized by severity.
     """
@@ -1706,7 +1706,7 @@ async def _run_autonomous_scan() -> None:
         log.exception("autonomy track-record update failed")
 
     if snapshot.max_severity < AUTONOMOUS_SCAN_THRESHOLD:
-        return  # server is healthy — rawos is silent
+        return  # server is healthy — anima is silent
 
     for anomaly in snapshot.actionable:
         if anomaly.severity < AUTONOMOUS_SCAN_THRESHOLD:
@@ -1717,7 +1717,7 @@ async def _run_autonomous_scan() -> None:
             continue
 
         log.info(
-            "rawos autonomous: anomaly=%s severity=%d service=%s",
+            "anima autonomous: anomaly=%s severity=%d service=%s",
             anomaly.kind, anomaly.severity, anomaly.service or "N/A",
         )
 
@@ -1747,20 +1747,20 @@ async def _run_autonomous_scan() -> None:
 
 async def autonomous_server_scan_loop() -> None:
     """
-    rawos autonomous attention loop.
+    anima autonomous attention loop.
     Runs every settings.autonomous_scan_interval_s seconds. No human activity required.
-    This is the inversion: rawos acts because it found something,
+    This is the inversion: anima acts because it found something,
     not because a human triggered it.
     """
     log.info(
-        "rawos autonomous scan started (interval=%ds, threshold=%d/10)",
+        "anima autonomous scan started (interval=%ds, threshold=%d/10)",
         settings.autonomous_scan_interval_s, AUTONOMOUS_SCAN_THRESHOLD,
     )
     while True:
         try:
             await _run_autonomous_scan()
         except asyncio.CancelledError:
-            log.info("rawos autonomous scan cancelled")
+            log.info("anima autonomous scan cancelled")
             break
         except Exception:
             log.exception("autonomous scan error (continuing)")
@@ -2028,21 +2028,21 @@ async def anima_self_probe_loop() -> None:
     When enabled, this is meant to run every SELF_PROBE_INTERVAL_S, always
     against an isolated `git worktree` of /root/rawos (never the live
     working tree — see _targets_rawos_own_repo / TIER enforcement in
-    rawos/kernel/tools.py), producing rawos/self-improve-* branches for
+    anima/kernel/tools.py), producing anima/self-improve-* branches for
     human review. NO auto-merge, NO auto-restart.
     """
     if not settings.self_probe_enabled:
-        log.info("rawos self-probe loop disabled (settings.self_probe_enabled=False) — not starting")
+        log.info("anima self-probe loop disabled (settings.self_probe_enabled=False) — not starting")
         return
 
-    log.info("rawos self-probe loop started (interval=%ds)", SELF_PROBE_INTERVAL_S)
+    log.info("anima self-probe loop started (interval=%ds)", SELF_PROBE_INTERVAL_S)
     while True:
         try:
             await _maybe_autonomous_owned_maintenance()
             await _maybe_autonomous_self_reload()
             await _run_self_probe_cycle()
         except asyncio.CancelledError:
-            log.info("rawos self-probe loop cancelled")
+            log.info("anima self-probe loop cancelled")
             break
         except Exception:
             log.exception("self-probe cycle error (continuing)")
@@ -2053,7 +2053,7 @@ async def _run_self_probe_cycle() -> None:
     """Phase 16 — self-probe worktree cycle.
 
     Creates an isolated git worktree of _SELF_PROBE_RAWOS_REPO on a fresh
-    rawos/self-improve-<timestamp> branch, runs the rawos agent loop inside
+    anima/self-improve-<timestamp> branch, runs the anima agent loop inside
     it (TIER enforcement active), and leaves results on the branch for human
     review.  Cleans up the worktree on exit whether or not the agent
     succeeded.
@@ -2061,14 +2061,14 @@ async def _run_self_probe_cycle() -> None:
     Invariants (never violated):
     - workdir passed to agent_loop is always the worktree path, never
       _SELF_PROBE_RAWOS_REPO.
-    - Branch name always matches rawos/self-improve-<timestamp>.
-    - No auto-merge, no auto-restart of rawos.service.
+    - Branch name always matches anima/self-improve-<timestamp>.
+    - No auto-merge, no auto-restart of anima.service.
     - Origin HEAD (master) is not moved by this cycle.
     """
     import time as _time
 
     timestamp   = int(_time.time())
-    branch_name = f"rawos/self-improve-{timestamp}"
+    branch_name = f"anima/self-improve-{timestamp}"
 
     worktree_path = await create_worktree(_SELF_PROBE_RAWOS_REPO)
     if not worktree_path:
@@ -2098,19 +2098,19 @@ async def _run_self_probe_cycle() -> None:
             "Create a new file: tests/test_tier1_remaining_prefixes.py\n"
             "The file must contain a pytest class TestTier1RemainingPrefixes with\n"
             "three test methods that verify _in_tier1_allowlist() returns True for:\n"
-            "  - rawos/dataset/schema.py\n"
-            "  - rawos/study/notes.md\n"
-            "  - rawos/timing/benchmark.py\n"
+            "  - anima/dataset/schema.py\n"
+            "  - anima/study/notes.md\n"
+            "  - anima/timing/benchmark.py\n"
             "Import only from anima.kernel.tools. No other imports needed.\n"
-            "These three paths are in _TIER1_PREFIXES (rawos/kernel/tools.py)\n"
+            "These three paths are in _TIER1_PREFIXES (anima/kernel/tools.py)\n"
             "but have no existing tests.\n\n"
             "Steps:\n"
             "1. write_file path=tests/test_tier1_remaining_prefixes.py\n"
             "2. bash_readonly cmd='python -m pytest "
             "tests/test_tier1_remaining_prefixes.py -x -q 2>&1 | tail -5'\n"
-            "3. git_commit message='rawos: add TIER1 allowlist tests for "
+            "3. git_commit message='anima: add TIER1 allowlist tests for "
             "dataset/study/timing\\n\\nSelf-probe: _in_tier1_allowlist had no "
-            "assertions for rawos/dataset/, rawos/study/, rawos/timing/ despite "
+            "assertions for anima/dataset/, anima/study/, anima/timing/ despite "
             "all three in _TIER1_PREFIXES.\\nConfidence: 0.95'\n"
             "Stop after step 3. No further exploration."
         )
@@ -2361,7 +2361,7 @@ async def _run_operator_scan_cycle() -> None:
     auto-apply vs propose-only and performs capture/apply/verify/rollback.
 
     Never raises out of the loop: a refusal on one target (self-protection,
-    e.g. the rawos unit file) is caught, logged, and the cycle continues with
+    e.g. the anima unit file) is caught, logged, and the cycle continues with
     the remaining targets — per the explicit "refusal on one target does not
     block others" requirement.
 

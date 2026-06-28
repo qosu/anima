@@ -1,4 +1,4 @@
-"""tests/test_landlock.py — TDD for rawos/kernel/landlock.py (Phase 26).
+"""tests/test_landlock.py — TDD for anima/kernel/landlock.py (Phase 26).
 
 TDD Iron Law: this file must go RED before landlock.py is written
 (ModuleNotFoundError: No module named 'anima.kernel.landlock').
@@ -207,7 +207,7 @@ async def test_run_bash_denies_out_of_envelope_path(monkeypatch, tmp_path):
     monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", True)
 
     # /root/.ssh/authorized_keys is always outside DEFAULT_BEING_ENVELOPE.
-    # (rawos source root /root/rawos is now in rw_paths for git-worktree ops,
+    # (anima source root /root/rawos is now in rw_paths for git-worktree ops,
     # but .ssh/ is never added — it must stay blocked.)
     result = await run_bash("cat /root/.ssh/authorized_keys", str(tmp_path))
 

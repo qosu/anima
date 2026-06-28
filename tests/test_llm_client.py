@@ -1,4 +1,4 @@
-"""Tests for rawos.kernel.llm_client — unified OpenAI-compatible LLM client."""
+"""Tests for anima.kernel.llm_client — unified OpenAI-compatible LLM client."""
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 

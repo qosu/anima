@@ -1,4 +1,4 @@
-"""tests/test_cli_service.py — TDD for `rawos service` CLI group (Milestone 5 Step 3)."""
+"""tests/test_cli_service.py — TDD for `anima service` CLI group (Milestone 5 Step 3)."""
 from __future__ import annotations
 
 import os
@@ -20,7 +20,7 @@ def _runner():
 
 def test_service_install_calls_generate_and_install_unit():
     runner = _runner()
-    generated_content = "[Unit]\nDescription=rawos service\n"
+    generated_content = "[Unit]\nDescription=anima service\n"
     mock_mgr = MagicMock()
     mock_mgr.generate_unit.return_value = generated_content
 
@@ -28,17 +28,17 @@ def test_service_install_calls_generate_and_install_unit():
         with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
             result = runner.invoke(cli, [
                 "service", "install",
-                "--name", "rawos",
-                "--exec-start", "/venv/bin/uvicorn rawos.api.app:app",
-                "--working-dir", "/srv/rawos",
-                "--env-file", "/srv/rawos/.env",
+                "--name", "anima",
+                "--exec-start", "/venv/bin/uvicorn anima.api.app:app",
+                "--working-dir", "/srv/anima",
+                "--env-file", "/srv/anima/.env",
                 "--unit-dir", unit_dir,
             ])
 
     assert result.exit_code == 0, result.output
     mock_mgr.generate_unit.assert_called_once()
     mock_mgr.install_unit.assert_called_once_with(
-        "rawos", generated_content, unit_dir=unit_dir
+        "anima", generated_content, unit_dir=unit_dir
     )
 
 
@@ -57,10 +57,10 @@ def test_service_install_prints_success_message():
                 "--unit-dir", unit_dir,
             ])
 
-    assert "installed" in result.output.lower() or "rawos" in result.output
+    assert "installed" in result.output.lower() or "anima" in result.output
 
 
-def test_service_install_uses_default_name_rawos():
+def test_service_install_uses_default_name_anima():
     runner = _runner()
     mock_mgr = MagicMock()
     mock_mgr.generate_unit.return_value = "[Unit]\n"
@@ -76,8 +76,8 @@ def test_service_install_uses_default_name_rawos():
             ])
 
     call_kwargs = mock_mgr.generate_unit.call_args
-    assert call_kwargs[1].get("name", call_kwargs[0][0] if call_kwargs[0] else None) == "rawos" or \
-           "rawos" in str(call_kwargs)
+    assert call_kwargs[1].get("name", call_kwargs[0][0] if call_kwargs[0] else None) == "anima" or \
+           "anima" in str(call_kwargs)
 
 
 # ── service uninstall ─────────────────────────────────────────────────────────
@@ -91,12 +91,12 @@ def test_service_uninstall_calls_uninstall_unit():
         with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
             result = runner.invoke(cli, [
                 "service", "uninstall",
-                "--name", "rawos",
+                "--name", "anima",
                 "--unit-dir", unit_dir,
             ])
 
     assert result.exit_code == 0, result.output
-    mock_mgr.uninstall_unit.assert_called_once_with("rawos", unit_dir=unit_dir)
+    mock_mgr.uninstall_unit.assert_called_once_with("anima", unit_dir=unit_dir)
 
 
 # ── service status ────────────────────────────────────────────────────────────
@@ -108,11 +108,11 @@ def test_service_status_shows_active_when_running():
     mock_mgr.is_active.return_value = True
 
     with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
-        result = runner.invoke(cli, ["service", "status", "--name", "rawos"])
+        result = runner.invoke(cli, ["service", "status", "--name", "anima"])
 
     assert result.exit_code == 0
     assert "active" in result.output.lower()
-    mock_mgr.is_active.assert_called_once_with("rawos")
+    mock_mgr.is_active.assert_called_once_with("anima")
 
 
 def test_service_status_shows_inactive_when_stopped():
@@ -121,7 +121,7 @@ def test_service_status_shows_inactive_when_stopped():
     mock_mgr.is_active.return_value = False
 
     with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
-        result = runner.invoke(cli, ["service", "status", "--name", "rawos"])
+        result = runner.invoke(cli, ["service", "status", "--name", "anima"])
 
     assert "inactive" in result.output.lower() or "not" in result.output.lower()
 
@@ -135,10 +135,10 @@ def test_service_restart_calls_restart_and_reports_success():
     mock_mgr.restart.return_value = True
 
     with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
-        result = runner.invoke(cli, ["service", "restart", "--name", "rawos"])
+        result = runner.invoke(cli, ["service", "restart", "--name", "anima"])
 
     assert result.exit_code == 0
-    mock_mgr.restart.assert_called_once_with("rawos")
+    mock_mgr.restart.assert_called_once_with("anima")
     assert "restart" in result.output.lower() or "ok" in result.output.lower()
 
 
@@ -148,7 +148,7 @@ def test_service_restart_exits_nonzero_on_failure():
     mock_mgr.restart.return_value = False
 
     with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
-        result = runner.invoke(cli, ["service", "restart", "--name", "rawos"])
+        result = runner.invoke(cli, ["service", "restart", "--name", "anima"])
 
     assert result.exit_code != 0
 
@@ -162,11 +162,11 @@ def test_service_logs_calls_tail_and_prints():
     mock_log.tail.return_value = "line1\nline2\n"
 
     with patch("anima.cli.main.LinuxLogReader", return_value=mock_log):
-        result = runner.invoke(cli, ["service", "logs", "--name", "rawos", "-n", "10"])
+        result = runner.invoke(cli, ["service", "logs", "--name", "anima", "-n", "10"])
 
     assert result.exit_code == 0
     assert "line1" in result.output
-    mock_log.tail.assert_called_once_with("rawos", 10)
+    mock_log.tail.assert_called_once_with("anima", 10)
 
 
 def test_service_logs_default_lines_50():
@@ -177,4 +177,4 @@ def test_service_logs_default_lines_50():
     with patch("anima.cli.main.LinuxLogReader", return_value=mock_log):
         runner.invoke(cli, ["service", "logs"])
 
-    mock_log.tail.assert_called_once_with("rawos", 50)
+    mock_log.tail.assert_called_once_with("anima", 50)

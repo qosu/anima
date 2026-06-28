@@ -1,5 +1,5 @@
 """
-rawos.kernel.venv_operator — M3 Stage 2: R-venv reversible dependency operator.
+anima.kernel.venv_operator — M3 Stage 2: R-venv reversible dependency operator.
 
 Provides the same earned-reversible-autonomy gate pattern as self_reload.py and
 owned_resource.py, applied to the Python virtual-environment dependency layer.
@@ -19,7 +19,7 @@ deadman.
   deadman (systemd-run) → fire if new self never proves healthy
 
 The revert script (/usr/local/bin/rawos-venv-revert) is pure bash with zero
-import-rawos / zero pip dependency (I-VENV1). This matches rawos-selfreload-revert
+import-anima / zero pip dependency (I-VENV1). This matches rawos-selfreload-revert
 discipline exactly.
 
 ## Gate (I-VENV5)
@@ -65,7 +65,7 @@ VENV_DEADMAN_UNIT: str = "rawos-venv-revert"
 VENV_DEADMAN_DELAY_S: int = 300
 
 #: Directory where the pending venv-swap state is persisted across restarts.
-VENV_STATE_DIR: str = "/root/.rawos-venv-pending"
+VENV_STATE_DIR: str = "/root/.anima-venv-pending"
 
 #: Filename within VENV_STATE_DIR.
 VENV_STATE_FILENAME: str = "state.json"
@@ -283,7 +283,7 @@ def preflight_venv(
                 )
 
         # 4. Import check
-        imp = builder.check_import(cand_python, "rawos.api.app")
+        imp = builder.check_import(cand_python, "anima.api.app")
         if imp.returncode != 0:
             raise VenvPreflightError(
                 f"import check failed in candidate venv: {imp.stderr[-2000:]}"

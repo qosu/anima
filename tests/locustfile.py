@@ -1,15 +1,15 @@
 """
-rawos load test — 100 concurrent users.
+anima load test — 100 concurrent users.
 Phase 5 success criterion: 100 concurrent, error rate < 0.1 %, P95 latencies within SLO.
 
 Pre-requisite:
     cd /root/rawos && source venv/bin/activate
-    python tests/setup_load_test.py        # creates /tmp/rawos_loadtest_users.json
+    python tests/setup_load_test.py        # creates /tmp/anima_loadtest_users.json
 
 Run (headless):
     locust -f tests/locustfile.py --host http://127.0.0.1:8002 \
            --headless -u 100 -r 10 --run-time 2m \
-           --csv /tmp/rawos_load_stats --csv-full-history
+           --csv /tmp/anima_load_stats --csv-full-history
 
 Run (web UI — open http://localhost:8089 after starting):
     locust -f tests/locustfile.py --host http://127.0.0.1:8002
@@ -43,7 +43,7 @@ ALLOWED_ERROR_RATE = 0.001  # 0.1 %
 # ---------------------------------------------------------------------------
 # Pre-created user pool (written by setup_load_test.py)
 # ---------------------------------------------------------------------------
-_POOL_FILE = Path("/tmp/rawos_loadtest_users.json")
+_POOL_FILE = Path("/tmp/anima_loadtest_users.json")
 _pool_lock = threading.Lock()
 _pool_index = 0
 _pool: list[dict] = []
@@ -115,7 +115,7 @@ def _pool_file_summary() -> str:
 @events.quitting.add_listener
 def _on_quitting(environment, **kwargs) -> None:
     print("\n" + "=" * 70)
-    print("rawos Load Test — SLO Report")
+    print("anima Load Test — SLO Report")
     print("=" * 70)
 
     error_rate = _total_failures / max(_total_requests, 1)
@@ -138,8 +138,8 @@ def _on_quitting(environment, **kwargs) -> None:
         print(f"    {name:48s}  {violated:4d}/{total:<6d} ({pct:5.1f}%)  [{status}] (>{threshold}ms)")
 
     print("=" * 70)
-    # CSV output is written to /tmp/rawos_load_stats_*.csv by --csv flag
-    print("Full percentiles: /tmp/rawos_load_stats_stats.csv\n")
+    # CSV output is written to /tmp/anima_load_stats_*.csv by --csv flag
+    print("Full percentiles: /tmp/anima_load_stats_stats.csv\n")
 
 
 # ---------------------------------------------------------------------------

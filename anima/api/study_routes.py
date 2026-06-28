@@ -1,5 +1,5 @@
 """
-rawos Study API Routes — Phase 11.
+anima Study API Routes — Phase 11.
 
 POST /study/setup    — register watched paths, start data collection
 GET  /study/status   — current study state (day, data counts)

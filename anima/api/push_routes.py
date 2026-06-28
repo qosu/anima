@@ -1,5 +1,5 @@
 """
-rawos Push Notification API routes.
+anima Push Notification API routes.
 
 POST   /push/register                   — register Expo push token for current user
 DELETE /push/unregister                 — remove push token

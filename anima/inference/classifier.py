@@ -1,5 +1,5 @@
 """
-rawos Intent Classifier — Phase 9.
+anima Intent Classifier — Phase 9.
 
 Trains 3 sklearn models (LR, RF, MLP) with 5-fold stratified CV on the
 labeled_examples dataset, selects the one with best macro F1, saves to disk.

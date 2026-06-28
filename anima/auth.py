@@ -1,5 +1,5 @@
 """
-rawos auth layer — bcrypt passwords, JWT access tokens, refresh tokens.
+anima auth layer — bcrypt passwords, JWT access tokens, refresh tokens.
 Stateless access tokens (15 min), stateful refresh tokens (7 days, stored in DB).
 """
 from __future__ import annotations

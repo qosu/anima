@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pre-create 100 load-test users directly in rawos DB.
+Pre-create 100 load-test users directly in anima DB.
 Run ONCE before the load test. Idempotent.
 
     cd /root/rawos
@@ -20,11 +20,11 @@ os.environ.setdefault("RAWOS_SANDBOX_DOCKER", "false")
 from anima.config import settings  # noqa: E402 — path set above
 
 import anima.db as db  # noqa: E402
-import anima.auth as rawos_auth  # noqa: E402
+import anima.auth as anima_auth  # noqa: E402
 from anima.models import Project  # noqa: E402
 
-OUT_FILE = Path("/tmp/rawos_loadtest_users.json")
-DOMAIN = "rawos.internal"
+OUT_FILE = Path("/tmp/anima_loadtest_users.json")
+DOMAIN = "anima.internal"
 NUM_INFRA = 95
 NUM_INTENT = 5
 PASSWORD = "LT_Secur3_Pass!"
@@ -34,10 +34,10 @@ def _ensure_user(i: int, role: str) -> dict:
     email = f"loadtest_{i:04d}_{role}@{DOMAIN}"
     existing = db.get_user_by_email(email)
     if existing:
-        _, access, _ = rawos_auth.login(email, PASSWORD)
+        _, access, _ = anima_auth.login(email, PASSWORD)
         user = existing
     else:
-        user, access, _ = rawos_auth.signup(email, PASSWORD)
+        user, access, _ = anima_auth.signup(email, PASSWORD)
 
     projects = db.get_projects(user.id)
     if not projects:
@@ -53,7 +53,7 @@ def _ensure_user(i: int, role: str) -> dict:
     index_file = project_dir / "index.html"
     if not index_file.exists():
         index_file.write_text(
-            "<!DOCTYPE html><html><body><h1>rawos load test</h1></body></html>"
+            "<!DOCTYPE html><html><body><h1>anima load test</h1></body></html>"
         )
 
     return {

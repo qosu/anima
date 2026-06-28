@@ -39,7 +39,7 @@ def _dirs(tmp_path: Path) -> tuple[Path, Path]:
 
 def _op(
     tmp_path: Path,
-    pam_file: str = "rawos-guest",
+    pam_file: str = "anima-guest",
     content: bytes = b"pam content",
     probe_fn=None,
 ) -> tuple[PamFileEdit, Path, Path]:
@@ -84,7 +84,7 @@ class TestSelfProtection:
 
     def test_allows_non_protected_file(self, tmp_path: Path) -> None:
         pam_dir, backup_dir = _dirs(tmp_path)
-        op = PamFileEdit("rawos-guest", b"content", _pam_dir=pam_dir, _backup_dir=backup_dir)
+        op = PamFileEdit("anima-guest", b"content", _pam_dir=pam_dir, _backup_dir=backup_dir)
         assert op is not None
 
     def test_protected_file_in_install_never_arms_deadman(self, tmp_path: Path) -> None:
@@ -108,26 +108,26 @@ class TestSelfProtection:
 class TestCapture:
     def test_existing_file_records_content(self, tmp_path: Path) -> None:
         op, pam_dir, backup_dir = _op(tmp_path)
-        (pam_dir / "rawos-guest").write_bytes(b"original pam config")
+        (pam_dir / "anima-guest").write_bytes(b"original pam config")
         snap = op.capture()
-        assert snap.pam_file == "rawos-guest"
+        assert snap.pam_file == "anima-guest"
         assert snap.was_absent is False
         assert snap.prior_content == b"original pam config"
 
     def test_existing_file_writes_backup_to_disk(self, tmp_path: Path) -> None:
         op, pam_dir, backup_dir = _op(tmp_path)
-        (pam_dir / "rawos-guest").write_bytes(b"original")
+        (pam_dir / "anima-guest").write_bytes(b"original")
         snap = op.capture()
         assert Path(snap.backup_path).read_bytes() == b"original"
 
     def test_absent_file_marks_was_absent(self, tmp_path: Path) -> None:
-        op, pam_dir, backup_dir = _op(tmp_path, "rawos-newservice")
+        op, pam_dir, backup_dir = _op(tmp_path, "anima-newservice")
         snap = op.capture()
         assert snap.was_absent is True
         assert snap.prior_content == b""
 
     def test_absent_file_writes_empty_backup(self, tmp_path: Path) -> None:
-        op, pam_dir, backup_dir = _op(tmp_path, "rawos-newservice")
+        op, pam_dir, backup_dir = _op(tmp_path, "anima-newservice")
         snap = op.capture()
         assert Path(snap.backup_path).read_bytes() == b""
 
@@ -154,13 +154,13 @@ class TestApply:
     def test_writes_new_content(self, tmp_path: Path) -> None:
         op, pam_dir, _ = _op(tmp_path, content=b"new pam config")
         op.apply()
-        assert (pam_dir / "rawos-guest").read_bytes() == b"new pam config"
+        assert (pam_dir / "anima-guest").read_bytes() == b"new pam config"
 
     def test_overwrites_existing(self, tmp_path: Path) -> None:
         op, pam_dir, _ = _op(tmp_path, content=b"new")
-        (pam_dir / "rawos-guest").write_bytes(b"old")
+        (pam_dir / "anima-guest").write_bytes(b"old")
         op.apply()
-        assert (pam_dir / "rawos-guest").read_bytes() == b"new"
+        assert (pam_dir / "anima-guest").read_bytes() == b"new"
 
 
 # ---------------------------------------------------------------------------
@@ -184,32 +184,32 @@ class TestVerify:
 class TestRestore:
     def test_restores_existing_file_from_disk(self, tmp_path: Path) -> None:
         op, pam_dir, _ = _op(tmp_path, content=b"new")
-        (pam_dir / "rawos-guest").write_bytes(b"original")
+        (pam_dir / "anima-guest").write_bytes(b"original")
         snap = op.capture()
         op.apply()
-        assert (pam_dir / "rawos-guest").read_bytes() == b"new"
+        assert (pam_dir / "anima-guest").read_bytes() == b"new"
         op.restore(snap)
-        assert (pam_dir / "rawos-guest").read_bytes() == b"original"
+        assert (pam_dir / "anima-guest").read_bytes() == b"original"
 
     def test_restore_absent_removes_file(self, tmp_path: Path) -> None:
-        op, pam_dir, _ = _op(tmp_path, pam_file="rawos-newservice", content=b"content")
+        op, pam_dir, _ = _op(tmp_path, pam_file="anima-newservice", content=b"content")
         snap = op.capture()
         assert snap.was_absent is True
         op.apply()
-        assert (pam_dir / "rawos-newservice").exists()
+        assert (pam_dir / "anima-newservice").exists()
         op.restore(snap)
-        assert not (pam_dir / "rawos-newservice").exists()
+        assert not (pam_dir / "anima-newservice").exists()
 
     def test_restore_reads_backup_not_memory(self, tmp_path: Path) -> None:
         """restore reads backup_path on disk — correct even if in-memory snap is wrong."""
         op, pam_dir, backup_dir = _op(tmp_path, content=b"new")
-        (pam_dir / "rawos-guest").write_bytes(b"original")
+        (pam_dir / "anima-guest").write_bytes(b"original")
         snap = op.capture()
         # tamper backup on disk — restore must use disk, not snap.prior_content
         Path(snap.backup_path).write_bytes(b"disk-version")
         op.apply()
         op.restore(snap)
-        assert (pam_dir / "rawos-guest").read_bytes() == b"disk-version"
+        assert (pam_dir / "anima-guest").read_bytes() == b"disk-version"
 
 
 # ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@ class TestInstallWithDeadman:
             return True
 
         snap_id = install_pam_edit_with_deadman(
-            "rawos-guest", b"content",
+            "anima-guest", b"content",
             _systemd=fake_sd,
             _probe_fn=_probe,
             _pam_dir=pam_dir,
@@ -247,27 +247,27 @@ class TestInstallWithDeadman:
 
     def test_verify_fail_disarms_and_restores(self, tmp_path: Path) -> None:
         pam_dir, backup_dir = _dirs(tmp_path)
-        (pam_dir / "rawos-guest").write_bytes(b"original")
+        (pam_dir / "anima-guest").write_bytes(b"original")
         fake_sd = FakePamDeadman()
 
         with pytest.raises(PamInstallError):
             install_pam_edit_with_deadman(
-                "rawos-guest", b"new",
+                "anima-guest", b"new",
                 _systemd=fake_sd,
                 _probe_fn=lambda: False,
                 _pam_dir=pam_dir,
                 _backup_dir=backup_dir,
             )
 
-        assert fake_sd.disarmed == ["rawos-pam-revert"]
-        assert (pam_dir / "rawos-guest").read_bytes() == b"original"
+        assert fake_sd.disarmed == ["anima-pam-revert"]
+        assert (pam_dir / "anima-guest").read_bytes() == b"original"
 
     def test_verify_pass_returns_snapshot_id_and_stays_armed(self, tmp_path: Path) -> None:
         pam_dir, backup_dir = _dirs(tmp_path)
         fake_sd = FakePamDeadman()
 
         snap_id = install_pam_edit_with_deadman(
-            "rawos-guest", b"new",
+            "anima-guest", b"new",
             _systemd=fake_sd,
             _probe_fn=lambda: True,
             _pam_dir=pam_dir,
@@ -276,14 +276,14 @@ class TestInstallWithDeadman:
 
         assert isinstance(snap_id, str) and len(snap_id) == 36  # UUID
         assert fake_sd.disarmed == []  # still armed
-        assert (pam_dir / "rawos-guest").read_bytes() == b"new"
+        assert (pam_dir / "anima-guest").read_bytes() == b"new"
 
     def test_revert_cmd_contains_snapshot_id_and_pam_file(self, tmp_path: Path) -> None:
         pam_dir, backup_dir = _dirs(tmp_path)
         fake_sd = FakePamDeadman()
 
         snap_id = install_pam_edit_with_deadman(
-            "rawos-guest", b"content",
+            "anima-guest", b"content",
             _systemd=fake_sd,
             _probe_fn=lambda: True,
             _pam_dir=pam_dir,
@@ -292,11 +292,11 @@ class TestInstallWithDeadman:
 
         _unit, _delay, revert_cmd = fake_sd.armed[0]
         assert snap_id in revert_cmd
-        assert "rawos-guest" in revert_cmd
+        assert "anima-guest" in revert_cmd
 
     def test_unexpected_exception_disarms_and_restores(self, tmp_path: Path) -> None:
         pam_dir, backup_dir = _dirs(tmp_path)
-        (pam_dir / "rawos-guest").write_bytes(b"original")
+        (pam_dir / "anima-guest").write_bytes(b"original")
         fake_sd = FakePamDeadman()
 
         def _exploding_probe():
@@ -304,15 +304,15 @@ class TestInstallWithDeadman:
 
         with pytest.raises(PamInstallError) as exc_info:
             install_pam_edit_with_deadman(
-                "rawos-guest", b"new",
+                "anima-guest", b"new",
                 _systemd=fake_sd,
                 _probe_fn=_exploding_probe,
                 _pam_dir=pam_dir,
                 _backup_dir=backup_dir,
             )
 
-        assert fake_sd.disarmed == ["rawos-pam-revert"]
-        assert (pam_dir / "rawos-guest").read_bytes() == b"original"
+        assert fake_sd.disarmed == ["anima-pam-revert"]
+        assert (pam_dir / "anima-guest").read_bytes() == b"original"
         assert "unexpected failure" in str(exc_info.value)
 
 
@@ -324,4 +324,4 @@ class TestCommitPamEdit:
     def test_disarms_deadman(self) -> None:
         fake_sd = FakePamDeadman()
         commit_pam_edit(_systemd=fake_sd)
-        assert fake_sd.disarmed == ["rawos-pam-revert"]
+        assert fake_sd.disarmed == ["anima-pam-revert"]

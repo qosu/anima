@@ -1,4 +1,4 @@
-"""Tests for all 8 rawos core primitives."""
+"""Tests for all 8 anima core primitives."""
 import pytest
 from anima.models import (
     User, UserTier,

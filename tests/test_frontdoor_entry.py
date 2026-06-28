@@ -1,5 +1,5 @@
 """tests/test_frontdoor_entry.py — TDD for the lockout-proof SSH entrypoint
-(rawos.cli.frontdoor_entry) and the `rawos frontdoor install` binary resolution
+(anima.cli.frontdoor_entry) and the `anima frontdoor install` binary resolution
 that points ForceCommand at it."""
 from __future__ import annotations
 
@@ -65,19 +65,19 @@ class TestResolveFrontdoorBinary:
     def test_returns_path_when_found(self):
         from anima.cli.main import _resolve_frontdoor_binary
 
-        with patch("shutil.which", return_value="/usr/local/bin/rawos-frontdoor"):
-            assert _resolve_frontdoor_binary() == "/usr/local/bin/rawos-frontdoor"
+        with patch("shutil.which", return_value="/usr/local/bin/anima-frontdoor"):
+            assert _resolve_frontdoor_binary() == "/usr/local/bin/anima-frontdoor"
 
     def test_raises_clickexception_when_missing(self):
         from anima.cli.main import _resolve_frontdoor_binary
 
         with patch("shutil.which", return_value=None):
-            with pytest.raises(click.ClickException, match="rawos-frontdoor"):
+            with pytest.raises(click.ClickException, match="anima-frontdoor"):
                 _resolve_frontdoor_binary()
 
 
 class TestFrontdoorInstallEntryCmd:
-    def test_entry_cmd_uses_rawos_frontdoor_binary(self):
+    def test_entry_cmd_uses_anima_frontdoor_binary(self):
         from click.testing import CliRunner
 
         from anima.cli.main import cli
@@ -86,7 +86,7 @@ class TestFrontdoorInstallEntryCmd:
         with (
             patch(
                 "anima.cli.main._resolve_frontdoor_binary",
-                return_value="/usr/local/bin/rawos-frontdoor",
+                return_value="/usr/local/bin/anima-frontdoor",
             ),
             patch("anima.kernel.arch.linux.LinuxFrontDoor"),
             patch("anima.kernel.frontdoor.install_with_deadman") as mock_install,
@@ -96,9 +96,9 @@ class TestFrontdoorInstallEntryCmd:
         assert result.exit_code == 0, result.output
         args, kwargs = mock_install.call_args
         entry_cmd = args[1] if len(args) > 1 else kwargs.get("entry_command")
-        assert entry_cmd == "/usr/local/bin/rawos-frontdoor frontdoor enter"
+        assert entry_cmd == "/usr/local/bin/anima-frontdoor frontdoor enter"
 
-    def test_install_fails_clearly_if_rawos_frontdoor_binary_missing(self):
+    def test_install_fails_clearly_if_anima_frontdoor_binary_missing(self):
         from click.testing import CliRunner
 
         from anima.cli.main import cli
@@ -108,4 +108,4 @@ class TestFrontdoorInstallEntryCmd:
             result = runner.invoke(cli, ["frontdoor", "install"])
 
         assert result.exit_code != 0
-        assert "rawos-frontdoor" in result.output
+        assert "anima-frontdoor" in result.output

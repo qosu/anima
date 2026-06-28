@@ -1,7 +1,7 @@
 """
-rawos Memory Index — ChromaDB-backed semantic search over project memories and files.
+anima Memory Index — ChromaDB-backed semantic search over project memories and files.
 
-Single collection "rawos_memories" with doc_type metadata for unified search.
+Single collection "anima_memories" with doc_type metadata for unified search.
 All queries are scoped to project_id for multi-tenant isolation.
 
 doc_type = "memory" : episodic/semantic memory entries
@@ -21,7 +21,7 @@ _lock   = threading.Lock()
 _client = None
 _col    = None
 
-_COLLECTION = "rawos_memories"
+_COLLECTION = "anima_memories"
 
 
 def _get_collection():

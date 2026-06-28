@@ -22,9 +22,9 @@ def test_write_then_read_roundtrip(tmp_path):
     op = LinuxFileOperator()
     target = str(tmp_path / "config.conf")
 
-    op.write(target, b"hello rawos\n")
+    op.write(target, b"hello anima\n")
 
-    assert op.read(target) == b"hello rawos\n"
+    assert op.read(target) == b"hello anima\n"
 
 
 def test_read_returns_none_for_missing_file(tmp_path):
@@ -87,28 +87,28 @@ def test_backup_of_absent_marks_snapshot_not_existed(tmp_path):
 # Self-protection refusals (never touch the real protected paths)
 # ---------------------------------------------------------------------------
 
-def test_write_refuses_rawos_service_unit():
+def test_write_refuses_anima_service_unit():
     op = LinuxFileOperator()
 
     with pytest.raises(FileOperatorRefusalError):
-        op.write("/etc/systemd/system/rawos.service", b"malicious\n")
+        op.write("/etc/systemd/system/anima.service", b"malicious\n")
 
 
 def test_write_refuses_sshd_frontdoor_config():
     op = LinuxFileOperator()
 
     with pytest.raises(FileOperatorRefusalError):
-        op.write("/etc/ssh/sshd_config.d/50-rawos-frontdoor.conf", b"malicious\n")
+        op.write("/etc/ssh/sshd_config.d/50-anima-frontdoor.conf", b"malicious\n")
 
 
-def test_write_refuses_rawos_source_tree():
+def test_write_refuses_anima_source_tree():
     op = LinuxFileOperator()
 
     with pytest.raises(FileOperatorRefusalError):
-        op.write("/root/rawos/rawos/config.py", b"malicious\n")
+        op.write("/root/rawos/anima/config.py", b"malicious\n")
 
 
-def test_write_refuses_rawos_db_under_source_tree():
+def test_write_refuses_anima_db_under_source_tree():
     op = LinuxFileOperator()
 
     with pytest.raises(FileOperatorRefusalError):
@@ -117,7 +117,7 @@ def test_write_refuses_rawos_db_under_source_tree():
 
 def test_restore_refuses_protected_target():
     op = LinuxFileOperator()
-    snapshot = FileSnapshot(path="/etc/systemd/system/rawos.service", existed=True, content=b"x")
+    snapshot = FileSnapshot(path="/etc/systemd/system/anima.service", existed=True, content=b"x")
 
     with pytest.raises(FileOperatorRefusalError):
         op.restore(snapshot)

@@ -1,5 +1,5 @@
 """
-rawos Dataset Extractor — Phase 8.
+anima Dataset Extractor — Phase 8.
 
 Extracts labeled examples from tg-claude sessions.db.
 Each session contributes at most one example: the most substantive user

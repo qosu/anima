@@ -1,5 +1,5 @@
 """
-rawos Classifier API Routes — Phase 9.
+anima Classifier API Routes — Phase 9.
 
 POST /classifier/train   — train on current labeled_examples, save model
 GET  /classifier/status  — model loaded, metadata

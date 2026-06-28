@@ -71,10 +71,10 @@ def test_is_active_true_when_systemctl_reports_active():
     mgr = LinuxServiceManager()
     with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("active\n")) as mock_run:
-        assert mgr.is_active("rawos.service") is True
+        assert mgr.is_active("anima.service") is True
 
     mock_run.assert_called_once_with(
-        ["systemctl", "is-active", "rawos.service"],
+        ["systemctl", "is-active", "anima.service"],
         capture_output=True, text=True, timeout=3.0,
     )
 
@@ -83,24 +83,24 @@ def test_is_active_false_when_systemctl_reports_inactive():
     mgr = LinuxServiceManager()
     with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("inactive\n")):
-        assert mgr.is_active("rawos.service") is False
+        assert mgr.is_active("anima.service") is False
 
 
 def test_is_active_false_on_exception():
     mgr = LinuxServiceManager()
     with patch("anima.kernel.arch.linux.subprocess.run",
                side_effect=OSError("boom")):
-        assert mgr.is_active("rawos.service") is False
+        assert mgr.is_active("anima.service") is False
 
 
 def test_restart_runs_systemctl_restart():
     mgr = LinuxServiceManager()
     with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("")) as mock_run:
-        mgr.restart("rawos.service")
+        mgr.restart("anima.service")
 
     mock_run.assert_called_once_with(
-        ["systemctl", "restart", "rawos.service"],
+        ["systemctl", "restart", "anima.service"],
         capture_output=True, text=True, timeout=30.0,
     )
 
@@ -109,21 +109,21 @@ def test_restart_returns_true_on_success():
     mgr = LinuxServiceManager()
     with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("", returncode=0)):
-        assert mgr.restart("rawos.service") is True
+        assert mgr.restart("anima.service") is True
 
 
 def test_restart_returns_false_on_failure():
     mgr = LinuxServiceManager()
     with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("", returncode=1)):
-        assert mgr.restart("rawos.service") is False
+        assert mgr.restart("anima.service") is False
 
 
 def test_restart_returns_false_on_exception():
     mgr = LinuxServiceManager()
     with patch("anima.kernel.arch.linux.subprocess.run",
                side_effect=OSError("systemd unavailable")):
-        assert mgr.restart("rawos.service") is False
+        assert mgr.restart("anima.service") is False
 
 
 def test_supports_reversible_apply_is_true_on_linux():
@@ -140,11 +140,11 @@ import configparser
 def test_generate_unit_produces_valid_ini_with_all_sections():
     mgr = LinuxServiceManager()
     content = mgr.generate_unit(
-        name="rawos",
-        exec_start="/srv/rawos/venv/bin/uvicorn rawos.api.app:app --host 127.0.0.1 --port 8002",
-        working_dir="/srv/rawos",
-        env_file="/srv/rawos/.env",
-        description="rawos AI OS API",
+        name="anima",
+        exec_start="/srv/anima/venv/bin/uvicorn anima.api.app:app --host 127.0.0.1 --port 8002",
+        working_dir="/srv/anima",
+        env_file="/srv/anima/.env",
+        description="anima AI OS API",
     )
     parser = configparser.ConfigParser()
     parser.read_string(content)
@@ -155,32 +155,32 @@ def test_generate_unit_produces_valid_ini_with_all_sections():
 
 def test_generate_unit_embeds_exec_start():
     mgr = LinuxServiceManager()
-    exec_start = "/venv/bin/uvicorn rawos.api.app:app"
-    content = mgr.generate_unit("rawos", exec_start, "/srv", "/srv/.env")
+    exec_start = "/venv/bin/uvicorn anima.api.app:app"
+    content = mgr.generate_unit("anima", exec_start, "/srv", "/srv/.env")
     assert exec_start in content
 
 
 def test_generate_unit_embeds_working_dir():
     mgr = LinuxServiceManager()
-    content = mgr.generate_unit("rawos", "/bin/true", "/custom/workdir", "/custom/.env")
+    content = mgr.generate_unit("anima", "/bin/true", "/custom/workdir", "/custom/.env")
     assert "/custom/workdir" in content
 
 
 def test_generate_unit_embeds_env_file():
     mgr = LinuxServiceManager()
-    content = mgr.generate_unit("rawos", "/bin/true", "/srv", "/custom/path/.env")
+    content = mgr.generate_unit("anima", "/bin/true", "/srv", "/custom/path/.env")
     assert "/custom/path/.env" in content
 
 
 def test_generate_unit_sets_restart_always():
     mgr = LinuxServiceManager()
-    content = mgr.generate_unit("rawos", "/bin/true", "/srv", "/srv/.env")
+    content = mgr.generate_unit("anima", "/bin/true", "/srv", "/srv/.env")
     assert "Restart=always" in content
 
 
 def test_generate_unit_sets_wanted_by_multi_user_target():
     mgr = LinuxServiceManager()
-    content = mgr.generate_unit("rawos", "/bin/true", "/srv", "/srv/.env")
+    content = mgr.generate_unit("anima", "/bin/true", "/srv", "/srv/.env")
     assert "WantedBy=multi-user.target" in content
 
 
@@ -195,9 +195,9 @@ def test_install_unit_writes_file_to_unit_dir():
     with tempfile.TemporaryDirectory() as unit_dir:
         with patch("anima.kernel.arch.linux.subprocess.run",
                    return_value=_mock_run("")) as mock_run:
-            mgr.install_unit("rawos", "[Unit]\nDescription=test\n", unit_dir=unit_dir)
+            mgr.install_unit("anima", "[Unit]\nDescription=test\n", unit_dir=unit_dir)
 
-        expected_path = os.path.join(unit_dir, "rawos.service")
+        expected_path = os.path.join(unit_dir, "anima.service")
         assert os.path.isfile(expected_path)
         assert "[Unit]" in open(expected_path).read()
 
@@ -211,7 +211,7 @@ def test_install_unit_calls_daemon_reload_then_enable():
 
     with tempfile.TemporaryDirectory() as unit_dir:
         with patch("anima.kernel.arch.linux.subprocess.run", side_effect=fake_run):
-            mgr.install_unit("rawos", "[Unit]\n", unit_dir=unit_dir)
+            mgr.install_unit("anima", "[Unit]\n", unit_dir=unit_dir)
 
     assert any("daemon-reload" in " ".join(c) for c in calls)
     assert any("enable" in " ".join(c) for c in calls)
@@ -228,10 +228,10 @@ def test_uninstall_unit_calls_disable_stop_remove_reload():
         return _mock_run("")
 
     with tempfile.TemporaryDirectory() as unit_dir:
-        unit_path = os.path.join(unit_dir, "rawos.service")
+        unit_path = os.path.join(unit_dir, "anima.service")
         open(unit_path, "w").write("[Unit]\n")
         with patch("anima.kernel.arch.linux.subprocess.run", side_effect=fake_run):
-            mgr.uninstall_unit("rawos", unit_dir=unit_dir)
+            mgr.uninstall_unit("anima", unit_dir=unit_dir)
 
     assert any("disable" in " ".join(c) for c in calls)
     assert any("stop" in " ".join(c) for c in calls)
@@ -256,4 +256,4 @@ def test_uninstall_unit_tolerates_systemctl_disable_failure():
 
     with tempfile.TemporaryDirectory() as unit_dir:
         with patch("anima.kernel.arch.linux.subprocess.run", side_effect=fake_run):
-            mgr.uninstall_unit("rawos", unit_dir=unit_dir)  # must not raise
+            mgr.uninstall_unit("anima", unit_dir=unit_dir)  # must not raise

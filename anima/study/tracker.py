@@ -1,5 +1,5 @@
 """
-rawos Study Tracker — Phase 11.
+anima Study Tracker — Phase 11.
 
 Computes study metrics from raw DB data and tracks hypothesis progress.
 Also manages daily snapshots for research analysis.

@@ -1,5 +1,5 @@
 """
-rawos Study Configuration — Phase 11.
+anima Study Configuration — Phase 11.
 
 Research hypotheses and target metrics for the 30-day user study.
 Hypothesis validation drives the paper (arXiv → UIST/CHI 2027).

@@ -152,7 +152,7 @@ class TestInternalSelfReload:
 
     Runs execute_owner_self_reload() IN-PROCESS so os._exit(0) kills THIS
     worker's MainPID -- the only way systemd (Restart=always) respawns
-    rawos.service against new_sha and boot_liveness_commit can resolve the
+    anima.service against new_sha and boot_liveness_commit can resolve the
     pending state written here. Mirrors the /metrics localhost check
     (X-Forwarded-For aware -- nginx /api/ proxies here with real client IP).
     """
@@ -228,7 +228,7 @@ class TestInternalSelfReloadDebugArmAndSwap:
     is True (twin .env only), runs preflight_stage + arm_and_swap directly with
     _revert_cmd overridden to /usr/local/bin/rawos-selfprobe-revert -- never
     execute_owner_self_reload (I-SR6 prod funnel, hardcodes the prod revert
-    script which targets /root/rawos + `systemctl restart rawos`).
+    script which targets /root/rawos + `systemctl restart anima`).
     """
 
     def test_disabled_by_default_returns_404(self, monkeypatch):

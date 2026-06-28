@@ -23,36 +23,36 @@ def user_id(tmp_path):
 
 class TestManagedPamTargets:
     def test_get_nonexistent_returns_none(self, user_id: str) -> None:
-        assert db.get_managed_pam_target(user_id, "rawos-guest") is None
+        assert db.get_managed_pam_target(user_id, "anima-guest") is None
 
     def test_add_then_get(self, user_id: str) -> None:
-        db.add_managed_pam_target(user_id, "rawos-guest")
-        row = db.get_managed_pam_target(user_id, "rawos-guest")
+        db.add_managed_pam_target(user_id, "anima-guest")
+        row = db.get_managed_pam_target(user_id, "anima-guest")
         assert row is not None
-        assert row["pam_file"] == "rawos-guest"
+        assert row["pam_file"] == "anima-guest"
 
     def test_add_is_idempotent(self, user_id: str) -> None:
-        db.add_managed_pam_target(user_id, "rawos-guest")
-        db.add_managed_pam_target(user_id, "rawos-guest")  # no-op, no exception
-        assert db.get_managed_pam_target(user_id, "rawos-guest") is not None
+        db.add_managed_pam_target(user_id, "anima-guest")
+        db.add_managed_pam_target(user_id, "anima-guest")  # no-op, no exception
+        assert db.get_managed_pam_target(user_id, "anima-guest") is not None
 
     def test_list_returns_all(self, user_id: str) -> None:
-        db.add_managed_pam_target(user_id, "rawos-guest")
-        db.add_managed_pam_target(user_id, "rawos-tenant")
+        db.add_managed_pam_target(user_id, "anima-guest")
+        db.add_managed_pam_target(user_id, "anima-tenant")
         rows = db.list_managed_pam_targets(user_id)
         pam_files = {r["pam_file"] for r in rows}
-        assert pam_files == {"rawos-guest", "rawos-tenant"}
+        assert pam_files == {"anima-guest", "anima-tenant"}
 
     def test_list_empty_for_new_user(self, user_id: str) -> None:
         assert db.list_managed_pam_targets(user_id) == []
 
     def test_remove_deregisters(self, user_id: str) -> None:
-        db.add_managed_pam_target(user_id, "rawos-guest")
-        db.remove_managed_pam_target(user_id, "rawos-guest")
-        assert db.get_managed_pam_target(user_id, "rawos-guest") is None
+        db.add_managed_pam_target(user_id, "anima-guest")
+        db.remove_managed_pam_target(user_id, "anima-guest")
+        assert db.get_managed_pam_target(user_id, "anima-guest") is None
 
     def test_remove_noop_if_absent(self, user_id: str) -> None:
-        db.remove_managed_pam_target(user_id, "rawos-ghost")  # no exception
+        db.remove_managed_pam_target(user_id, "anima-ghost")  # no exception
 
     def test_targets_are_per_user(self, tmp_path) -> None:
         db.init(str(tmp_path / "test.db"))
@@ -64,6 +64,6 @@ class TestManagedPamTargets:
             email=f"u2-{os.getpid()}@test.com",
             password_hash=hashlib.sha256(b"pw").hexdigest(),
         ))
-        db.add_managed_pam_target(u1.id, "rawos-guest")
-        assert db.get_managed_pam_target(u2.id, "rawos-guest") is None
+        db.add_managed_pam_target(u1.id, "anima-guest")
+        assert db.get_managed_pam_target(u2.id, "anima-guest") is None
         assert db.list_managed_pam_targets(u2.id) == []

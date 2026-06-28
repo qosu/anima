@@ -1,5 +1,5 @@
 """
-rawos Tool Registry — typed tool implementations for agent execution.
+anima Tool Registry — typed tool implementations for agent execution.
 Each tool is an async function that returns a string result (tool output).
 Tool definitions follow the OpenAI function-calling format for DeepSeek.
 """
@@ -60,7 +60,7 @@ _DESTRUCTIVE_PATTERNS: tuple[str, ...] = (
     "reboot",
     "init 0",
     "init 6",
-    "systemctl stop rawos",
+    "systemctl stop anima",
     "iptables -F",
 )
 
@@ -404,7 +404,7 @@ async def _fetch_url(params: dict[str, Any], workdir: str) -> ToolResult:
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=_FETCH_TIMEOUT,
-            headers={"User-Agent": "rawos/0.2 (+https://downgrade.app)"},
+            headers={"User-Agent": "anima/0.2 (+https://downgrade.app)"},
         ) as client:
             resp = await client.get(url)
             content_type = resp.headers.get("content-type", "")
@@ -472,9 +472,9 @@ _PROTECTED_BRANCHES: frozenset[str] = frozenset({"main", "master", "develop", "H
 
 
 async def _targets_rawos_own_repo(workdir: str) -> bool:
-    """True if `workdir` is inside rawos's own live repo (/root/rawos).
+    """True if `workdir` is inside anima's own live repo (/root/rawos).
 
-    rawos.service runs with WorkingDirectory=/root/rawos and Restart=always.
+    anima.service runs with WorkingDirectory=/root/rawos and Restart=always.
     A `git checkout -b` or `git commit` whose repo root resolves to /root/rawos
     mutates the live runtime tree and can crash-loop the entity itself.
     """
@@ -487,7 +487,7 @@ async def _targets_rawos_own_repo(workdir: str) -> bool:
 #
 # Wired into execute() via the wrapper below (Pass 2 step b, commit 31864421).
 # These git-introspection helpers detect and revert any tool call's side
-# effect that touches a TIER 0 path inside rawos's own source tree.
+# effect that touches a TIER 0 path inside anima's own source tree.
 # See PLAN.md "Phase 16 — Pass 2 — IMPLEMENTED (2026-06-09)".
 # ---------------------------------------------------------------------------
 
@@ -497,17 +497,17 @@ _RAWOS_GIT_COMMON_DIR: str = settings.rawos_source_root + "/.git"
 
 _TIER1_PREFIXES: tuple[str, ...] = (
     "tests/",
-    "rawos/evaluation/",
-    "rawos/dataset/",
-    "rawos/study/",
-    "rawos/timing/",
-    "rawos/manifester/",
+    "anima/evaluation/",
+    "anima/dataset/",
+    "anima/study/",
+    "anima/timing/",
+    "anima/manifester/",
     "docs/",
 )
 
 
-async def _is_rawos_source_tree(workdir: str) -> bool:
-    """True if `workdir` is rawos's own source tree — /root/rawos itself,
+async def _is_anima_source_tree(workdir: str) -> bool:
+    """True if `workdir` is anima's own source tree — /root/rawos itself,
     or any git worktree linked to it.
 
     Linked worktrees report a different `--show-toplevel` (their own path)
@@ -574,8 +574,8 @@ def _diff_paths(before: dict[str, str], after: dict[str, str]) -> set[str]:
 def _in_tier1_allowlist(path: str) -> bool:
     """True if `path` (repo-relative) is under a TIER 1 directory.
 
-    TIER 1 = tests/, rawos/evaluation/, rawos/dataset/, rawos/study/,
-    rawos/timing/, rawos/manifester/, docs/ — see PLAN.md "THE HARD
+    TIER 1 = tests/, anima/evaluation/, anima/dataset/, anima/study/,
+    anima/timing/, anima/manifester/, docs/ — see PLAN.md "THE HARD
     BOUNDARY". Everything else is TIER 0 (default-deny).
 
     This is the STATIC directory check only. Pass 2's execute() wrapper
@@ -613,7 +613,7 @@ async def _git_branch(params: dict[str, Any], workdir: str) -> ToolResult:
         return ToolResult(
             output=(
                 "error: refusing to create a branch inside /root/rawos — "
-                "this is rawos's own live working tree (rawos.service runs "
+                "this is anima's own live working tree (anima.service runs "
                 "from here with Restart=always). SIGNAL instead."
             ),
             success=False, duration_ms=0,
@@ -624,7 +624,7 @@ async def _git_branch(params: dict[str, Any], workdir: str) -> ToolResult:
 
     raw_name = (params.get("name") or "").strip()
     if raw_name:
-        suffix = raw_name[len("rawos/"):] if raw_name.startswith("rawos/") else raw_name
+        suffix = raw_name[len("anima/"):] if raw_name.startswith("anima/") else raw_name
     else:
         suffix = f"fix-{int(_time.time())}"
 
@@ -640,13 +640,13 @@ async def _git_branch(params: dict[str, Any], workdir: str) -> ToolResult:
     if suffix in _PROTECTED_BRANCHES:
         return ToolResult(
             output=(
-                f"error: refusing to create rawos/{suffix} — "
+                f"error: refusing to create anima/{suffix} — "
                 f"'{suffix}' is a protected branch name"
             ),
             success=False, duration_ms=0,
         )
 
-    branch_name = f"rawos/{suffix}"
+    branch_name = f"anima/{suffix}"
     result: BashResult = await run_bash(f"git checkout -b {branch_name}", workdir)
     parts = []
     if result.stdout:
@@ -664,14 +664,14 @@ async def _git_commit(params: dict[str, Any], workdir: str) -> ToolResult:
     """Stage all changes and commit to the current branch.
 
     Hard gate: refuses to commit if not on a anima/* branch.
-    Uses rawos author identity so every autonomous commit is attributable.
+    Uses anima author identity so every autonomous commit is attributable.
     Returns the full git commit output (includes branch name and short hash).
     """
     if await _targets_rawos_own_repo(workdir):
         return ToolResult(
             output=(
                 "error: refusing to commit inside /root/rawos — "
-                "this is rawos's own live working tree (rawos.service runs "
+                "this is anima's own live working tree (anima.service runs "
                 "from here with Restart=always). SIGNAL instead."
             ),
             success=False, duration_ms=0,
@@ -679,7 +679,7 @@ async def _git_commit(params: dict[str, Any], workdir: str) -> ToolResult:
 
     import shlex as _shlex
 
-    message = (params.get("message") or "rawos: autonomous fix").strip() or "rawos: autonomous fix"
+    message = (params.get("message") or "anima: autonomous fix").strip() or "anima: autonomous fix"
 
     # --- safety gate: verify we are on a anima/* branch -------------------
     branch_res: BashResult = await run_bash("git rev-parse --abbrev-ref HEAD", workdir)
@@ -689,11 +689,11 @@ async def _git_commit(params: dict[str, Any], workdir: str) -> ToolResult:
             success=False, duration_ms=0,
         )
     current_branch = branch_res.stdout.strip()
-    if not current_branch.startswith("rawos/"):
+    if not current_branch.startswith("anima/"):
         return ToolResult(
             output=(
                 f"error: refusing to commit to '{current_branch}' — "
-                "rawos only commits to anima/* branches. "
+                "anima only commits to anima/* branches. "
                 "Call git_branch first to create an isolated anima/* branch."
             ),
             success=False, duration_ms=0,
@@ -718,7 +718,7 @@ async def _git_commit(params: dict[str, Any], workdir: str) -> ToolResult:
     # --- commit with anima identity ---------------------------------------
     safe_msg = _shlex.quote(message)
     commit_res: BashResult = await run_bash(
-        f'git -c user.name="rawos" -c user.email="anima@autonomous.local" commit -m {safe_msg}',
+        f'git -c user.name="anima" -c user.email="anima@autonomous.local" commit -m {safe_msg}',
         workdir,
     )
     parts = []
@@ -1100,7 +1100,7 @@ async def _manage_pam(params: dict[str, Any], workdir: str) -> ToolResult:
     if action == "commit":
         commit_pam_edit(_systemd=_systemd)
         return ToolResult(
-            output="rawos-pam-revert deadman disarmed. PAM change committed.",
+            output="anima-pam-revert deadman disarmed. PAM change committed.",
             success=True, duration_ms=_ms(),
         )
 
@@ -1469,7 +1469,7 @@ TOOL_DEFINITIONS: list[dict] = [
             "name": "git_branch",
             "description": (
                 "Create a new anima/* branch in the project repo and switch to it. "
-                "Branch name is automatically prefixed with rawos/. "
+                "Branch name is automatically prefixed with anima/. "
                 "Always call this BEFORE git_commit."
             ),
             "parameters": {
@@ -1477,7 +1477,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "properties": {
                     "name": {
                         "type": "string",
-                        "description": "Branch suffix (rawos/ prefix added automatically). Default: fix-{timestamp}.",
+                        "description": "Branch suffix (anima/ prefix added automatically). Default: fix-{timestamp}.",
                     },
                 },
             },
@@ -1497,7 +1497,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "properties": {
                     "message": {
                         "type": "string",
-                        "description": "Commit message (default: rawos: autonomous fix).",
+                        "description": "Commit message (default: anima: autonomous fix).",
                     },
                 },
             },
@@ -1514,7 +1514,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "edit (propose or auto-apply based on graduation), "
                 "approved_apply (execute owner-approved edit, always records toward graduation). "
                 "Requires files to be pre-allowlisted with a validator_cmd. "
-                "Never touches rawos service files or source tree."
+                "Never touches anima service files or source tree."
             ),
             "parameters": {
                 "type": "object",
@@ -1552,7 +1552,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "action (propose or auto-apply restart/start/stop based on graduation), "
                 "approved_apply (execute owner-approved action, always records toward graduation). "
                 "Requires services to be pre-allowlisted with a validator_cmd. "
-                "Never operates on rawos.service or ssh/sshd (self-protection floor)."
+                "Never operates on anima.service or ssh/sshd (self-protection floor)."
             ),
             "parameters": {
                 "type": "object",
@@ -1604,7 +1604,7 @@ TOOL_DEFINITIONS: list[dict] = [
                         },
                         "pam_file": {
                             "type": "string",
-                            "description": "pam.d filename without path prefix (e.g. rawos-guest)",
+                            "description": "pam.d filename without path prefix (e.g. anima-guest)",
                         },
                         "new_content": {
                             "type": "string",
@@ -1620,7 +1620,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "function": {
             "name": "manage_owned_resource",
             "description": (
-                "M3 R-own: lifecycle management over rawos owned namespace "
+                "M3 R-own: lifecycle management over anima owned namespace "
                 "(workspaces, data artefacts). Boundary-enforced: cannot reach "
                 "system-level paths outside owned roots (I-OWN1). "
                 "Reversible: deletion = move-to-trash, restorable until retention window. "
@@ -1698,9 +1698,9 @@ TOOL_DEFINITIONS: list[dict] = [
 # Pass 2 step b — TIER enforcement wrapper around execute()
 #
 # Wires the helpers above into the single tool dispatch chokepoint. Two
-# distinct rawos source-tree contexts are handled differently:
+# distinct anima source-tree contexts are handled differently:
 #
-#   - LIVE (/root/rawos itself, rawos.service's WorkingDirectory,
+#   - LIVE (/root/rawos itself, anima.service's WorkingDirectory,
 #     Restart=always, continuously written by the running process): any
 #     mutating tool is HARD-REFUSED. Detect-and-revert is unsafe here — it
 #     could `git checkout`/`rm` a file the live service just wrote to
@@ -1719,11 +1719,11 @@ TOOL_DEFINITIONS: list[dict] = [
 MUTATING_TOOLS: frozenset[str] = frozenset({"write_file", "bash", "git_branch", "git_commit"})
 
 _TIER1_MODULE_DIRS: tuple[str, ...] = (
-    "rawos/evaluation/",
-    "rawos/dataset/",
-    "rawos/study/",
-    "rawos/timing/",
-    "rawos/manifester/",
+    "anima/evaluation/",
+    "anima/dataset/",
+    "anima/study/",
+    "anima/timing/",
+    "anima/manifester/",
 )
 
 
@@ -1782,14 +1782,14 @@ async def _run_impl(impl: ToolFn, tool_name: str, params: dict[str, Any], workdi
 async def _execute_with_tier_enforcement(
     impl: ToolFn, tool_name: str, params: dict[str, Any], workdir: str,
 ) -> ToolResult:
-    """Run a mutating tool inside a rawos source-tree worktree, then detect
+    """Run a mutating tool inside a anima source-tree worktree, then detect
     and revert any TIER 0 violation — including violations smuggled into a
     commit (undone via `git reset --soft` before the working-tree diff).
 
-    For linked worktrees (workdir != main rawos repo), the enforcement also
+    For linked worktrees (workdir != main anima repo), the enforcement also
     snapshots the live main repo before and after the tool call.  This closes
     escape vectors that bypass the worktree-local git status:
-      - absolute-path writes to /root/anima/**
+      - absolute-path writes to /root/rawos/**
       - writes through in-worktree symlinks pointing to live TIER 0 files
       - writes via hardlinks sharing an inode with a live TIER 0 file
     Any change detected in the live repo's TIER 0 paths is reverted via
@@ -1798,7 +1798,7 @@ async def _execute_with_tier_enforcement(
     from pathlib import Path as _Path
 
     # Detect linked-worktree mode: workdir is a linked worktree, not the main repo.
-    # In that mode we additionally monitor the live rawos repo for out-of-worktree writes.
+    # In that mode we additionally monitor the live anima repo for out-of-worktree writes.
     _main_repo = str(_Path(_RAWOS_GIT_COMMON_DIR).parent)
     _is_linked = _Path(workdir).resolve() != _Path(_main_repo).resolve()
 
@@ -1850,7 +1850,7 @@ async def _execute_with_tier_enforcement(
                     result.output
                     + f"\n\nTIER VIOLATION (LIVE REPO): out-of-worktree write detected and "
                     f"reverted in {sorted(live_violations)} — worktree tools must not modify "
-                    "the live rawos repo directly (absolute paths, symlinks, or hardlinks)."
+                    "the live anima repo directly (absolute paths, symlinks, or hardlinks)."
                 ),
                 success=False,
                 duration_ms=result.duration_ms,
@@ -1866,7 +1866,7 @@ async def _execute_with_tier_enforcement(
         output=(
             result.output
             + f"\n\nTIER VIOLATION: reverted {sorted(violations)} — outside the "
-            "TIER 1 allowlist for rawos self-modification, or a TIER 1 module "
+            "TIER 1 allowlist for anima self-modification, or a TIER 1 module "
             "without its own test coverage yet (PLAN.md Pass 1 item 2)."
         ),
         success=False,
@@ -1877,7 +1877,7 @@ async def _execute_with_tier_enforcement(
 async def execute(tool_name: str, params: dict[str, Any], workdir: str) -> ToolResult:
     """Execute a tool by name. Returns ToolResult; never raises.
 
-    For tools in MUTATING_TOOLS operating inside rawos's own source tree
+    For tools in MUTATING_TOOLS operating inside anima's own source tree
     (the live /root/rawos working tree, or any linked git worktree of it),
     this also enforces the Phase 16 TIER boundary — see PLAN.md "THE HARD
     BOUNDARY" and "Pass 2 — implementation design".
@@ -1899,7 +1899,7 @@ async def execute(tool_name: str, params: dict[str, Any], workdir: str) -> ToolR
             return ToolResult(
                 output=(
                     f"error: refusing to run '{tool_name}' inside /root/rawos — "
-                    "this is rawos's own live working tree (rawos.service runs "
+                    "this is anima's own live working tree (anima.service runs "
                     "from here with Restart=always, and is continuously writing "
                     "data/rawos.db and data/chroma/**, so detect-and-revert is "
                     "unsafe here). Self-modification must happen in an isolated "
@@ -1907,7 +1907,7 @@ async def execute(tool_name: str, params: dict[str, Any], workdir: str) -> ToolR
                 ),
                 success=False, duration_ms=0,
             )
-        if await _is_rawos_source_tree(workdir):
+        if await _is_anima_source_tree(workdir):
             return await _execute_with_tier_enforcement(impl, tool_name, params, workdir)
 
     return await _run_impl(impl, tool_name, params, workdir)

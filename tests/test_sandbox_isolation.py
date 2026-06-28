@@ -35,7 +35,7 @@ requires_docker = pytest.mark.skipif(
 
 # ── import under test ─────────────────────────────────────────────────────────
 
-# Import lazily so the test file is parseable even if rawos is not installed
+# Import lazily so the test file is parseable even if anima is not installed
 def _import_sandbox():
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from anima.kernel.sandbox import run_bash_in_container, DOCKER_IMAGE  # noqa: F401

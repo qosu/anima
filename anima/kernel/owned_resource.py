@@ -88,7 +88,7 @@ _PROTECTED_DB_FILENAMES: frozenset[str] = frozenset({
 # ══════════════════════════════════════════════════════════════════════════════
 
 class OwnedResourceKernel:
-    """Owned-resource operator for one rawos installation.
+    """Owned-resource operator for one anima installation.
 
     All paths are derived from (workspaces_root, rawos_source_root,
     worktree_root) — identical to config.py fields.  Tests inject fake roots
@@ -187,7 +187,7 @@ class OwnedResourceKernel:
                 real_path == data_dir
                 or real_path.startswith(data_dir + os.sep)
             ):
-                return True, "protected: rawos source code (use R1/self-reload surfaces)"
+                return True, "protected: anima source code (use R1/self-reload surfaces)"
 
         # 4. Workspace bound to active (non-terminal) intent
         if real_path in active_workspace_dirs:

@@ -34,7 +34,7 @@ class OperatorError(Exception):
 class ServiceOperatorRefusalError(Exception):
     """Raised when ReversibleServiceAction refuses a self-protected service.
 
-    Self-protected services (rawos.service and the SSH daemon — never the
+    Self-protected services (anima.service and the SSH daemon — never the
     being's own process or the owner's access path) can never be
     started/stopped/restarted through the operator, even if an owner
     allowlist entry would otherwise permit it. Mirrors
@@ -43,7 +43,7 @@ class ServiceOperatorRefusalError(Exception):
 
 
 _SELF_PROTECTED_SERVICES = frozenset({
-    "rawos.service", "rawos",
+    "anima.service", "anima",
     "ssh.service", "ssh",
     "sshd.service", "sshd",
 })
@@ -204,7 +204,7 @@ class ReversibleServiceAction:
     rollback.
 
     Refuses at construction:
-      - a self-protected service (rawos.service / ssh / sshd, any form) —
+      - a self-protected service (anima.service / ssh / sshd, any form) —
         ServiceOperatorRefusalError (lockout-safety floor, never silent)
       - an action outside {restart, start, stop} — OperatorError
       - an empty validator_cmd — OperatorError (propose-only, can't verify)
@@ -510,7 +510,7 @@ def execute_approved_service_action(
 
 # Re-export from unit_topology — same class, avoids dual exception hierarchy.
 # Callers may import UnitTopologyRefusalError from anima.kernel.operator or
-# rawos.kernel.unit_topology — they are identical.
+# anima.kernel.unit_topology — they are identical.
 from anima.kernel.unit_topology import UnitTopologyRefusalError  # noqa: F401
 
 

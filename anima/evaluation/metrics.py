@@ -1,5 +1,5 @@
 """
-rawos Evaluation Metrics — Phase 7.
+anima Evaluation Metrics — Phase 7.
 
 Low-level logging functions. Called by proactive scheduler and feedback handler.
 All writes are synchronous (SQLite is thread-safe in WAL mode).

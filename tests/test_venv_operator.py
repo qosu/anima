@@ -1,5 +1,5 @@
 """
-Tests for rawos.kernel.venv_operator — R-venv reversible dependency operator.
+Tests for anima.kernel.venv_operator — R-venv reversible dependency operator.
 
 TDD contract:
   TestVenvPreflight     — preflight_venv: build + prove candidate in isolation
@@ -155,7 +155,7 @@ class TestVenvPreflight:
             venv_root=str(tmp_path),
             staging_root=str(tmp_path),
             _builder=FakeVenvBuilder(),
-            _source_root="/fake/rawos",
+            _source_root="/fake/anima",
         )
         assert isinstance(snap, VenvSnapshot)
         assert snap.state_id != ""
@@ -170,7 +170,7 @@ class TestVenvPreflight:
                 venv_root=str(tmp_path),
                 staging_root=str(tmp_path),
                 _builder=FakeVenvBuilder(install_ok=False),
-                _source_root="/fake/rawos",
+                _source_root="/fake/anima",
             )
 
     def test_import_fail_raises_preflight_error(self, tmp_path: Path) -> None:
@@ -180,7 +180,7 @@ class TestVenvPreflight:
                 venv_root=str(tmp_path),
                 staging_root=str(tmp_path),
                 _builder=FakeVenvBuilder(import_ok=False),
-                _source_root="/fake/rawos",
+                _source_root="/fake/anima",
             )
 
     def test_smoke_fail_raises_preflight_error(self, tmp_path: Path) -> None:
@@ -190,7 +190,7 @@ class TestVenvPreflight:
                 venv_root=str(tmp_path),
                 staging_root=str(tmp_path),
                 _builder=FakeVenvBuilder(smoke_ok=False),
-                _source_root="/fake/rawos",
+                _source_root="/fake/anima",
             )
 
     def test_frozen_hash_uses_sha256_of_pip_freeze(self, tmp_path: Path) -> None:
@@ -202,7 +202,7 @@ class TestVenvPreflight:
             venv_root=str(tmp_path),
             staging_root=str(tmp_path),
             _builder=builder,
-            _source_root="/fake/rawos",
+            _source_root="/fake/anima",
         )
         assert snap.frozen_hash_before == expected
         assert snap.frozen_hash_after == expected
@@ -214,7 +214,7 @@ class TestVenvPreflight:
                 venv_root=str(tmp_path),
                 staging_root=str(tmp_path),
                 _builder=FakeVenvBuilder(import_ok=False),
-                _source_root="/fake/rawos",
+                _source_root="/fake/anima",
             )
         # No candidate dirs should remain
         venvs_dir = tmp_path / ".venvs"

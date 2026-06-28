@@ -45,12 +45,12 @@ def _g(cmd: str, cwd: str) -> subprocess.CompletedProcess:
 
 def _setup_probe_repo(tmp_path: Path) -> tuple[str, str]:
     """Create a minimal git repo + worktree root, both under tmp_path."""
-    repo = tmp_path / "rawos"
+    repo = tmp_path / "anima"
     repo.mkdir()
     _g("git init", str(repo))
     _g("git config user.email test@t.com", str(repo))
     _g("git config user.name Test", str(repo))
-    (repo / "README.md").write_text("rawos\n")
+    (repo / "README.md").write_text("anima\n")
     _g("git add .", str(repo))
     _g("git commit -m init", str(repo))
     wt_root = tmp_path / "worktrees"
@@ -87,7 +87,7 @@ class TestSelfProbeCycle:
     """_run_self_probe_cycle() — Phase 16 Step B contract."""
 
     def test_workdir_differs_from_live_repo(self, tmp_path, monkeypatch):
-        """agent_loop receives workdir != the live rawos repo path."""
+        """agent_loop receives workdir != the live anima repo path."""
         import asyncio
         repo_path, wt_root = _setup_probe_repo(tmp_path)
         monkeypatch.setattr(_proactive_mod, "_SELF_PROBE_RAWOS_REPO", repo_path)
@@ -103,8 +103,8 @@ class TestSelfProbeCycle:
             f"workdir={captured[0]!r} must differ from live repo {repo_path!r}"
         )
 
-    def test_branch_name_is_rawos_self_improve(self, tmp_path, monkeypatch):
-        """Branch created in worktree must match rawos/self-improve-* pattern."""
+    def test_branch_name_is_anima_self_improve(self, tmp_path, monkeypatch):
+        """Branch created in worktree must match anima/self-improve-* pattern."""
         import asyncio
         repo_path, wt_root = _setup_probe_repo(tmp_path)
         monkeypatch.setattr(_proactive_mod, "_SELF_PROBE_RAWOS_REPO", repo_path)
@@ -118,8 +118,8 @@ class TestSelfProbeCycle:
         result = _g("git branch", repo_path)
         branches = result.stdout
         assert any(
-            "rawos/self-improve-" in b for b in branches.splitlines()
-        ), f"no rawos/self-improve-* branch in origin:\n{branches}"
+            "anima/self-improve-" in b for b in branches.splitlines()
+        ), f"no anima/self-improve-* branch in origin:\n{branches}"
 
     def test_master_ref_unchanged(self, tmp_path, monkeypatch):
         """HEAD of origin repo must not move during a self-probe cycle."""
@@ -184,7 +184,7 @@ class TestSelfProbeCycle:
 
         async def _spy(cmd: str, workdir: str = "", **kw):
             if any(tok in cmd for tok in ("systemctl restart", "systemctl stop",
-                                           "systemctl start", "service rawos")):
+                                           "systemctl start", "service anima")):
                 restart_cmds.append(cmd)
             return await _real_run_bash(cmd, workdir, **kw)
 

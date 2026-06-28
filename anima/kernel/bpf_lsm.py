@@ -3,9 +3,9 @@
 Design: mechanism/policy separation (Tetragon/Falco/Cilium model).
   Engine  = static BPF LSM bytecode, built OFF-BOX (CI clang+libbpf-dev),
             CO-RE-portable, checksum-pinned (I-LSM11), immutable on prod.
-  Policy  = BPF maps written by rawos at runtime — denylist, protected-comm,
+  Policy  = BPF maps written by anima at runtime — denylist, protected-comm,
             mode-flag. Being authors its policy; CANNOT rewrite enforcement bytecode.
-  Floor   = {sshd,systemd,holder,rawos,git,...} compiled into engine bytecode,
+  Floor   = {sshd,systemd,holder,anima,git,...} compiled into engine bytecode,
             checked BEFORE any map lookup (I-LSM5). Policy-map cannot override floor.
 
 Invariants enforced here:
@@ -65,8 +65,8 @@ FLOOR_COMM: frozenset[str] = frozenset({
     # enforcement-paradox where the LSM program that *implements* enforcement
     # is itself denied by enforcement.
     "rawos-bpf-lsm-h",
-    # rawos being process.
-    "rawos",
+    # anima being process.
+    "anima",
     # git plumbing — self-reload and code-pull depend on these.
     "git",
     "git-remote-http",
@@ -161,7 +161,7 @@ def supported() -> bool:
 # Boot validation — I-LSM10 fail-fast
 # ---------------------------------------------------------------------------
 def validate_boot_config(*, enabled: bool, mode: str) -> None:
-    """Fail-fast at rawos lifespan startup (mirrors landlock.validate_boot_config).
+    """Fail-fast at anima lifespan startup (mirrors landlock.validate_boot_config).
 
     Called unconditionally during lifespan even when enabled=False so mode
     typos in config are caught before enforcement is ever attempted.
@@ -343,7 +343,7 @@ def compose_grub_custom_entry(
     full_cmdline = f"{base_cmdline} {lsm_cmdline}"
 
     entry = (
-        f'menuentry "rawos BPF LSM (experimental, one-shot)" --id rawos-bpf-lsm {{\n'
+        f'menuentry "anima BPF LSM (experimental, one-shot)" --id rawos-bpf-lsm {{\n'
         f"    search --no-floppy --fs-uuid --set=root {root_uuid}\n"
         f"    linux   /boot/vmlinuz-{kernel_ver} {full_cmdline}\n"
         f"    initrd  /boot/initrd.img-{kernel_ver}\n"
@@ -443,16 +443,16 @@ class _NullHolderClient(BpfLsmHolderClient):
 
 
 # ---------------------------------------------------------------------------
-# BpfLsmSupervisor — rawos-side heartbeat loop (I-LSM7)
+# BpfLsmSupervisor — anima-side heartbeat loop (I-LSM7)
 # ---------------------------------------------------------------------------
 @final
 class BpfLsmSupervisor:
-    """rawos-side supervisor driving the holder-daemon heartbeat (I-LSM7).
+    """anima-side supervisor driving the holder-daemon heartbeat (I-LSM7).
 
     When enabled=True (post-24B.1), the supervisor sends periodic heartbeats
-    to the holder. If rawos wedges and heartbeats stop, the holder self-detaches
+    to the holder. If anima wedges and heartbeats stop, the holder self-detaches
     after `heartbeat_interval_s * holder_timeout_multiplier` seconds (configured
-    on the holder side), preventing a wedged rawos from holding the machine
+    on the holder side), preventing a wedged anima from holding the machine
     hostage.
 
     When enabled=False (24B.0 dormant), run() returns immediately without

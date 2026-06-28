@@ -1,4 +1,4 @@
-"""tests/test_setup_wizard.py — TDD for rawos setup wizard (Milestone 5 Step 4)."""
+"""tests/test_setup_wizard.py — TDD for anima setup wizard (Milestone 5 Step 4)."""
 from __future__ import annotations
 
 import tempfile
@@ -128,9 +128,9 @@ class TestSetupWizardWriteEnv:
 
         with tempfile.TemporaryDirectory() as root:
             wizard = SetupWizard(base_dir=root)
-            wizard.write_env(**_REQUIRED_ENV_KWARGS, source_root="/opt/rawos-src")
+            wizard.write_env(**_REQUIRED_ENV_KWARGS, source_root="/opt/anima-src")
             content = Path(root, ".env").read_text()
-            assert "RAWOS_SOURCE_ROOT=/opt/rawos-src" in content
+            assert "RAWOS_SOURCE_ROOT=/opt/anima-src" in content
 
     def test_does_not_overwrite_existing_env_without_force(self):
         from anima.installer.setup import SetupWizard
@@ -165,7 +165,7 @@ class TestSetupWizardGenerateService:
             mock_mgr.generate_unit.return_value = "[Unit]\n"
             with patch("anima.installer.setup.LinuxServiceManager", return_value=mock_mgr):
                 content = wizard.generate_service(
-                    exec_start="/venv/bin/uvicorn rawos.api.app:app",
+                    exec_start="/venv/bin/uvicorn anima.api.app:app",
                 )
             mock_mgr.generate_unit.assert_called_once()
             assert content == "[Unit]\n"
@@ -230,7 +230,7 @@ class TestSetupWizardEndToEndSettings:
 
 
 # ---------------------------------------------------------------------------
-# rawos setup CLI tests
+# anima setup CLI tests
 # ---------------------------------------------------------------------------
 
 
@@ -249,7 +249,7 @@ class TestSetupCLI:
                 cli,
                 [
                     "setup",
-                    "--base-dir", "/tmp/rawos-test",
+                    "--base-dir", "/tmp/anima-test",
                     "--llm-api-key", "sk-x",
                     "--llm-agent-model", "agent-model",
                     "--llm-summarizer-model", "summarizer-model",
@@ -270,7 +270,7 @@ class TestSetupCLI:
                 cli,
                 [
                     "setup",
-                    "--base-dir", "/tmp/rawos-test",
+                    "--base-dir", "/tmp/anima-test",
                     "--llm-api-key", "sk-x",
                     "--llm-agent-model", "agent-model",
                     "--llm-summarizer-model", "summarizer-model",
@@ -290,7 +290,7 @@ class TestSetupCLI:
     def test_setup_with_service_installs_unit(self):
         runner = _runner()
         mock_wizard = MagicMock()
-        mock_wizard.generate_service.return_value = "[Unit]\nDescription=rawos\n"
+        mock_wizard.generate_service.return_value = "[Unit]\nDescription=anima\n"
         mock_mgr = MagicMock()
         with (
             patch("anima.cli.main.SetupWizard", return_value=mock_wizard),
@@ -301,7 +301,7 @@ class TestSetupCLI:
                     cli,
                     [
                         "setup",
-                        "--base-dir", "/tmp/rawos-test",
+                        "--base-dir", "/tmp/anima-test",
                         "--llm-api-key", "sk-x",
                         "--llm-agent-model", "agent-model",
                         "--llm-summarizer-model", "summarizer-model",

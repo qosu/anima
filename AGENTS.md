@@ -18,7 +18,7 @@ of them.
 ## Codebase map
 
 ```
-rawos/
+anima/
 ├── app.py                  # FastAPI application entry point
 ├── config.py               # Settings (Pydantic); bpf_lsm_mode lives at :178
 ├── cli/
@@ -87,7 +87,7 @@ first. Watch it fail. Then write production code. See CONTRIBUTING.md.
 - `anima/kernel/sandbox.py` — changes here can allow untrusted code to reach the host
 - `anima/kernel/context_builder.py` — changes here can collapse provenance separation
 - `anima/kernel/audit_chain.py` — changes here can make tampered logs undetectable
-- `rawos/config.py:178` (`bpf_lsm_mode`) — this is a machine-wide kernel enforcement toggle
+- `anima/config.py:178` (`bpf_lsm_mode`) — this is a machine-wide kernel enforcement toggle
 
 ## Commit convention
 

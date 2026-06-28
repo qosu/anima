@@ -1,6 +1,6 @@
-"""rawos unified LLM client — single OpenAI-compatible provider.
+"""anima unified LLM client — single OpenAI-compatible provider.
 
-All LLM access in rawos goes through this module. Configuration comes
+All LLM access in anima goes through this module. Configuration comes
 from `settings.llm_api_key` / `llm_base_url` / `llm_timeout_s`.
 """
 from __future__ import annotations

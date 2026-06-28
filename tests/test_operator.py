@@ -80,7 +80,7 @@ def test_reversible_file_edit_apply_propagates_self_protection_refusal():
 
     operator = LinuxFileOperator()
     edit = ReversibleFileEdit(
-        operator, "/etc/systemd/system/rawos.service", b"malicious\n", validator_cmd="true",
+        operator, "/etc/systemd/system/anima.service", b"malicious\n", validator_cmd="true",
     )
 
     with pytest.raises(FileOperatorRefusalError):

@@ -1,5 +1,5 @@
 """
-rawos Intent Inference Feature Extraction — Phase 9.
+anima Intent Inference Feature Extraction — Phase 9.
 
 Converts behavioral_context (from user_model or labeled_examples) into a
 fixed-length numpy feature vector for the ML classifier.

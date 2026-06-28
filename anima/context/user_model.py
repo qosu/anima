@@ -1,5 +1,5 @@
 """
-rawos User Model Aggregator.
+anima User Model Aggregator.
 
 Reads context_events for a user and synthesizes a semantic model:
   - current project
@@ -166,7 +166,7 @@ def rebuild_user_model(user_id: str, lookback_s: int = 3600) -> dict[str, Any]:
             ),
         )
 
-    # Episodic history (30-day lookback): rawos cross-session understanding
+    # Episodic history (30-day lookback): anima cross-session understanding
     episodic_summary: list[dict] = []
     try:
         with db._conn() as conn:

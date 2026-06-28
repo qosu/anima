@@ -1,11 +1,11 @@
 """
-rawos Document Connector — Phase 4.
+anima Document Connector — Phase 4.
 
 Extracts plain text from PDF and DOCX files when they change.
 Text excerpts are stored in context_events so the proactive agent can
 reason about document content — not just code.
 
-This makes rawos useful for lawyers, consultants, students, anyone who
+This makes anima useful for lawyers, consultants, students, anyone who
 works with documents rather than code.
 """
 from __future__ import annotations

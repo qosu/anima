@@ -1,5 +1,5 @@
 """
-rawos execution sandbox — subprocess isolation for tool execution.
+anima execution sandbox — subprocess isolation for tool execution.
 Security boundary: cwd=workdir, path validation, timeout, output size limit.
 Note: Docker-level isolation deferred to Phase 5 hardening.
 """

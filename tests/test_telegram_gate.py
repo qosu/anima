@@ -110,7 +110,7 @@ class TestTelegramGateAuth:
         gate._resolved_project_id = "proj-1"
         gate._workdir = "/tmp/workdir"
 
-        gate._run_turn = AsyncMock(return_value="hello from rawos")
+        gate._run_turn = AsyncMock(return_value="hello from anima")
 
         update = _make_text_update(chat_id=12345, text="hi")
         await gate.handle_message(update, MagicMock())
@@ -133,11 +133,11 @@ class TestTelegramGateTextDispatch:
 
         gate._run_turn = AsyncMock(return_value="response text")
 
-        update = _make_text_update(chat_id=12345, text="what is rawos?")
+        update = _make_text_update(chat_id=12345, text="what is anima?")
         await gate.handle_message(update, MagicMock())
 
         gate._run_turn.assert_called_once_with(
-            "user-1", "proj-1", "what is rawos?", "/tmp/workdir"
+            "user-1", "proj-1", "what is anima?", "/tmp/workdir"
         )
 
     @pytest.mark.asyncio
@@ -148,12 +148,12 @@ class TestTelegramGateTextDispatch:
         gate._resolved_project_id = "proj-1"
         gate._workdir = "/tmp/workdir"
 
-        gate._run_turn = AsyncMock(return_value="rawos response here")
+        gate._run_turn = AsyncMock(return_value="anima response here")
 
         update = _make_text_update(chat_id=12345, text="hello")
         await gate.handle_message(update, MagicMock())
 
-        update.effective_message.reply_text.assert_called_once_with("rawos response here")
+        update.effective_message.reply_text.assert_called_once_with("anima response here")
 
     @pytest.mark.asyncio
     async def test_empty_response_sends_fallback(self):

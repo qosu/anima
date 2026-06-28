@@ -1,5 +1,5 @@
 """
-rawos Intent Inference Engine.
+anima Intent Inference Engine.
 
 Two-layer inference:
   Layer 1 (fast, free): rule-based heuristics from user model
@@ -162,7 +162,7 @@ def _rule_infer(model: dict[str, Any]) -> InferredIntent | None:
 
 
 _LLM_SYSTEM = """\
-You are rawos intent inference engine. Given a user's recent behavioral context, \
+You are anima intent inference engine. Given a user's recent behavioral context, \
 infer their primary goal with precision and confidence.
 
 Reply ONLY with valid JSON — no prose, no code blocks. Schema:

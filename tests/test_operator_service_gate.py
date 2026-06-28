@@ -30,7 +30,7 @@ from anima.kernel.operator import (
 )
 from anima.models import User
 
-SERVICE_TARGET = "rawos-svcprobe.service"
+SERVICE_TARGET = "anima-svcprobe.service"
 RESTART_CLASS = "service_restart"
 START_CLASS = "service_start"
 
@@ -103,7 +103,7 @@ class TestOperateOnServiceGate:
 
     def test_propose_only_when_service_flag_disabled(self, monkeypatch):
         db.add_managed_service_target(
-            self.user.id, SERVICE_TARGET, "systemctl is-active --quiet rawos-svcprobe"
+            self.user.id, SERVICE_TARGET, "systemctl is-active --quiet anima-svcprobe"
         )
         _graduate(self.user.id, RESTART_CLASS, SERVICE_TARGET)
         monkeypatch.setattr(operator_module.settings, "operator_service_enabled", False)
@@ -119,7 +119,7 @@ class TestOperateOnServiceGate:
 
     def test_propose_only_when_ungraduated(self, monkeypatch):
         db.add_managed_service_target(
-            self.user.id, SERVICE_TARGET, "systemctl is-active --quiet rawos-svcprobe"
+            self.user.id, SERVICE_TARGET, "systemctl is-active --quiet anima-svcprobe"
         )
         monkeypatch.setattr(operator_module.settings, "operator_service_enabled", True)
 
@@ -165,18 +165,18 @@ class TestOperateOnServiceGate:
         assert mgr.calls == ["start", "stop"]
 
     def test_refuses_self_protected_service_regardless_of_gate(self, monkeypatch):
-        db.add_managed_service_target(self.user.id, "rawos.service", "true")
-        _graduate(self.user.id, RESTART_CLASS, "rawos.service")
+        db.add_managed_service_target(self.user.id, "anima.service", "true")
+        _graduate(self.user.id, RESTART_CLASS, "anima.service")
         monkeypatch.setattr(operator_module.settings, "operator_service_enabled", True)
 
         with pytest.raises(ServiceOperatorRefusalError):
             operate_on_service(
-                self.user.id, "rawos.service", "restart",
+                self.user.id, "anima.service", "restart",
                 service_manager=self.mgr,
             )
 
     @pytest.mark.parametrize("protected", [
-        "rawos.service", "rawos", "ssh.service", "ssh", "sshd.service", "sshd",
+        "anima.service", "anima", "ssh.service", "ssh", "sshd.service", "sshd",
     ])
     def test_refuses_all_self_protected_forms(self, monkeypatch, protected):
         db.add_managed_service_target(self.user.id, protected, "true")
@@ -278,9 +278,9 @@ class TestExecuteApprovedServiceAction:
         assert result.verified is True
 
     def test_self_protected_refuses_even_on_approved_path(self):
-        db.add_managed_service_target(self.user.id, "rawos.service", "true")
+        db.add_managed_service_target(self.user.id, "anima.service", "true")
         with pytest.raises(ServiceOperatorRefusalError):
             execute_approved_service_action(
-                self.user.id, "rawos.service", "restart",
+                self.user.id, "anima.service", "restart",
                 service_manager=self.mgr,
             )

@@ -45,11 +45,11 @@ def test_reversible_apply_gate_raises_if_backend_does_not_support():
     backend = _mock_arch(supports=False)
 
     with patch("anima.kernel.reversible_apply.get_arch", return_value=backend), \
-         patch("anima.kernel.reversible_apply._is_rawos_source_tree",
+         patch("anima.kernel.reversible_apply._is_anima_source_tree",
                new=AsyncMock(return_value=False)):
         with pytest.raises(ReversibleApplyError, match="supports_reversible_apply"):
             asyncio.run(reversible_apply(
-                "/tmp/repo", "rawos/fix-x", "rawos.service",
+                "/tmp/repo", "anima/fix-x", "anima.service",
                 health_check=AsyncMock(return_value=True),
             ))
 
@@ -79,19 +79,19 @@ def test_reversible_apply_wires_restart_to_service_manager(tmp_path):
         return True
 
     with patch("anima.kernel.reversible_apply.get_arch", return_value=backend), \
-         patch("anima.kernel.reversible_apply._is_rawos_source_tree",
+         patch("anima.kernel.reversible_apply._is_anima_source_tree",
                new=AsyncMock(return_value=False)), \
          patch("anima.kernel.reversible_apply.run_bash",
                new=AsyncMock(side_effect=_fake_run_bash)):
         result = asyncio.run(reversible_apply(
-            str(tmp_path), "rawos/fix-x", "rawos.service",
+            str(tmp_path), "anima/fix-x", "anima.service",
             health_check=_healthy,
         ))
 
     assert result.applied is True
     assert result.healthy is True
     assert result.rolled_back is False
-    backend.service_manager.restart.assert_called_once_with("rawos.service")
+    backend.service_manager.restart.assert_called_once_with("anima.service")
 
 
 def test_reversible_apply_rolls_back_when_restart_fails(tmp_path):
@@ -115,12 +115,12 @@ def test_reversible_apply_rolls_back_when_restart_fails(tmp_path):
         return True
 
     with patch("anima.kernel.reversible_apply.get_arch", return_value=backend), \
-         patch("anima.kernel.reversible_apply._is_rawos_source_tree",
+         patch("anima.kernel.reversible_apply._is_anima_source_tree",
                new=AsyncMock(return_value=False)), \
          patch("anima.kernel.reversible_apply.run_bash",
                new=AsyncMock(side_effect=_fake_run_bash)):
         result = asyncio.run(reversible_apply(
-            str(tmp_path), "rawos/fix-x", "rawos.service",
+            str(tmp_path), "anima/fix-x", "anima.service",
             health_check=_healthy,
         ))
 

@@ -15,7 +15,7 @@ def test_not_merged_returns_state_unchanged():
 
     result = _advance_state(
         state, anomaly_present=True, branch_merged=False,
-        fix_branch="rawos/fix-a", fix_sha="aaa", now=200,
+        fix_branch="anima/fix-a", fix_sha="aaa", now=200,
     )
 
     assert result == state
@@ -26,22 +26,22 @@ def test_merged_resolved_first_cycle_starts_pending_without_incrementing():
 
     result = _advance_state(
         state, anomaly_present=False, branch_merged=True,
-        fix_branch="rawos/fix-a", fix_sha="aaa", now=100,
+        fix_branch="anima/fix-a", fix_sha="aaa", now=100,
     )
 
     assert result.verified_successes == 0
     assert result.pending_since == 100
-    assert result.last_fix_branch == "rawos/fix-a"
+    assert result.last_fix_branch == "anima/fix-a"
     assert result.last_outcome == "merged_pending_stability"
     assert result.graduated is False
 
 
 def test_merged_resolved_second_consecutive_cycle_increments_verified_successes():
-    state = TrackRecordState(pending_since=100, last_fix_branch="rawos/fix-a", last_fix_sha="aaa")
+    state = TrackRecordState(pending_since=100, last_fix_branch="anima/fix-a", last_fix_sha="aaa")
 
     result = _advance_state(
         state, anomaly_present=False, branch_merged=True,
-        fix_branch="rawos/fix-a", fix_sha="aaa", now=200,
+        fix_branch="anima/fix-a", fix_sha="aaa", now=200,
     )
 
     assert result.verified_successes == 1
@@ -53,12 +53,12 @@ def test_merged_resolved_second_consecutive_cycle_increments_verified_successes(
 def test_merged_regressed_resets_pending_without_incrementing():
     state = TrackRecordState(
         verified_successes=2, pending_since=100,
-        last_fix_branch="rawos/fix-a", last_fix_sha="aaa",
+        last_fix_branch="anima/fix-a", last_fix_sha="aaa",
     )
 
     result = _advance_state(
         state, anomaly_present=True, branch_merged=True,
-        fix_branch="rawos/fix-a", fix_sha="aaa", now=200,
+        fix_branch="anima/fix-a", fix_sha="aaa", now=200,
     )
 
     assert result.verified_successes == 2
@@ -68,20 +68,20 @@ def test_merged_regressed_resets_pending_without_incrementing():
 
 
 def test_new_fix_branch_merged_while_previous_still_pending_restarts_tracking():
-    # Previous fix (rawos/fix-a) was merged and resolved for 1 cycle (pending).
-    # Before its 2nd confirming cycle, a DIFFERENT fix (rawos/fix-b) is merged
+    # Previous fix (anima/fix-a) was merged and resolved for 1 cycle (pending).
+    # Before its 2nd confirming cycle, a DIFFERENT fix (anima/fix-b) is merged
     # and also observed resolved. Tracking must restart for fix-b, not credit
     # fix-a's incomplete stability window.
-    state = TrackRecordState(pending_since=100, last_fix_branch="rawos/fix-a", last_fix_sha="aaa")
+    state = TrackRecordState(pending_since=100, last_fix_branch="anima/fix-a", last_fix_sha="aaa")
 
     result = _advance_state(
         state, anomaly_present=False, branch_merged=True,
-        fix_branch="rawos/fix-b", fix_sha="bbb", now=150,
+        fix_branch="anima/fix-b", fix_sha="bbb", now=150,
     )
 
     assert result.verified_successes == 0
     assert result.pending_since == 150
-    assert result.last_fix_branch == "rawos/fix-b"
+    assert result.last_fix_branch == "anima/fix-b"
     assert result.last_fix_sha == "bbb"
 
 
@@ -91,14 +91,14 @@ def test_graduates_after_reaching_threshold():
 
     result = _advance_state(
         state, anomaly_present=False, branch_merged=True,
-        fix_branch="rawos/fix-c", fix_sha="ccc", now=100,
+        fix_branch="anima/fix-c", fix_sha="ccc", now=100,
     )
     assert result.verified_successes == 2  # first cycle: pending only
     assert result.graduated is False
 
     result = _advance_state(
         result, anomaly_present=False, branch_merged=True,
-        fix_branch="rawos/fix-c", fix_sha="ccc", now=200,
+        fix_branch="anima/fix-c", fix_sha="ccc", now=200,
     )
     assert result.verified_successes == 3
     assert result.graduated is True
@@ -109,7 +109,7 @@ def test_already_graduated_stays_graduated():
 
     result = _advance_state(
         state, anomaly_present=True, branch_merged=False,
-        fix_branch="rawos/fix-d", fix_sha="ddd", now=100,
+        fix_branch="anima/fix-d", fix_sha="ddd", now=100,
     )
 
     assert result.graduated is True

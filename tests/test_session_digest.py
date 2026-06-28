@@ -78,8 +78,8 @@ def test_get_self_narrative_none_for_unknown_user():
 
 def test_set_and_get_self_narrative_roundtrip():
     user = _make_user("narrative@example.com")
-    db.set_self_narrative(user.id, "I am rawos, and I have been tending the checkout flow.")
-    assert db.get_self_narrative(user.id) == "I am rawos, and I have been tending the checkout flow."
+    db.set_self_narrative(user.id, "I am anima, and I have been tending the checkout flow.")
+    assert db.get_self_narrative(user.id) == "I am anima, and I have been tending the checkout flow."
 
 
 def test_get_proactive_artifacts_since_returns_empty_when_none():
@@ -158,12 +158,12 @@ def test_session_start_updates_last_chat_at():
 def test_session_start_returns_self_narrative():
     with TestClient(app) as client:
         headers, user_id = _signup_and_headers(client, "narrative-arrival@example.com")
-        db.set_self_narrative(user_id, "I am rawos, mid-way through the checkout flow.")
+        db.set_self_narrative(user_id, "I am anima, mid-way through the checkout flow.")
 
         r = client.post("/context/session_start", headers=headers)
 
         assert r.status_code == 200
-        assert r.json()["self_narrative"] == "I am rawos, mid-way through the checkout flow."
+        assert r.json()["self_narrative"] == "I am anima, mid-way through the checkout flow."
 
 
 def test_session_start_returns_none_self_narrative_for_fresh_user():

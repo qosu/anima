@@ -1,5 +1,5 @@
 """
-rawos core primitives — the 8 fundamental units of the OS.
+anima core primitives — the 8 fundamental units of the OS.
 Every primitive is user-scoped: no query ever touches another user's data.
 """
 from __future__ import annotations

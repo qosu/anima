@@ -1,7 +1,7 @@
 """
 Stage 3 — _record_git_commits records repo_root + anomaly_domain for
 SERVER_SCAN commits, so _update_earned_autonomy_track_records can later
-find the most recent rawos/fix-* branch proposed for a (repo, domain).
+find the most recent anima/fix-* branch proposed for a (repo, domain).
 """
 from __future__ import annotations
 
@@ -33,8 +33,8 @@ class TestRecordGitCommitsRepoRoot:
 
     def test_records_repo_root_and_anomaly_domain_for_server_scan(self):
         _record_git_commits(
-            self.user.id, None, "/root/.rawos-worktrees/some-repo-123",
-            self._commit_event("[rawos/fix-x abc1234] rawos: fix x"),
+            self.user.id, None, "/root/.anima-worktrees/some-repo-123",
+            self._commit_event("[anima/fix-x abc1234] anima: fix x"),
             repo_root="/root/some-repo",
             anomaly_domain="service_failed:foo.service",
         )
@@ -46,9 +46,9 @@ class TestRecordGitCommitsRepoRoot:
             ).fetchone()
         assert row["repo_root"] == "/root/some-repo"
         assert row["anomaly_domain"] == "service_failed:foo.service"
-        assert row["branch"] == "rawos/fix-x"
+        assert row["branch"] == "anima/fix-x"
         assert row["commit_hash"] == "abc1234"
-        assert row["workdir"] == "/root/.rawos-worktrees/some-repo-123"
+        assert row["workdir"] == "/root/.anima-worktrees/some-repo-123"
 
     def test_repo_root_and_anomaly_domain_default_to_none(self):
         _record_git_commits(

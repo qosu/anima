@@ -1,5 +1,5 @@
 """
-rawos Calendar API routes — Phase 4.
+anima Calendar API routes — Phase 4.
 
 Endpoints:
   POST   /calendar/connect     — save CalDAV credentials + trigger immediate sync

@@ -55,8 +55,8 @@ class FakeServiceManager:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("protected_name", [
-    "rawos.service", "rawos", "ssh.service", "ssh", "sshd.service", "sshd",
-    "RAWOS.SERVICE", "SSH",
+    "anima.service", "anima", "ssh.service", "ssh", "sshd.service", "sshd",
+    "ANIMA.SERVICE", "SSH",
 ])
 def test_refuses_self_protected_service_at_construction(protected_name):
     mgr = FakeServiceManager(initially_active=True)
@@ -69,14 +69,14 @@ def test_refuses_invalid_action():
     mgr = FakeServiceManager(initially_active=True)
 
     with pytest.raises(OperatorError):
-        ReversibleServiceAction(mgr, "rawos-svcprobe.service", "reload", "true")
+        ReversibleServiceAction(mgr, "anima-svcprobe.service", "reload", "true")
 
 
 def test_refuses_empty_validator_cmd():
     mgr = FakeServiceManager(initially_active=True)
 
     with pytest.raises(OperatorError):
-        ReversibleServiceAction(mgr, "rawos-svcprobe.service", "restart", "")
+        ReversibleServiceAction(mgr, "anima-svcprobe.service", "restart", "")
 
 
 # ---------------------------------------------------------------------------
@@ -85,26 +85,26 @@ def test_refuses_empty_validator_cmd():
 
 def test_start_keeps_on_validator_pass():
     mgr = FakeServiceManager(initially_active=False)
-    op = ReversibleServiceAction(mgr, "rawos-svcprobe.service", "start", "true")
+    op = ReversibleServiceAction(mgr, "anima-svcprobe.service", "start", "true")
 
     result = run_reversible_operation(op)
 
     assert result == OperationResult(applied=True, verified=True, restored=False,
                                        detail="applied and verified")
-    assert mgr.is_active("rawos-svcprobe.service") is True
+    assert mgr.is_active("anima-svcprobe.service") is True
     assert mgr.calls == ["start"]
 
 
 def test_start_then_verify_fail_restores_by_stopping():
     mgr = FakeServiceManager(initially_active=False)
-    op = ReversibleServiceAction(mgr, "rawos-svcprobe.service", "start", "false")
+    op = ReversibleServiceAction(mgr, "anima-svcprobe.service", "start", "false")
 
     result = run_reversible_operation(op)
 
     assert result.applied is True
     assert result.verified is False
     assert result.restored is True
-    assert mgr.is_active("rawos-svcprobe.service") is False
+    assert mgr.is_active("anima-svcprobe.service") is False
     assert mgr.calls == ["start", "stop"]
 
 
@@ -114,13 +114,13 @@ def test_start_then_verify_fail_restores_by_stopping():
 
 def test_stop_reaches_inactive_and_is_kept():
     mgr = FakeServiceManager(initially_active=True)
-    op = ReversibleServiceAction(mgr, "rawos-svcprobe.service", "stop", "true")
+    op = ReversibleServiceAction(mgr, "anima-svcprobe.service", "stop", "true")
 
     result = run_reversible_operation(op)
 
     assert result == OperationResult(applied=True, verified=True, restored=False,
                                        detail="applied and verified")
-    assert mgr.is_active("rawos-svcprobe.service") is False
+    assert mgr.is_active("anima-svcprobe.service") is False
     assert mgr.calls == ["stop"]
 
 
@@ -128,7 +128,7 @@ def test_stop_verify_does_not_invoke_validator():
     """stop's oracle is is_active() alone — a stopped service can't pass a health check."""
     mgr = FakeServiceManager(initially_active=True)
     # validator_cmd="false" would fail if ever invoked for stop's verify
-    op = ReversibleServiceAction(mgr, "rawos-svcprobe.service", "stop", "false")
+    op = ReversibleServiceAction(mgr, "anima-svcprobe.service", "stop", "false")
 
     result = run_reversible_operation(op)
 
@@ -142,7 +142,7 @@ def test_stop_verify_does_not_invoke_validator():
 
 def test_restart_keeps_on_validator_pass():
     mgr = FakeServiceManager(initially_active=True)
-    op = ReversibleServiceAction(mgr, "rawos-svcprobe.service", "restart", "true")
+    op = ReversibleServiceAction(mgr, "anima-svcprobe.service", "restart", "true")
 
     result = run_reversible_operation(op)
 
@@ -153,7 +153,7 @@ def test_restart_keeps_on_validator_pass():
 
 def test_restart_with_failing_validator_records_failure_with_noop_restore():
     mgr = FakeServiceManager(initially_active=True)
-    op = ReversibleServiceAction(mgr, "rawos-svcprobe.service", "restart", "false")
+    op = ReversibleServiceAction(mgr, "anima-svcprobe.service", "restart", "false")
 
     result = run_reversible_operation(op)
 
@@ -162,7 +162,7 @@ def test_restart_with_failing_validator_records_failure_with_noop_restore():
     assert result.restored is True
     # restore() ran but found is_active still True (matches was_active=True) -> no-op
     assert mgr.calls == ["restart"]
-    assert mgr.is_active("rawos-svcprobe.service") is True
+    assert mgr.is_active("anima-svcprobe.service") is True
 
 
 # ---------------------------------------------------------------------------
@@ -171,8 +171,8 @@ def test_restart_with_failing_validator_records_failure_with_noop_restore():
 
 def test_capture_returns_snapshot_of_current_state():
     mgr = FakeServiceManager(initially_active=True)
-    op = ReversibleServiceAction(mgr, "rawos-svcprobe.service", "restart", "true")
+    op = ReversibleServiceAction(mgr, "anima-svcprobe.service", "restart", "true")
 
     snapshot = op.capture()
 
-    assert snapshot == ServiceSnapshot(service_name="rawos-svcprobe.service", was_active=True)
+    assert snapshot == ServiceSnapshot(service_name="anima-svcprobe.service", was_active=True)

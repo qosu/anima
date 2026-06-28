@@ -1,4 +1,4 @@
-"""kernel/frontdoor — portable front-door policy for rawos.
+"""kernel/frontdoor — portable front-door policy for anima.
 
 The front-door is the mechanism that makes an interactive login land in the
 AI, not in a raw shell.  This module owns *what to do* when a login arrives
@@ -26,7 +26,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-_DEADMAN_UNIT = "rawos-frontdoor-revert"
+_DEADMAN_UNIT = "anima-frontdoor-revert"
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def decide_entry(ctx: dict[str, Any], policy: FrontDoorPolicy) -> EntryAction:
 
     ctx keys:
         ssh_original_command: str  — value of $SSH_ORIGINAL_COMMAND ("" if interactive)
-        rawos_healthy: bool        — True if the rawos API responded to /health
+        anima_healthy: bool        — True if the anima API responded to /health
         has_token: bool            — True if a valid auth token exists on disk
 
     Returns an EntryAction.  Always appends one JSON line to policy.audit_path.
@@ -76,7 +76,7 @@ def decide_entry(ctx: dict[str, Any], policy: FrontDoorPolicy) -> EntryAction:
     UI output are the caller's responsibility.
     """
     cmd = ctx.get("ssh_original_command", "")
-    healthy = bool(ctx.get("rawos_healthy", False))
+    healthy = bool(ctx.get("anima_healthy", False))
     has_token = bool(ctx.get("has_token", False))
 
     if cmd:
@@ -175,7 +175,7 @@ def install_with_deadman(
     """
     sd = _systemd if _systemd is not None else _DeadmanSystemd()
     snap = arch.snapshot()
-    revert_cmd = f"rawos frontdoor _revert {snap}"
+    revert_cmd = f"anima frontdoor _revert {snap}"
     sd.arm(_DEADMAN_UNIT, revert_after_s, revert_cmd)
 
     try:

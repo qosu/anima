@@ -1,4 +1,4 @@
-"""kernel/arch/detect — which arch backend is rawos running on.
+"""kernel/arch/detect — which arch backend is anima running on.
 
 current_os() reads sys.platform by default. Settings.arch_override
 (env ARCH_OVERRIDE) forces a specific OS regardless of host — used by
@@ -37,4 +37,4 @@ def current_os(settings: Settings | None = None) -> OS:
     if platform == "win32":
         return OS.WINDOWS
 
-    raise ValueError(f"unsupported platform for rawos arch backend: {platform!r}")
+    raise ValueError(f"unsupported platform for anima arch backend: {platform!r}")

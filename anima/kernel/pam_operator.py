@@ -23,11 +23,11 @@ from typing import Callable
 import anima.db as db
 
 PAM_DIR = Path("/etc/pam.d")
-PAM_BACKUP_DIR = Path("/root/.rawos-pam-backups")
-PROBE_KEY_PATH = Path("/root/.rawos-pam-backups/probe_key")
+PAM_BACKUP_DIR = Path("/root/.anima-pam-backups")
+PROBE_KEY_PATH = Path("/root/.anima-pam-backups/probe_key")
 PROBE_HOST = "root@127.0.0.1"
 PROBE_TIMEOUT_S = 10
-PAM_DEADMAN_UNIT = "rawos-pam-revert"
+PAM_DEADMAN_UNIT = "anima-pam-revert"
 PAM_DEADMAN_DELAY_S = 300
 
 _SELF_PROTECTED_PAM_FILES = frozenset({
@@ -217,7 +217,7 @@ def install_pam_edit_with_deadman(
 
     Order of operations (must not deviate — see I3):
         1. capture  — snapshot current pam.d state to disk
-        2. arm      — schedule rawos-pam-revert timer (systemd root context)
+        2. arm      — schedule anima-pam-revert timer (systemd root context)
         3. apply    — write new pam.d content
         4. verify   — live-auth probe via dedicated probe key (I5, I6)
            * fail or exception: disarm + restore + raise PamInstallError
@@ -235,7 +235,7 @@ def install_pam_edit_with_deadman(
         _probe_key=_probe_key,
     )
     snap = op.capture()
-    revert_cmd = f"/usr/local/bin/rawos-pam-restore {snap.snapshot_id} {pam_file}"
+    revert_cmd = f"/usr/local/bin/anima-pam-restore {snap.snapshot_id} {pam_file}"
     sd.arm(PAM_DEADMAN_UNIT, revert_after_s, revert_cmd)
 
     try:
@@ -261,7 +261,7 @@ def install_pam_edit_with_deadman(
 
 
 def commit_pam_edit(*, _systemd: object = None) -> None:
-    """Disarm the rawos-pam-revert deadman timer after out-of-band verification."""
+    """Disarm the anima-pam-revert deadman timer after out-of-band verification."""
     sd = _systemd if _systemd is not None else _PamDeadmanSystemd()
     sd.disarm(PAM_DEADMAN_UNIT)
 
