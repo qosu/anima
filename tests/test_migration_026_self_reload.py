@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-import rawos.db as db
+import anima.db as db
 
 
 @pytest.fixture()

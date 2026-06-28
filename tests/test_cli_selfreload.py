@@ -12,7 +12,7 @@ import httpx
 import pytest
 from click.testing import CliRunner
 
-from rawos.cli.main import cli
+from anima.cli.main import cli
 
 
 def _runner():

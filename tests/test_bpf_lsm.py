@@ -1,7 +1,7 @@
 """tests/test_bpf_lsm.py — TDD for rawos/kernel/bpf_lsm.py (Phase 24B).
 
 TDD Iron Law: this file must go RED before bpf_lsm.py is written
-(ModuleNotFoundError: No module named 'rawos.kernel.bpf_lsm').
+(ModuleNotFoundError: No module named 'anima.kernel.bpf_lsm').
 
 Phase 24B — eBPF LSM machine-wide MAC. The being adds `bpf` to the active LSM
 list via GRUB cmdline + reboot (Fact A, inert alone) then supervises an
@@ -25,7 +25,7 @@ import os
 
 import pytest
 
-from rawos.kernel import bpf_lsm
+from anima.kernel import bpf_lsm
 
 
 # ---------------------------------------------------------------------------

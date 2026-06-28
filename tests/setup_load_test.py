@@ -17,11 +17,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("RAWOS_SANDBOX_DOCKER", "false")
 
-from rawos.config import settings  # noqa: E402 — path set above
+from anima.config import settings  # noqa: E402 — path set above
 
-import rawos.db as db  # noqa: E402
-import rawos.auth as rawos_auth  # noqa: E402
-from rawos.models import Project  # noqa: E402
+import anima.db as db  # noqa: E402
+import anima.auth as rawos_auth  # noqa: E402
+from anima.models import Project  # noqa: E402
 
 OUT_FILE = Path("/tmp/rawos_loadtest_users.json")
 DOMAIN = "rawos.internal"

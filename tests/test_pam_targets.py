@@ -7,8 +7,8 @@ import tempfile
 
 import pytest
 
-import rawos.db as db
-from rawos.models import User
+import anima.db as db
+from anima.models import User
 
 
 @pytest.fixture()

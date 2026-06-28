@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from rawos.scheduler.proactive import _live_health_check
+from anima.scheduler.proactive import _live_health_check
 
 
 def _mock_arch(is_active_return: bool) -> MagicMock:
@@ -27,8 +27,8 @@ def test_live_health_check_calls_service_manager_is_active_not_run_bash(tmp_path
 
     check = _live_health_check(repo_root, "some_domain", "rawos.service")
 
-    with patch("rawos.scheduler.proactive.get_arch", return_value=backend), \
-         patch("rawos.scheduler.proactive.run_bash",
+    with patch("anima.scheduler.proactive.get_arch", return_value=backend), \
+         patch("anima.scheduler.proactive.run_bash",
                new=AsyncMock(side_effect=AssertionError(
                    "run_bash must NOT be called for systemctl is-active"
                ))):
@@ -44,8 +44,8 @@ def test_live_health_check_returns_false_when_service_inactive(tmp_path):
 
     check = _live_health_check(repo_root, "some_domain", "rawos.service")
 
-    with patch("rawos.scheduler.proactive.get_arch", return_value=backend), \
-         patch("rawos.scheduler.proactive.run_bash", new=AsyncMock(
+    with patch("anima.scheduler.proactive.get_arch", return_value=backend), \
+         patch("anima.scheduler.proactive.run_bash", new=AsyncMock(
                side_effect=AssertionError("run_bash must NOT be called"))):
         result = asyncio.run(check())
 

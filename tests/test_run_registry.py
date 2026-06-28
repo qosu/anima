@@ -15,7 +15,7 @@ import json
 
 import pytest
 
-from rawos.api.run_registry import RunRegistry, format_sse
+from anima.api.run_registry import RunRegistry, format_sse
 
 
 # ---------------------------------------------------------------------------

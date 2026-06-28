@@ -13,9 +13,9 @@ os.environ.setdefault("DEEPSEEK_KEY", "test-key")
 os.environ.setdefault("JWT_SECRET",   "test-secret-long-enough-for-production-use")
 
 from fastapi.testclient import TestClient
-from rawos.api.app import app
-from rawos.models import User, UserTier
-import rawos.db as db
+from anima.api.app import app
+from anima.models import User, UserTier
+import anima.db as db
 
 client = TestClient(app)
 
@@ -110,7 +110,7 @@ class TestCheckout:
                         headers={"Authorization": f"Bearer {tokens['access_token']}"})
         assert r.status_code == 400
 
-    @patch("rawos.billing._get_stripe")
+    @patch("anima.billing._get_stripe")
     def test_returns_checkout_url(self, mock_get_stripe):
         mock_stripe = MagicMock()
         mock_stripe.Customer.create.return_value = MagicMock(id="cus_test_new")
@@ -138,7 +138,7 @@ class TestWebhook:
                         headers={"Content-Type": "application/json"})
         assert r.status_code == 400
 
-    @patch("rawos.billing._get_stripe")
+    @patch("anima.billing._get_stripe")
     def test_checkout_completed_upgrades_user(self, mock_get_stripe):
         mock_stripe = MagicMock()
         payload = json.dumps({
@@ -168,7 +168,7 @@ class TestWebhook:
         assert upgraded.tier == UserTier.PRO
         assert upgraded.stripe_customer_id == "cus_wh_test"
 
-    @patch("rawos.billing._get_stripe")
+    @patch("anima.billing._get_stripe")
     def test_subscription_deleted_downgrades_user(self, mock_get_stripe):
         mock_stripe = MagicMock()
         u = db.create_user(User(email="wh_dn@t.com", password_hash="x",
@@ -207,7 +207,7 @@ class TestPortal:
                         headers={"Authorization": f"Bearer {tokens['access_token']}"})
         assert r.status_code == 400
 
-    @patch("rawos.billing._get_stripe")
+    @patch("anima.billing._get_stripe")
     def test_returns_portal_url(self, mock_get_stripe):
         mock_stripe = MagicMock()
         mock_stripe.billing_portal.Session.create.return_value = MagicMock(

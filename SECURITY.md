@@ -17,7 +17,7 @@ within 7 days. We will credit you in the changelog unless you prefer otherwise.
 
 ## Threat model
 
-rawos operates under an explicit threat model with seven categories (T1–T7):
+Anima operates under an explicit threat model with seven categories (T1–T7):
 
 | ID | Threat |
 |---|---|
@@ -59,7 +59,7 @@ The codebase enforces twelve invariants (I-SEC1–I-SEC12):
 
 ## Security architecture
 
-rawos implements the Security Hardening Program (SHP) across seven phases:
+Anima implements the Security Hardening Program (SHP) across seven phases:
 
 - **SHP.0** — Threat model and verification harness
 - **SHP.1** — Host perimeter (nftables, SSH hardening, fail2ban)

@@ -1,7 +1,7 @@
 """tests/test_landlock.py — TDD for rawos/kernel/landlock.py (Phase 26).
 
 TDD Iron Law: this file must go RED before landlock.py is written
-(ModuleNotFoundError: No module named 'rawos.kernel.landlock').
+(ModuleNotFoundError: No module named 'anima.kernel.landlock').
 
 Phase 26 — Self-Imposed Kernel MAC via Landlock. The being binds its own
 run_bash action surface with a kernel-enforced (LSM) ruleset that restricts
@@ -22,9 +22,9 @@ import sys
 
 import pytest
 
-from rawos.kernel import landlock
-from rawos.kernel.arch.linux import LinuxShellPolicy
-from rawos.kernel.sandbox import run_bash
+from anima.kernel import landlock
+from anima.kernel.arch.linux import LinuxShellPolicy
+from anima.kernel.sandbox import run_bash
 
 
 pytestmark = pytest.mark.skipif(
@@ -173,7 +173,7 @@ def test_validate_boot_config_ok_when_enabled_and_supported(monkeypatch):
 # LinuxShellPolicy.wrap — flag plumbing (no behavior change when off)
 # ---------------------------------------------------------------------------
 def test_wrap_flag_off_is_byte_identical_to_before(monkeypatch, tmp_path):
-    monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", False)
+    monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", False)
 
     shell_cmd, exec_kwargs = LinuxShellPolicy().wrap("echo hi", str(tmp_path))
 
@@ -184,7 +184,7 @@ def test_wrap_flag_off_is_byte_identical_to_before(monkeypatch, tmp_path):
 
 
 def test_wrap_flag_on_adds_preexec_fn(monkeypatch, tmp_path):
-    monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", True)
+    monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", True)
 
     shell_cmd, exec_kwargs = LinuxShellPolicy().wrap("echo hi", str(tmp_path))
 
@@ -192,7 +192,7 @@ def test_wrap_flag_on_adds_preexec_fn(monkeypatch, tmp_path):
 
 
 def test_wrap_flag_on_but_unsupported_falls_back_to_passthrough(monkeypatch, tmp_path):
-    monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", True)
+    monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", True)
     monkeypatch.setattr(landlock, "_abi_cache", 0)
 
     shell_cmd, exec_kwargs = LinuxShellPolicy().wrap("echo hi", str(tmp_path))
@@ -204,7 +204,7 @@ def test_wrap_flag_on_but_unsupported_falls_back_to_passthrough(monkeypatch, tmp
 # run_bash integration — out-of-envelope vs in-envelope, end to end
 # ---------------------------------------------------------------------------
 async def test_run_bash_denies_out_of_envelope_path(monkeypatch, tmp_path):
-    monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", True)
+    monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", True)
 
     # /root/.ssh/authorized_keys is always outside DEFAULT_BEING_ENVELOPE.
     # (rawos source root /root/rawos is now in rw_paths for git-worktree ops,
@@ -215,7 +215,7 @@ async def test_run_bash_denies_out_of_envelope_path(monkeypatch, tmp_path):
 
 
 async def test_run_bash_allows_in_envelope_path(monkeypatch, tmp_path):
-    monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", True)
+    monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", True)
 
     # /etc/hostname is under /etc, which IS in DEFAULT_BEING_ENVELOPE.ro_paths.
     result = await run_bash("cat /etc/hostname", str(tmp_path))
@@ -224,7 +224,7 @@ async def test_run_bash_allows_in_envelope_path(monkeypatch, tmp_path):
 
 
 async def test_run_bash_allows_write_within_workdir(monkeypatch, tmp_path):
-    monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", True)
+    monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", True)
 
     result = await run_bash("echo hello > out.txt && cat out.txt", str(tmp_path))
 
@@ -247,7 +247,7 @@ def test_default_being_envelope_is_frozen_and_composable(tmp_path):
 
 
 async def test_run_bash_allows_dev_null_redirect(monkeypatch, tmp_path):
-    monkeypatch.setattr("rawos.config.settings.landlock_self_mac_enabled", True)
+    monkeypatch.setattr("anima.config.settings.landlock_self_mac_enabled", True)
 
     # git, systemctl and many other operator commands redirect to /dev/null;
     # DEFAULT_BEING_ENVELOPE must not break this (found via standalone

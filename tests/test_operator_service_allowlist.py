@@ -9,9 +9,9 @@ import hashlib
 import os
 import tempfile
 
-import rawos.db as db
-from rawos.kernel.track_record import GRADUATION_THRESHOLD
-from rawos.models import User
+import anima.db as db
+from anima.kernel.track_record import GRADUATION_THRESHOLD
+from anima.models import User
 
 
 class TestManagedServiceTargetsDB:

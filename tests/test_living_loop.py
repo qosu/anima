@@ -23,10 +23,10 @@ os.environ.setdefault("WORKSPACES_ROOT", str(Path(tempfile.mkdtemp())))
 os.environ.setdefault("JWT_SECRET", "test_secret_32chars_minimum_ok!")
 os.environ.setdefault("DEEPSEEK_KEY", "test_key")
 
-import rawos.db as db
-from rawos.config import settings
-from rawos.models import User, UserTier
-from rawos.scheduler.proactive import RAWOS_ENTITY_USER_ID, RAWOS_ENTITY_PROJECT_ID
+import anima.db as db
+from anima.config import settings
+from anima.models import User, UserTier
+from anima.scheduler.proactive import RAWOS_ENTITY_USER_ID, RAWOS_ENTITY_PROJECT_ID
 
 
 def _make_user(uid: str, email: str) -> User:
@@ -89,11 +89,11 @@ class TestSeamA:
         """_log_episodic(project_id=…) must call memory_index.upsert_memory once."""
         upsert_calls: list[dict] = []
         monkeypatch.setattr(
-            "rawos.kernel.memory_index.upsert_memory",
+            "anima.kernel.memory_index.upsert_memory",
             lambda **kw: upsert_calls.append(kw),
         )
 
-        from rawos.scheduler.proactive import _log_episodic  # noqa: PLC0415
+        from anima.scheduler.proactive import _log_episodic  # noqa: PLC0415
         _log_episodic(
             RAWOS_ENTITY_USER_ID, "SERVER_SCAN", "ops", "fix disk",
             "contribute", "cleaned /var/log",
@@ -111,11 +111,11 @@ class TestSeamA:
         """_log_episodic without project_id must NOT call upsert_memory."""
         upsert_calls: list[dict] = []
         monkeypatch.setattr(
-            "rawos.kernel.memory_index.upsert_memory",
+            "anima.kernel.memory_index.upsert_memory",
             lambda **kw: upsert_calls.append(kw),
         )
 
-        from rawos.scheduler.proactive import _log_episodic  # noqa: PLC0415
+        from anima.scheduler.proactive import _log_episodic  # noqa: PLC0415
         _log_episodic(
             RAWOS_ENTITY_USER_ID, "SERVER_SCAN", "ops", "fix disk",
             "contribute", "cleaned /var/log",
@@ -128,9 +128,9 @@ class TestSeamA:
         def _raise(**kw):
             raise RuntimeError("chromadb unavailable")
 
-        monkeypatch.setattr("rawos.kernel.memory_index.upsert_memory", _raise)
+        monkeypatch.setattr("anima.kernel.memory_index.upsert_memory", _raise)
 
-        from rawos.scheduler.proactive import _log_episodic  # noqa: PLC0415
+        from anima.scheduler.proactive import _log_episodic  # noqa: PLC0415
         result = _log_episodic(
             RAWOS_ENTITY_USER_ID, "SERVER_SCAN", "ops", "fix disk",
             "contribute", "cleaned /var/log",
@@ -143,9 +143,9 @@ class TestSeamA:
         def _raise(**kw):
             raise RuntimeError("chromadb unavailable")
 
-        monkeypatch.setattr("rawos.kernel.memory_index.upsert_memory", _raise)
+        monkeypatch.setattr("anima.kernel.memory_index.upsert_memory", _raise)
 
-        from rawos.scheduler.proactive import _log_episodic  # noqa: PLC0415
+        from anima.scheduler.proactive import _log_episodic  # noqa: PLC0415
         _log_episodic(
             RAWOS_ENTITY_USER_ID, "SERVER_SCAN", "ops", "disk full",
             "signal", "alerting owner",
@@ -169,11 +169,11 @@ class TestSeamB:
     def test_consolidation_cycle_writes_being_narrative(self, entity_user, monkeypatch):
         """_run_narrative_consolidation_cycle must persist the narrative LLM output."""
         monkeypatch.setattr(
-            "rawos.scheduler.proactive.write_self_narrative",
+            "anima.scheduler.proactive.write_self_narrative",
             AsyncMock(return_value="I repaired disk at 3am. All systems nominal."),
         )
 
-        from rawos.scheduler.proactive import _run_narrative_consolidation_cycle  # noqa: PLC0415
+        from anima.scheduler.proactive import _run_narrative_consolidation_cycle  # noqa: PLC0415
         asyncio.run(_run_narrative_consolidation_cycle())
 
         result = db.get_self_narrative(RAWOS_ENTITY_USER_ID)
@@ -183,28 +183,28 @@ class TestSeamB:
         """If write_self_narrative returns '', prior narrative must NOT be overwritten."""
         db.set_self_narrative(RAWOS_ENTITY_USER_ID, "Prior narrative must survive.")
         monkeypatch.setattr(
-            "rawos.scheduler.proactive.write_self_narrative",
+            "anima.scheduler.proactive.write_self_narrative",
             AsyncMock(return_value=""),
         )
 
-        from rawos.scheduler.proactive import _run_narrative_consolidation_cycle  # noqa: PLC0415
+        from anima.scheduler.proactive import _run_narrative_consolidation_cycle  # noqa: PLC0415
         asyncio.run(_run_narrative_consolidation_cycle())
 
         result = db.get_self_narrative(RAWOS_ENTITY_USER_ID)
         assert result == "Prior narrative must survive."
 
     def test_consolidation_loop_disabled_returns_immediately(self, entity_user, monkeypatch):
-        """rawos_narrative_consolidation_loop must return immediately when flag is False."""
+        """anima_narrative_consolidation_loop must return immediately when flag is False."""
         monkeypatch.setattr(settings, "narrative_consolidation_enabled", False)
 
         write_calls = []
         monkeypatch.setattr(
-            "rawos.scheduler.proactive.write_self_narrative",
+            "anima.scheduler.proactive.write_self_narrative",
             AsyncMock(side_effect=lambda *a, **kw: write_calls.append(1)),
         )
 
-        from rawos.scheduler.proactive import rawos_narrative_consolidation_loop  # noqa: PLC0415
-        asyncio.run(rawos_narrative_consolidation_loop())
+        from anima.scheduler.proactive import anima_narrative_consolidation_loop  # noqa: PLC0415
+        asyncio.run(anima_narrative_consolidation_loop())
 
         assert len(write_calls) == 0, "disabled loop must not call write_self_narrative"
         assert db.get_self_narrative(RAWOS_ENTITY_USER_ID) is None
@@ -223,10 +223,10 @@ class TestSeamC:
             RAWOS_ENTITY_USER_ID,
             "I am rawos. I repaired your disk at 3am last night.",
         )
-        monkeypatch.setattr("rawos.kernel.memory_index.search_memories", lambda *a, **kw: [])
-        monkeypatch.setattr("rawos.kernel.memory_index.search_files", lambda *a, **kw: [])
+        monkeypatch.setattr("anima.kernel.memory_index.search_memories", lambda *a, **kw: [])
+        monkeypatch.setattr("anima.kernel.memory_index.search_files", lambda *a, **kw: [])
 
-        from rawos.kernel.context_builder import build_context  # noqa: PLC0415
+        from anima.kernel.context_builder import build_context  # noqa: PLC0415
         _, system_addition = build_context(owner_user.id, "some-proj-id", "disk usage")
 
         assert "repaired your disk" in system_addition, (
@@ -239,10 +239,10 @@ class TestSeamC:
             RAWOS_ENTITY_USER_ID,
             "I am rawos. I repaired your disk at 3am last night.",
         )
-        monkeypatch.setattr("rawos.kernel.memory_index.search_memories", lambda *a, **kw: [])
-        monkeypatch.setattr("rawos.kernel.memory_index.search_files", lambda *a, **kw: [])
+        monkeypatch.setattr("anima.kernel.memory_index.search_memories", lambda *a, **kw: [])
+        monkeypatch.setattr("anima.kernel.memory_index.search_files", lambda *a, **kw: [])
 
-        from rawos.kernel.context_builder import build_context  # noqa: PLC0415
+        from anima.kernel.context_builder import build_context  # noqa: PLC0415
         _, system_addition = build_context(
             RAWOS_ENTITY_USER_ID, RAWOS_ENTITY_PROJECT_ID, "ops"
         )
@@ -254,10 +254,10 @@ class TestSeamC:
         self, entity_user, owner_user, monkeypatch
     ):
         """When being has no narrative set, build_context must succeed without raising."""
-        monkeypatch.setattr("rawos.kernel.memory_index.search_memories", lambda *a, **kw: [])
-        monkeypatch.setattr("rawos.kernel.memory_index.search_files", lambda *a, **kw: [])
+        monkeypatch.setattr("anima.kernel.memory_index.search_memories", lambda *a, **kw: [])
+        monkeypatch.setattr("anima.kernel.memory_index.search_files", lambda *a, **kw: [])
 
-        from rawos.kernel.context_builder import build_context  # noqa: PLC0415
+        from anima.kernel.context_builder import build_context  # noqa: PLC0415
         messages, system_addition = build_context(owner_user.id, "some-proj-id", "hello")
 
         assert isinstance(messages, list)
@@ -274,10 +274,10 @@ class TestSeamC:
                 return [("I repaired disk at 3am", {"role": "assistant"})]
             return []
 
-        monkeypatch.setattr("rawos.kernel.memory_index.search_memories", _search)
-        monkeypatch.setattr("rawos.kernel.memory_index.search_files", lambda *a, **kw: [])
+        monkeypatch.setattr("anima.kernel.memory_index.search_memories", _search)
+        monkeypatch.setattr("anima.kernel.memory_index.search_files", lambda *a, **kw: [])
 
-        from rawos.kernel.context_builder import build_context  # noqa: PLC0415
+        from anima.kernel.context_builder import build_context  # noqa: PLC0415
         _, system_addition = build_context(owner_user.id, "owner-proj", "disk")
 
         assert "I repaired disk at 3am" in system_addition

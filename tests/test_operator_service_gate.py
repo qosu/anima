@@ -19,16 +19,16 @@ import time
 
 import pytest
 
-import rawos.db as db
-import rawos.kernel.operator as operator_module
-from rawos.kernel.operator import (
+import anima.db as db
+import anima.kernel.operator as operator_module
+from anima.kernel.operator import (
     OperatorError,
     ServiceOperateOutcome,
     ServiceOperatorRefusalError,
     execute_approved_service_action,
     operate_on_service,
 )
-from rawos.models import User
+from anima.models import User
 
 SERVICE_TARGET = "rawos-svcprobe.service"
 RESTART_CLASS = "service_restart"
@@ -69,7 +69,7 @@ class FakeServiceManager:
 
 def _graduate(user_id: str, operation_class: str, target: str) -> None:
     """Drive 6 verified=True updates to reach GRADUATION_THRESHOLD=3 verified_successes."""
-    from rawos.kernel.track_record import GRADUATION_THRESHOLD
+    from anima.kernel.track_record import GRADUATION_THRESHOLD
     now = int(time.time())
     for i in range(GRADUATION_THRESHOLD * 2):
         db.update_operator_track_record(

@@ -8,10 +8,10 @@ import pytest
 os.environ.setdefault("DEEPSEEK_KEY", "test-key")
 os.environ.setdefault("JWT_SECRET", "test-secret-long-enough-for-production-use")
 
-import rawos.db as db
-from rawos.models import User
-from rawos.kernel import billing_context
-from rawos.kernel.agent_loop import _compute_cost_usd_micros, _log_usage
+import anima.db as db
+from anima.models import User
+from anima.kernel import billing_context
+from anima.kernel.agent_loop import _compute_cost_usd_micros, _log_usage
 
 
 @pytest.fixture(autouse=True)

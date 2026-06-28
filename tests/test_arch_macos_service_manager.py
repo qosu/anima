@@ -15,7 +15,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from rawos.kernel.arch.macos import MacOSServiceManager
+from anima.kernel.arch.macos import MacOSServiceManager
 
 
 def _mock_run(stdout: str, returncode: int = 0) -> SimpleNamespace:
@@ -42,7 +42,7 @@ _LAUNCHCTL_LIST_OUTPUT = (
 
 def test_list_failed_returns_labels_with_nonzero_status_and_no_pid():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run(_LAUNCHCTL_LIST_OUTPUT)):
         result = mgr.list_failed()
     assert result == ["com.example.crashed", "com.example.also_failed"]
@@ -52,21 +52,21 @@ def test_list_failed_excludes_running_service_with_nonzero_prior_exit():
     """A service with a PID is running — not failed, regardless of Status."""
     mgr = MacOSServiceManager()
     output = "PID\tStatus\tLabel\n456\t1\tcom.example.running_but_bad_prev\n"
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run(output)):
         assert mgr.list_failed() == []
 
 
 def test_list_failed_returns_empty_on_subprocess_failure():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert mgr.list_failed() == []
 
 
 def test_list_failed_returns_empty_on_exception():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                side_effect=OSError("launchctl unavailable")):
         assert mgr.list_failed() == []
 
@@ -79,14 +79,14 @@ _STOPPED_OUTPUT = '{\n\t"Label" = "com.example.svc";\n\t"LastExitStatus" = 0;\n}
 
 def test_is_active_returns_true_when_pid_present():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run(_RUNNING_OUTPUT)):
         assert mgr.is_active("com.example.svc") is True
 
 
 def test_is_active_returns_false_when_pid_absent():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run(_STOPPED_OUTPUT)):
         assert mgr.is_active("com.example.svc") is False
 
@@ -94,14 +94,14 @@ def test_is_active_returns_false_when_pid_absent():
 def test_is_active_returns_false_on_nonzero_exit():
     """launchctl list <label> exits 113 when the label is not loaded."""
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("", returncode=113)):
         assert mgr.is_active("com.example.missing") is False
 
 
 def test_is_active_returns_false_on_exception():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                side_effect=OSError("launchctl unavailable")):
         assert mgr.is_active("com.example.svc") is False
 
@@ -110,7 +110,7 @@ def test_is_active_returns_false_on_exception():
 
 def test_restart_calls_kickstart_k_in_system_domain():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("", returncode=0)) as mock_run:
         result = mgr.restart("com.example.svc")
     assert result is True
@@ -121,13 +121,13 @@ def test_restart_calls_kickstart_k_in_system_domain():
 
 def test_restart_returns_false_on_nonzero_exit():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert mgr.restart("com.example.svc") is False
 
 
 def test_restart_returns_false_on_exception():
     mgr = MacOSServiceManager()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                side_effect=OSError("launchctl unavailable")):
         assert mgr.restart("com.example.svc") is False

@@ -10,8 +10,8 @@ import asyncio
 
 import pytest
 
-from rawos.context import kernel_perception as kp
-from rawos.kernel.entity import RAWOS_ENTITY_USER_ID
+from anima.context import kernel_perception as kp
+from anima.kernel.entity import RAWOS_ENTITY_USER_ID
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-import rawos.db as db
+import anima.db as db
 
 
 @pytest.fixture()

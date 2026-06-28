@@ -1,7 +1,7 @@
 """tests/test_unit_topology.py — TDD for rawos/kernel/unit_topology.py (Phase 23-full).
 
 TDD Iron Law: this file must go RED before unit_topology.py is written
-(ModuleNotFoundError: No module named 'rawos.kernel.unit_topology').
+(ModuleNotFoundError: No module named 'anima.kernel.unit_topology').
 
 Phase 23-full — Unit/Boot Topology Authorship. The being authors systemd unit
 files, enable/disable state (boot symlink graph), and default.target — the final
@@ -24,9 +24,9 @@ import time
 
 import pytest
 
-from rawos.kernel import unit_topology
-from rawos.kernel.track_record import GRADUATION_THRESHOLD
-from rawos.models import User
+from anima.kernel import unit_topology
+from anima.kernel.track_record import GRADUATION_THRESHOLD
+from anima.models import User
 
 
 # ---------------------------------------------------------------------------
@@ -566,8 +566,8 @@ def test_arm_and_disarm_reference_same_unit():
 # operate_on_unit_topology gate (I-UT7)
 # ---------------------------------------------------------------------------
 
-import rawos.db as db
-from rawos.kernel.operator import (
+import anima.db as db
+from anima.kernel.operator import (
     UnitTopologyRefusalError as OperatorUnitTopologyRefusalError,
     operate_on_unit_topology,
 )
@@ -584,7 +584,7 @@ class TestOperateOnUnitTopologyGate:
         yield
 
     def test_propose_only_when_disabled(self, monkeypatch):
-        monkeypatch.setattr("rawos.config.settings.operator_unit_topology_enabled", False)
+        monkeypatch.setattr("anima.config.settings.operator_unit_topology_enabled", False)
         outcome = operate_on_unit_topology(
             self.user.id, "my-test-svc.service", "author",
             unit_topology.compute_floor_closure(""),
@@ -596,7 +596,7 @@ class TestOperateOnUnitTopologyGate:
         assert "operator_unit_topology_enabled=False" in outcome.reason
 
     def test_propose_only_when_not_in_allowlist(self, monkeypatch):
-        monkeypatch.setattr("rawos.config.settings.operator_unit_topology_enabled", True)
+        monkeypatch.setattr("anima.config.settings.operator_unit_topology_enabled", True)
         # No db.add_managed_unit_target → not in allowlist.
         outcome = operate_on_unit_topology(
             self.user.id, "my-test-svc.service", "author",
@@ -609,7 +609,7 @@ class TestOperateOnUnitTopologyGate:
 
     def test_boot_graph_op_always_propose_only(self, monkeypatch):
         """I-UT7: boot-graph ops NEVER auto-apply regardless of enabled/graduation."""
-        monkeypatch.setattr("rawos.config.settings.operator_unit_topology_enabled", True)
+        monkeypatch.setattr("anima.config.settings.operator_unit_topology_enabled", True)
         db.add_managed_unit_target(self.user.id, "my-test-svc.service")
         # Graduate enable op: GRADUATION_THRESHOLD*2 calls required (stability window).
         _now = 1_700_000_000
@@ -630,7 +630,7 @@ class TestOperateOnUnitTopologyGate:
 
     def test_floor_refusal_propagates_unconditionally(self, monkeypatch):
         """UnitTopologyRefusalError for floor units propagates even before allowlist check."""
-        monkeypatch.setattr("rawos.config.settings.operator_unit_topology_enabled", True)
+        monkeypatch.setattr("anima.config.settings.operator_unit_topology_enabled", True)
         with pytest.raises(OperatorUnitTopologyRefusalError):
             operate_on_unit_topology(
                 self.user.id, "sshd.service", "author",
@@ -640,7 +640,7 @@ class TestOperateOnUnitTopologyGate:
             )
 
     def test_propose_only_when_not_graduated(self, monkeypatch):
-        monkeypatch.setattr("rawos.config.settings.operator_unit_topology_enabled", True)
+        monkeypatch.setattr("anima.config.settings.operator_unit_topology_enabled", True)
         db.add_managed_unit_target(self.user.id, "my-test-svc.service")
         # No track record → not graduated.
         outcome = operate_on_unit_topology(
@@ -659,7 +659,7 @@ class TestOperateOnUnitTopologyGate:
 
 def test_flag_off_does_not_invoke_systemctl(monkeypatch):
     """operator_unit_topology_enabled=False → no manager calls at all."""
-    monkeypatch.setattr("rawos.config.settings.operator_unit_topology_enabled", False)
+    monkeypatch.setattr("anima.config.settings.operator_unit_topology_enabled", False)
     mgr = _fake_mgr()
     operate_on_unit_topology(
         "fake-user-id", "my-test-svc.service", "author",

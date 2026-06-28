@@ -16,9 +16,9 @@ import time
 
 import pytest
 
-import rawos.db as db
-from rawos.config import settings
-from rawos.context.system_perception import (
+import anima.db as db
+from anima.config import settings
+from anima.context.system_perception import (
     EVENT_TYPE_CONFIG_CHANGE,
     EVENT_TYPE_SOURCE_CHANGE,
     SEVERITY_CONFIG_DELETE,
@@ -30,7 +30,7 @@ from rawos.context.system_perception import (
     start_system_perception,
     stop_system_perception,
 )
-from rawos.kernel.entity import RAWOS_ENTITY_USER_ID
+from anima.kernel.entity import RAWOS_ENTITY_USER_ID
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +284,7 @@ class TestSystemPerceptionNonFatal:
 
     def test_record_event_exception_does_not_propagate(self, monkeypatch):
         """Handler must catch _record_event errors and log, never raise."""
-        import rawos.context.system_perception as sp
+        import anima.context.system_perception as sp
 
         def _raise(*args, **kwargs):
             raise RuntimeError("db is borked")
@@ -304,7 +304,7 @@ class TestSystemPerceptionDisabled:
 
     def test_disabled_start_creates_no_observer(self, monkeypatch):
         """When disabled, _observer must remain None after start call."""
-        import rawos.context.system_perception as sp
+        import anima.context.system_perception as sp
 
         monkeypatch.setattr(settings, "system_perception_enabled", False)
         original = sp._observer
@@ -318,7 +318,7 @@ class TestSystemPerceptionDisabled:
 
     def test_stop_when_not_started_is_noop(self):
         """stop_system_perception with _observer=None must not raise."""
-        import rawos.context.system_perception as sp
+        import anima.context.system_perception as sp
 
         original = sp._observer
         sp._observer = None
@@ -342,7 +342,7 @@ class TestSystemPerceptionWiring:
 
     def test_enabled_start_creates_observer(self, monkeypatch, tmp_path):
         """When enabled with a valid watch path, observer is created and started."""
-        import rawos.context.system_perception as sp
+        import anima.context.system_perception as sp
 
         monkeypatch.setattr(settings, "system_perception_enabled", True)
         monkeypatch.setattr(settings, "system_perception_paths", [str(tmp_path)])
@@ -358,7 +358,7 @@ class TestSystemPerceptionWiring:
 
     def test_stop_clears_observer(self, monkeypatch, tmp_path):
         """stop_system_perception sets _observer back to None."""
-        import rawos.context.system_perception as sp
+        import anima.context.system_perception as sp
 
         monkeypatch.setattr(settings, "system_perception_enabled", True)
         monkeypatch.setattr(settings, "system_perception_paths", [str(tmp_path)])
@@ -373,7 +373,7 @@ class TestSystemPerceptionWiring:
         """app.py must import start_system_perception (wiring contract)."""
         import importlib, sys
         # Force re-import to detect import errors
-        app_mod = importlib.import_module("rawos.api.app")
+        app_mod = importlib.import_module("anima.api.app")
         # The import happened without error — wiring present
         assert hasattr(app_mod, "__file__")
 

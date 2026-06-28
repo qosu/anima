@@ -22,51 +22,51 @@ os.environ.setdefault("JWT_SECRET", "test-secret")
 
 class TestSpecializedAgents:
     def test_agent_configs_present(self):
-        from rawos.kernel.specialized_agents import AGENT_CONFIGS
+        from anima.kernel.specialized_agents import AGENT_CONFIGS
         assert set(AGENT_CONFIGS.keys()) == {"code", "design", "research", "data"}
 
     def test_code_tools_include_bash(self):
-        from rawos.kernel.specialized_agents import get_tool_definitions
+        from anima.kernel.specialized_agents import get_tool_definitions
         tools = get_tool_definitions("code")
         names = {t["function"]["name"] for t in tools}
         assert "bash" in names
         assert "write_file" in names
 
     def test_research_tools_exclude_bash(self):
-        from rawos.kernel.specialized_agents import get_tool_definitions
+        from anima.kernel.specialized_agents import get_tool_definitions
         tools = get_tool_definitions("research")
         names = {t["function"]["name"] for t in tools}
         assert "bash" not in names
         assert "fetch_url" in names
 
     def test_design_tools_exclude_bash(self):
-        from rawos.kernel.specialized_agents import get_tool_definitions
+        from anima.kernel.specialized_agents import get_tool_definitions
         tools = get_tool_definitions("design")
         names = {t["function"]["name"] for t in tools}
         assert "bash" not in names
         assert "write_file" in names
 
     def test_unknown_type_returns_all_tools(self):
-        from rawos.kernel.specialized_agents import get_tool_definitions
-        from rawos.kernel.tools import TOOL_DEFINITIONS
+        from anima.kernel.specialized_agents import get_tool_definitions
+        from anima.kernel.tools import TOOL_DEFINITIONS
         tools = get_tool_definitions("unknown_type")
         assert tools == TOOL_DEFINITIONS
 
     def test_system_prompt_contains_role(self):
-        from rawos.kernel.specialized_agents import get_system_prompt
+        from anima.kernel.specialized_agents import get_system_prompt
         prompt = get_system_prompt("code")
         assert "CodeAgent" in prompt
         prompt2 = get_system_prompt("research")
         assert "ResearchAgent" in prompt2
 
     def test_system_prompt_with_base_context(self):
-        from rawos.kernel.specialized_agents import get_system_prompt
+        from anima.kernel.specialized_agents import get_system_prompt
         prompt = get_system_prompt("code", base_context="Project: e-commerce app")
         assert "Project: e-commerce app" in prompt
         assert "CodeAgent" in prompt
 
     def test_all_tool_definitions_are_valid_dicts(self):
-        from rawos.kernel.specialized_agents import get_tool_definitions
+        from anima.kernel.specialized_agents import get_tool_definitions
         for agent_type in ("code", "design", "research", "data"):
             tools = get_tool_definitions(agent_type)
             assert isinstance(tools, list)
@@ -85,13 +85,13 @@ class TestAgentLoopToolDefinitions:
 
     def test_run_signature_has_tool_definitions(self):
         import inspect
-        from rawos.kernel.agent_loop import run
+        from anima.kernel.agent_loop import run
         sig = inspect.signature(run)
         assert "tool_definitions" in sig.parameters
 
     def test_run_signature_has_agent_id(self):
         import inspect
-        from rawos.kernel.agent_loop import run
+        from anima.kernel.agent_loop import run
         sig = inspect.signature(run)
         assert "agent_id" in sig.parameters
 
@@ -101,11 +101,11 @@ class TestAgentLoopToolDefinitions:
 
         async def _run():
             # Mock _llm_tool_call to return no tool calls (direct answer)
-            with patch("rawos.kernel.agent_loop._llm_tool_call") as mock_llm:
+            with patch("anima.kernel.agent_loop._llm_tool_call") as mock_llm:
                 mock_llm.return_value = {"content": "hello", "tool_calls": []}
                 events = []
                 with tempfile.TemporaryDirectory() as td:
-                    async for ev in __import__("rawos.kernel.agent_loop", fromlist=["run"]).run(
+                    async for ev in __import__("anima.kernel.agent_loop", fromlist=["run"]).run(
                         messages=[{"role": "user", "content": "hi"}],
                         workdir=td,
                         model="deepseek-chat",
@@ -131,7 +131,7 @@ class TestOrchestratorClassify:
         return asyncio.run(coro)
 
     def test_classify_returns_direct_on_api_error(self):
-        from rawos.kernel.orchestrator import _classify_intent
+        from anima.kernel.orchestrator import _classify_intent
         with patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
                 side_effect=Exception("network error")
@@ -142,7 +142,7 @@ class TestOrchestratorClassify:
         assert result == {"mode": "direct"}
 
     def test_classify_returns_direct_for_bad_json(self):
-        from rawos.kernel.orchestrator import _classify_intent
+        from anima.kernel.orchestrator import _classify_intent
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -156,7 +156,7 @@ class TestOrchestratorClassify:
         assert result == {"mode": "direct"}
 
     def test_classify_returns_multi_plan(self):
-        from rawos.kernel.orchestrator import _classify_intent
+        from anima.kernel.orchestrator import _classify_intent
         plan = {
             "mode": "multi",
             "tasks": [
@@ -176,7 +176,7 @@ class TestOrchestratorClassify:
         assert len(result["tasks"]) == 2
 
     def test_classify_rejects_too_many_tasks(self):
-        from rawos.kernel.orchestrator import _classify_intent
+        from anima.kernel.orchestrator import _classify_intent
         plan = {
             "mode": "multi",
             "tasks": [{"id": f"t{i}", "agent_type": "code", "goal": f"Task {i}", "depends_on": []}
@@ -202,7 +202,7 @@ class TestOrchestratorDirect:
         return asyncio.run(coro)
 
     def test_direct_mode_delegates_to_agent_loop(self):
-        from rawos.kernel import orchestrator
+        from anima.kernel import orchestrator
 
         collected = []
 
@@ -236,15 +236,15 @@ class TestOrchestratorMulti:
         return asyncio.run(coro)
 
     def _setup_db(self, tmpdir):
-        import rawos.db as db
-        from rawos.config import settings
+        import anima.db as db
+        from anima.config import settings
         db_path = str(Path(tmpdir) / "test.db")
         db.init(db_path)
         return db
 
     def test_multi_mode_emits_plan_and_spawn_events(self):
-        from rawos.kernel import orchestrator
-        import rawos.db as db
+        from anima.kernel import orchestrator
+        import anima.db as db
 
         multi_plan = {
             "mode": "multi",
@@ -264,8 +264,8 @@ class TestOrchestratorMulti:
             with tempfile.TemporaryDirectory() as td:
                 db.init(str(Path(td) / "test.db"))
                 # Create user + project required by db.create_agent
-                from rawos.models import User, Project, UserTier
-                import rawos.db as db2
+                from anima.models import User, Project, UserTier
+                import anima.db as db2
                 user = User(id="u1", email="t@t.com", password_hash="x", tier=UserTier.FREE)
                 db2.create_user(user)
                 proj = Project(id="p1", user_id="u1", name="Test", workdir=td)
@@ -293,7 +293,7 @@ class TestOrchestratorMulti:
             assert "goal" in ev
 
     def test_multi_mode_emits_agent_status_events(self):
-        from rawos.kernel import orchestrator
+        from anima.kernel import orchestrator
 
         multi_plan = {
             "mode": "multi",
@@ -310,9 +310,9 @@ class TestOrchestratorMulti:
 
         async def _run_test():
             with tempfile.TemporaryDirectory() as td:
-                import rawos.db as db2
+                import anima.db as db2
                 db2.init(str(Path(td) / "test.db"))
-                from rawos.models import User, Project, UserTier
+                from anima.models import User, Project, UserTier
                 user = User(id="u1", email="t@t.com", password_hash="x", tier=UserTier.FREE)
                 db2.create_user(user)
                 proj = Project(id="p1", user_id="u1", name="Test", workdir=td)
@@ -340,11 +340,11 @@ class TestOrchestratorMulti:
 
 class TestAgentDB:
     def setup_method(self):
-        import rawos.db as db
+        import anima.db as db
         self.tmp = tempfile.mkdtemp()
         db.init(str(Path(self.tmp) / "test.db"))
-        from rawos.models import User, Project, UserTier
-        import rawos.db as db2
+        from anima.models import User, Project, UserTier
+        import anima.db as db2
         self.db = db2
         user = User(id="u1", email="t@t.com", password_hash="x", tier=UserTier.FREE)
         db2.create_user(user)
@@ -356,7 +356,7 @@ class TestAgentDB:
         assert agents == []
 
     def test_get_project_agents_returns_created(self):
-        from rawos.models import Agent, AgentStatus
+        from anima.models import Agent, AgentStatus
         a = Agent(user_id="u1", project_id="p1", goal="test goal")
         a = a.transition(AgentStatus.ACTIVE)
         self.db.create_agent(a)
@@ -365,7 +365,7 @@ class TestAgentDB:
         assert agents[0].goal == "test goal"
 
     def test_get_agent_children_returns_sub_agents(self):
-        from rawos.models import Agent, AgentStatus
+        from anima.models import Agent, AgentStatus
         parent = Agent(user_id="u1", project_id="p1", goal="orchestrate")
         parent = parent.transition(AgentStatus.ACTIVE)
         self.db.create_agent(parent)
@@ -377,7 +377,7 @@ class TestAgentDB:
         assert children[0].parent_id == parent.id
 
     def test_get_agent_children_isolated_by_user(self):
-        from rawos.models import Agent, AgentStatus, User, UserTier
+        from anima.models import Agent, AgentStatus, User, UserTier
         # Create another user
         u2 = User(id="u2", email="u2@t.com", password_hash="x", tier=UserTier.FREE)
         self.db.create_user(u2)
@@ -395,23 +395,23 @@ class TestAgentDB:
 
 class TestAgentRoutes:
     def setup_method(self):
-        import rawos.db as db
+        import anima.db as db
         self.tmp = tempfile.mkdtemp()
         db.init(str(Path(self.tmp) / "test.db"))
 
     def _app(self, user_id: str = "u1"):
         from fastapi.testclient import TestClient
-        from rawos.api.app import app
-        from rawos.api.deps import current_user
-        from rawos.models import User, UserTier
+        from anima.api.app import app
+        from anima.api.deps import current_user
+        from anima.models import User, UserTier
 
         user = User(id=user_id, email="t@t.com", password_hash="x", tier=UserTier.FREE)
         app.dependency_overrides[current_user] = lambda: user
         return TestClient(app, raise_server_exceptions=True)
 
     def test_list_agents_empty(self):
-        import rawos.db as db
-        from rawos.models import User, Project, UserTier
+        import anima.db as db
+        from anima.models import User, Project, UserTier
         user = User(id="u1", email="t@t.com", password_hash="x", tier=UserTier.FREE)
         db.create_user(user)
         proj = Project(id="p1", user_id="u1", name="Test", workdir=self.tmp)
@@ -422,8 +422,8 @@ class TestAgentRoutes:
         assert resp.json() == []
 
     def test_list_agents_returns_tree(self):
-        import rawos.db as db
-        from rawos.models import User, Project, Agent, AgentStatus, UserTier
+        import anima.db as db
+        from anima.models import User, Project, Agent, AgentStatus, UserTier
         user = User(id="u1", email="t@t.com", password_hash="x", tier=UserTier.FREE)
         db.create_user(user)
         proj = Project(id="p1", user_id="u1", name="Test", workdir=self.tmp)
@@ -445,8 +445,8 @@ class TestAgentRoutes:
         assert root["children"][0]["id"] == child.id
 
     def test_get_agent_404(self):
-        import rawos.db as db
-        from rawos.models import User, Project, UserTier
+        import anima.db as db
+        from anima.models import User, Project, UserTier
         user = User(id="u1", email="t@t.com", password_hash="x", tier=UserTier.FREE)
         db.create_user(user)
         proj = Project(id="p1", user_id="u1", name="Test", workdir=self.tmp)

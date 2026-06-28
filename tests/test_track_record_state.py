@@ -7,7 +7,7 @@ to a (repo, anomaly_domain) track record, used to decide when a class
 """
 from __future__ import annotations
 
-from rawos.kernel.track_record import GRADUATION_THRESHOLD, TrackRecordState, _advance_state
+from anima.kernel.track_record import GRADUATION_THRESHOLD, TrackRecordState, _advance_state
 
 
 def test_not_merged_returns_state_unchanged():

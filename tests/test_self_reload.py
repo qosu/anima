@@ -26,8 +26,8 @@ from pathlib import Path
 
 import pytest
 
-import rawos.db as db
-from rawos.kernel.self_reload import (
+import anima.db as db
+from anima.kernel.self_reload import (
     SELF_RELOAD_DEADMAN_DELAY_S,
     SELF_RELOAD_DEADMAN_UNIT,
     SELF_RELOAD_STATE_DIR,
@@ -42,8 +42,8 @@ from rawos.kernel.self_reload import (
     operate_on_self_reload,
     preflight_stage,
 )
-from rawos.kernel.track_record import GRADUATION_THRESHOLD
-from rawos.models import User
+from anima.kernel.track_record import GRADUATION_THRESHOLD
+from anima.models import User
 
 
 # ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ class TestConfigDrivenStateDir:
     passes _state_dir) agree on the same path."""
 
     def test_state_dir_reflects_settings(self) -> None:
-        from rawos.config import settings
+        from anima.config import settings
 
         assert SELF_RELOAD_STATE_DIR == settings.self_reload_state_dir
         assert settings.self_reload_state_dir == "/root/.rawos-selfreload"
@@ -117,7 +117,7 @@ class TestSelfReloadDeadmanSystemd:
     def test_disarm_stops_timer_unit(self) -> None:
         import subprocess
 
-        from rawos.kernel.self_reload import _SelfReloadDeadmanSystemd
+        from anima.kernel.self_reload import _SelfReloadDeadmanSystemd
 
         sd = _SelfReloadDeadmanSystemd()
         unit = "rawos-selfreload-revert-pytest"
@@ -231,7 +231,7 @@ class TestPreflightRefusals:
 
     def test_refuses_on_import_error(self, tmp_path: Path) -> None:
         runner = _runner({
-            (sys.executable, "-c", "import rawos.api.app"):
+            (sys.executable, "-c", "import anima.api.app"):
                 FakeResult(returncode=1, stderr="ModuleNotFoundError: no module named 'rawos'"),
         })
         with pytest.raises(SelfReloadPreflightError, match="import"):
@@ -521,17 +521,17 @@ class TestOwnerAndDormancy:
         """I-SR6 superseded (Stage 2): operate_on_self_reload now exists, but
         is inert until self_reload_enabled=True AND the operation class is
         graduated (I-SR9) — neither is true on a fresh install."""
-        import rawos.kernel.self_reload as self_reload_module
-        from rawos.config import settings
+        import anima.kernel.self_reload as self_reload_module
+        from anima.config import settings
         assert hasattr(self_reload_module, "operate_on_self_reload")
         assert settings.self_reload_enabled is False
 
     def test_flag_defaults_false(self) -> None:
-        from rawos.config import settings
+        from anima.config import settings
         assert settings.self_reload_enabled is False
 
     def test_autonomous_loop_flag_defaults_false(self) -> None:
-        from rawos.config import settings
+        from anima.config import settings
         assert settings.self_reload_autonomous_enabled is False
 
 
@@ -572,7 +572,7 @@ class TestOperateOnSelfReload:
         )
 
     def test_propose_only_when_self_reload_disabled(self, monkeypatch) -> None:
-        import rawos.kernel.self_reload as self_reload_module
+        import anima.kernel.self_reload as self_reload_module
         monkeypatch.setattr(self_reload_module.settings, "self_reload_enabled", False)
         runner = self._runner_with_master("NEWSHA")
 
@@ -585,7 +585,7 @@ class TestOperateOnSelfReload:
         assert "self_reload_enabled=False" in outcome.reason
 
     def test_propose_only_when_ungraduated(self, monkeypatch) -> None:
-        import rawos.kernel.self_reload as self_reload_module
+        import anima.kernel.self_reload as self_reload_module
         monkeypatch.setattr(self_reload_module.settings, "self_reload_enabled", True)
         runner = self._runner_with_master("NEWSHA")
 
@@ -597,7 +597,7 @@ class TestOperateOnSelfReload:
         assert "graduated" in outcome.reason
 
     def test_auto_applies_when_enabled_and_graduated(self, tmp_path, monkeypatch) -> None:
-        import rawos.kernel.self_reload as self_reload_module
+        import anima.kernel.self_reload as self_reload_module
         monkeypatch.setattr(self_reload_module.settings, "self_reload_enabled", True)
         self._graduate("/fake/repo")
         runner = self._runner_with_master("NEWSHA")
@@ -621,7 +621,7 @@ class TestOperateOnSelfReload:
         assert record["autonomous"] is True
 
     def test_propose_only_does_not_write_track_record(self, monkeypatch) -> None:
-        import rawos.kernel.self_reload as self_reload_module
+        import anima.kernel.self_reload as self_reload_module
         monkeypatch.setattr(self_reload_module.settings, "self_reload_enabled", True)
         runner = self._runner_with_master("NEWSHA")
 
@@ -638,7 +638,7 @@ class TestOperateOnSelfReload:
 
 class TestRegressionSelfProtectionFloorUnchanged:
     def test_self_protected_services_floor_includes_rawos_and_ssh(self) -> None:
-        from rawos.kernel.operator import _SELF_PROTECTED_SERVICES
+        from anima.kernel.operator import _SELF_PROTECTED_SERVICES
 
         for name in ("rawos.service", "rawos", "ssh.service", "ssh", "sshd.service", "sshd"):
             assert name in _SELF_PROTECTED_SERVICES

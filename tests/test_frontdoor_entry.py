@@ -11,20 +11,20 @@ import pytest
 
 class TestFrontdoorEntryMain:
     def test_returns_cli_exit_code_on_success(self):
-        from rawos.cli.frontdoor_entry import main
+        from anima.cli.frontdoor_entry import main
 
-        with patch("rawos.cli.frontdoor_entry._run_cli", return_value=0) as mock_run:
-            with patch("rawos.cli.frontdoor_entry._fallback_to_bash") as mock_fallback:
+        with patch("anima.cli.frontdoor_entry._run_cli", return_value=0) as mock_run:
+            with patch("anima.cli.frontdoor_entry._fallback_to_bash") as mock_fallback:
                 assert main() == 0
 
         mock_run.assert_called_once()
         mock_fallback.assert_not_called()
 
     def test_propagates_systemexit_from_cli_without_fallback(self):
-        from rawos.cli.frontdoor_entry import main
+        from anima.cli.frontdoor_entry import main
 
-        with patch("rawos.cli.frontdoor_entry._run_cli", side_effect=SystemExit(3)):
-            with patch("rawos.cli.frontdoor_entry._fallback_to_bash") as mock_fallback:
+        with patch("anima.cli.frontdoor_entry._run_cli", side_effect=SystemExit(3)):
+            with patch("anima.cli.frontdoor_entry._fallback_to_bash") as mock_fallback:
                 with pytest.raises(SystemExit) as exc_info:
                     main()
 
@@ -32,10 +32,10 @@ class TestFrontdoorEntryMain:
         mock_fallback.assert_not_called()
 
     def test_falls_back_to_bash_on_import_or_runtime_error(self):
-        from rawos.cli.frontdoor_entry import main
+        from anima.cli.frontdoor_entry import main
 
-        with patch("rawos.cli.frontdoor_entry._run_cli", side_effect=ImportError("broken cli")):
-            with patch("rawos.cli.frontdoor_entry._fallback_to_bash") as mock_fallback:
+        with patch("anima.cli.frontdoor_entry._run_cli", side_effect=ImportError("broken cli")):
+            with patch("anima.cli.frontdoor_entry._fallback_to_bash") as mock_fallback:
                 assert main() == 1
 
         mock_fallback.assert_called_once()
@@ -43,19 +43,19 @@ class TestFrontdoorEntryMain:
 
 class TestFrontdoorEntryFallback:
     def test_passthrough_ssh_original_command(self, monkeypatch):
-        from rawos.cli.frontdoor_entry import _fallback_to_bash
+        from anima.cli.frontdoor_entry import _fallback_to_bash
 
         monkeypatch.setenv("SSH_ORIGINAL_COMMAND", "ls -la /tmp")
-        with patch("rawos.cli.frontdoor_entry.os.execv") as mock_execv:
+        with patch("anima.cli.frontdoor_entry.os.execv") as mock_execv:
             _fallback_to_bash()
 
         mock_execv.assert_called_once_with("/bin/bash", ["/bin/bash", "-c", "ls -la /tmp"])
 
     def test_interactive_bash_when_no_ssh_original_command(self, monkeypatch):
-        from rawos.cli.frontdoor_entry import _fallback_to_bash
+        from anima.cli.frontdoor_entry import _fallback_to_bash
 
         monkeypatch.delenv("SSH_ORIGINAL_COMMAND", raising=False)
-        with patch("rawos.cli.frontdoor_entry.os.execv") as mock_execv:
+        with patch("anima.cli.frontdoor_entry.os.execv") as mock_execv:
             _fallback_to_bash()
 
         mock_execv.assert_called_once_with("/bin/bash", ["-bash"])
@@ -63,13 +63,13 @@ class TestFrontdoorEntryFallback:
 
 class TestResolveFrontdoorBinary:
     def test_returns_path_when_found(self):
-        from rawos.cli.main import _resolve_frontdoor_binary
+        from anima.cli.main import _resolve_frontdoor_binary
 
         with patch("shutil.which", return_value="/usr/local/bin/rawos-frontdoor"):
             assert _resolve_frontdoor_binary() == "/usr/local/bin/rawos-frontdoor"
 
     def test_raises_clickexception_when_missing(self):
-        from rawos.cli.main import _resolve_frontdoor_binary
+        from anima.cli.main import _resolve_frontdoor_binary
 
         with patch("shutil.which", return_value=None):
             with pytest.raises(click.ClickException, match="rawos-frontdoor"):
@@ -80,16 +80,16 @@ class TestFrontdoorInstallEntryCmd:
     def test_entry_cmd_uses_rawos_frontdoor_binary(self):
         from click.testing import CliRunner
 
-        from rawos.cli.main import cli
+        from anima.cli.main import cli
 
         runner = CliRunner()
         with (
             patch(
-                "rawos.cli.main._resolve_frontdoor_binary",
+                "anima.cli.main._resolve_frontdoor_binary",
                 return_value="/usr/local/bin/rawos-frontdoor",
             ),
-            patch("rawos.kernel.arch.linux.LinuxFrontDoor"),
-            patch("rawos.kernel.frontdoor.install_with_deadman") as mock_install,
+            patch("anima.kernel.arch.linux.LinuxFrontDoor"),
+            patch("anima.kernel.frontdoor.install_with_deadman") as mock_install,
         ):
             result = runner.invoke(cli, ["frontdoor", "install"])
 
@@ -101,7 +101,7 @@ class TestFrontdoorInstallEntryCmd:
     def test_install_fails_clearly_if_rawos_frontdoor_binary_missing(self):
         from click.testing import CliRunner
 
-        from rawos.cli.main import cli
+        from anima.cli.main import cli
 
         runner = CliRunner()
         with patch("shutil.which", return_value=None):

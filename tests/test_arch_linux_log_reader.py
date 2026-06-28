@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from rawos.kernel.arch.linux import LinuxLogReader
+from anima.kernel.arch.linux import LinuxLogReader
 
 
 def _mock_run(stdout: str, returncode: int = 0) -> MagicMock:
@@ -23,7 +23,7 @@ def _mock_run(stdout: str, returncode: int = 0) -> MagicMock:
 
 def test_tail_runs_journalctl_short_monotonic():
     reader = LinuxLogReader()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("line1\nline2\n")) as mock_run:
         out = reader.tail("foo.service", 8)
 
@@ -37,21 +37,21 @@ def test_tail_runs_journalctl_short_monotonic():
 
 def test_tail_returns_empty_string_on_nonzero_exit():
     reader = LinuxLogReader()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert reader.tail("foo.service", 8) == ""
 
 
 def test_tail_returns_empty_string_on_exception():
     reader = LinuxLogReader()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                side_effect=OSError("boom")):
         assert reader.tail("foo.service", 8) == ""
 
 
 def test_recent_errors_runs_journalctl_since_priority_err():
     reader = LinuxLogReader()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("err line\n")) as mock_run:
         out = reader.recent_errors("foo.service", "15 minutes ago")
 
@@ -65,13 +65,13 @@ def test_recent_errors_runs_journalctl_since_priority_err():
 
 def test_recent_errors_returns_empty_string_on_nonzero_exit():
     reader = LinuxLogReader()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert reader.recent_errors("foo.service", "15 minutes ago") == ""
 
 
 def test_recent_errors_returns_empty_string_on_exception():
     reader = LinuxLogReader()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                side_effect=OSError("boom")):
         assert reader.recent_errors("foo.service", "15 minutes ago") == ""

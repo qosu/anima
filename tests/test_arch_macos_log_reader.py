@@ -12,7 +12,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from rawos.kernel.arch.macos import MacOSLogReader
+from anima.kernel.arch.macos import MacOSLogReader
 
 
 def _mock_run(stdout: str, returncode: int = 0) -> SimpleNamespace:
@@ -24,7 +24,7 @@ def _mock_run(stdout: str, returncode: int = 0) -> SimpleNamespace:
 def test_tail_returns_last_n_lines():
     reader = MacOSLogReader()
     lines = [f"line{i}" for i in range(1, 11)]
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("\n".join(lines))):
         result = reader.tail("com.example.svc", 3)
     assert result == "line8\nline9\nline10"
@@ -32,7 +32,7 @@ def test_tail_returns_last_n_lines():
 
 def test_tail_returns_all_when_output_shorter_than_n():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("line1\nline2")):
         result = reader.tail("com.example.svc", 10)
     assert result == "line1\nline2"
@@ -40,14 +40,14 @@ def test_tail_returns_all_when_output_shorter_than_n():
 
 def test_tail_returns_empty_on_nonzero_exit():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert reader.tail("com.example.svc", 10) == ""
 
 
 def test_tail_returns_empty_on_exception():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                side_effect=OSError("log unavailable")):
         assert reader.tail("com.example.svc", 10) == ""
 
@@ -57,7 +57,7 @@ def test_tail_returns_empty_on_exception():
 def test_recent_errors_uses_last_flag_for_minutes():
     """'15 minutes ago' → --last 15m (the only current caller's format)."""
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("some error")) as mock_run:
         reader.recent_errors("com.example.svc", "15 minutes ago")
     args = mock_run.call_args[0][0]
@@ -68,7 +68,7 @@ def test_recent_errors_uses_last_flag_for_minutes():
 
 def test_recent_errors_uses_last_flag_for_hours():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reader.recent_errors("com.example.svc", "2 hours ago")
     args = mock_run.call_args[0][0]
@@ -78,7 +78,7 @@ def test_recent_errors_uses_last_flag_for_hours():
 
 def test_recent_errors_uses_start_for_iso_timestamp():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reader.recent_errors("com.example.svc", "2026-01-15 10:30:00")
     args = mock_run.call_args[0][0]
@@ -89,7 +89,7 @@ def test_recent_errors_uses_start_for_iso_timestamp():
 
 def test_recent_errors_returns_output_stripped():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("  error line  \n")):
         result = reader.recent_errors("com.example.svc", "15 minutes ago")
     assert result == "error line"
@@ -97,13 +97,13 @@ def test_recent_errors_returns_output_stripped():
 
 def test_recent_errors_returns_empty_on_exception():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                side_effect=OSError("log unavailable")):
         assert reader.recent_errors("com.example.svc", "15 minutes ago") == ""
 
 
 def test_recent_errors_returns_empty_on_nonzero_exit():
     reader = MacOSLogReader()
-    with patch("rawos.kernel.arch.macos.subprocess.run",
+    with patch("anima.kernel.arch.macos.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert reader.recent_errors("com.example.svc", "15 minutes ago") == ""

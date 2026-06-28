@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-import rawos.db as db_mod
-import rawos.kernel.self_reload as sr_mod
+import anima.db as db_mod
+import anima.kernel.self_reload as sr_mod
 
 
 def _write_pending(state_dir: Path, *, new_sha: str = "NEWSHA", autonomous: bool = False) -> None:
@@ -60,7 +60,7 @@ def _run_task(monkeypatch, tmp_path: Path, *, outcome: str, autonomous: bool) ->
     )
 
     # Import late so the monkeypatches above are in effect before local imports fire
-    from rawos.api.app import _self_reload_boot_commit_task
+    from anima.api.app import _self_reload_boot_commit_task
     asyncio.run(_self_reload_boot_commit_task())
 
     return record_calls, track_calls
@@ -110,7 +110,7 @@ class TestBootCommitTaskTrackRecord:
         monkeypatch.setattr(db_mod, "update_operator_track_record",
                            lambda *a, **kw: track_calls.append(kw))
 
-        from rawos.api.app import _self_reload_boot_commit_task
+        from anima.api.app import _self_reload_boot_commit_task
         asyncio.run(_self_reload_boot_commit_task())
 
         assert record_calls == []

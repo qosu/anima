@@ -36,7 +36,7 @@ def _mock_run(returncode: int = 0, stdout: str = "", stderr: str = "") -> MagicM
 class TestLinuxFrontDoorDropin:
     def test_install_writes_correct_dropin_block(self):
         """install() must write the exact Match User / ForceCommand block."""
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
@@ -46,7 +46,7 @@ class TestLinuxFrontDoorDropin:
         assert f"ForceCommand {_ENTRY_CMD}" in content
 
     def test_install_dropin_contains_managed_comment(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
@@ -61,11 +61,11 @@ class TestLinuxFrontDoorDropin:
 
 class TestLinuxFrontDoorValidate:
     def test_validate_runs_sshd_dash_t(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
-            with patch("rawos.kernel.arch.linux.subprocess.run",
+            with patch("anima.kernel.arch.linux.subprocess.run",
                        return_value=_mock_run(returncode=0)) as mock_run:
                 result = fd.validate()
         called_cmd = mock_run.call_args[0][0]
@@ -75,21 +75,21 @@ class TestLinuxFrontDoorValidate:
         assert result is True
 
     def test_validate_returns_false_on_nonzero_exit(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
-            with patch("rawos.kernel.arch.linux.subprocess.run",
+            with patch("anima.kernel.arch.linux.subprocess.run",
                        return_value=_mock_run(returncode=1)):
                 result = fd.validate()
         assert result is False
 
     def test_validate_returns_false_on_exception(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
-            with patch("rawos.kernel.arch.linux.subprocess.run",
+            with patch("anima.kernel.arch.linux.subprocess.run",
                        side_effect=Exception("no sshd")):
                 result = fd.validate()
         assert result is False
@@ -101,11 +101,11 @@ class TestLinuxFrontDoorValidate:
 
 class TestLinuxFrontDoorReload:
     def test_reload_calls_systemctl_reload_ssh(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
-            with patch("rawos.kernel.arch.linux.subprocess.run",
+            with patch("anima.kernel.arch.linux.subprocess.run",
                        return_value=_mock_run()) as mock_run:
                 fd.reload()
         mock_run.assert_called_once_with(
@@ -120,7 +120,7 @@ class TestLinuxFrontDoorReload:
 
 class TestLinuxFrontDoorSnapshotRestore:
     def test_snapshot_returns_string_path(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             dropin.write_text("existing content")
@@ -130,7 +130,7 @@ class TestLinuxFrontDoorSnapshotRestore:
         assert len(snap) > 0
 
     def test_restore_reinstates_previous_content(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             original = "# old content\n"
@@ -144,7 +144,7 @@ class TestLinuxFrontDoorSnapshotRestore:
 
     def test_snapshot_of_missing_dropin_returns_sentinel(self):
         """If no dropin exists yet, snapshot() must return a valid restore token."""
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
@@ -154,7 +154,7 @@ class TestLinuxFrontDoorSnapshotRestore:
 
     def test_restore_of_missing_dropin_removes_it(self):
         """Restoring to a 'no dropin' state must delete the dropin if it exists."""
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
@@ -167,7 +167,7 @@ class TestLinuxFrontDoorSnapshotRestore:
             assert not dropin.exists()
 
     def test_uninstall_removes_dropin(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             dropin.write_text(_EXPECTED_DROPIN_FRAGMENT)
@@ -176,7 +176,7 @@ class TestLinuxFrontDoorSnapshotRestore:
         assert not dropin.exists()
 
     def test_uninstall_is_idempotent_when_dropin_missing(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
@@ -184,7 +184,7 @@ class TestLinuxFrontDoorSnapshotRestore:
         assert not dropin.exists()
 
     def test_state_installed_when_dropin_exists(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             dropin.write_text(
@@ -198,7 +198,7 @@ class TestLinuxFrontDoorSnapshotRestore:
         assert s.entry_command == _ENTRY_CMD
 
     def test_state_not_installed_when_dropin_missing(self):
-        from rawos.kernel.arch.linux import LinuxFrontDoor
+        from anima.kernel.arch.linux import LinuxFrontDoor
         with tempfile.TemporaryDirectory() as tmpdir:
             dropin = Path(tmpdir) / "50-rawos-frontdoor.conf"
             fd = LinuxFrontDoor(dropin_path=dropin)
@@ -217,12 +217,12 @@ class TestFrontDoorEnterSftpPassthrough:
         import os
         from unittest.mock import patch, MagicMock
         from click.testing import CliRunner
-        from rawos.cli.main import cli
+        from anima.cli.main import cli
 
         runner = CliRunner()
         with patch.dict(os.environ, {"SSH_ORIGINAL_COMMAND": ssh_cmd, "SHELL": "/bin/bash"}), \
-             patch("rawos.cli.main._load_creds", return_value={"access_token": "tok"}), \
-             patch("rawos.cli.main._DEFAULT_URL", "http://127.0.0.1:8002"), \
+             patch("anima.cli.main._load_creds", return_value={"access_token": "tok"}), \
+             patch("anima.cli.main._DEFAULT_URL", "http://127.0.0.1:8002"), \
              patch("httpx.get", return_value=MagicMock(status_code=200)), \
              patch("os.execv", mock_execv), \
              patch("os.execvp", mock_execvp):

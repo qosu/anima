@@ -9,7 +9,7 @@ readonly_whitelist(): macOS has no systemctl/journalctl; both sets empty.
 """
 from __future__ import annotations
 
-from rawos.kernel.arch.macos import MacOSShellPolicy
+from anima.kernel.arch.macos import MacOSShellPolicy
 
 
 def test_wrap_excludes_ulimit_v():

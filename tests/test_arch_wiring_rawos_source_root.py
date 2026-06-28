@@ -19,9 +19,9 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, patch
 
-from rawos.kernel.sandbox import BashResult
-from rawos.kernel.tools import _is_rawos_source_tree, _targets_rawos_own_repo
-import rawos.kernel.tools as tools
+from anima.kernel.sandbox import BashResult
+from anima.kernel.tools import _is_rawos_source_tree, _targets_rawos_own_repo
+import anima.kernel.tools as tools
 
 
 def _ok(stdout: str) -> BashResult:
@@ -35,8 +35,8 @@ def _fail() -> BashResult:
 def test_targets_rawos_own_repo_uses_settings_rawos_source_root():
     """Comparison uses settings.rawos_source_root, not hardcoded '/root/rawos'."""
     custom_root = "/custom/rawos-install"
-    with patch("rawos.kernel.tools.settings") as mock_settings, \
-         patch("rawos.kernel.tools.run_bash",
+    with patch("anima.kernel.tools.settings") as mock_settings, \
+         patch("anima.kernel.tools.run_bash",
                new=AsyncMock(return_value=_ok(custom_root + "\n"))):
         mock_settings.rawos_source_root = custom_root
         result = asyncio.run(_targets_rawos_own_repo("/some/workdir"))
@@ -45,8 +45,8 @@ def test_targets_rawos_own_repo_uses_settings_rawos_source_root():
 
 def test_targets_rawos_own_repo_false_for_different_root():
     custom_root = "/custom/rawos-install"
-    with patch("rawos.kernel.tools.settings") as mock_settings, \
-         patch("rawos.kernel.tools.run_bash",
+    with patch("anima.kernel.tools.settings") as mock_settings, \
+         patch("anima.kernel.tools.run_bash",
                new=AsyncMock(return_value=_ok("/other/path\n"))):
         mock_settings.rawos_source_root = custom_root
         result = asyncio.run(_targets_rawos_own_repo("/some/workdir"))
@@ -60,7 +60,7 @@ def test_is_rawos_source_tree_uses_rawos_git_common_dir(monkeypatch):
     custom_git = "/custom/rawos-install/.git"
     monkeypatch.setattr(tools, "_RAWOS_GIT_COMMON_DIR", custom_git)
 
-    with patch("rawos.kernel.tools.run_bash",
+    with patch("anima.kernel.tools.run_bash",
                new=AsyncMock(return_value=_ok(custom_git + "\n"))):
         result = asyncio.run(_is_rawos_source_tree("/some/worktree"))
     assert result is True
@@ -70,7 +70,7 @@ def test_is_rawos_source_tree_false_for_different_git_dir(monkeypatch):
     custom_git = "/custom/rawos-install/.git"
     monkeypatch.setattr(tools, "_RAWOS_GIT_COMMON_DIR", custom_git)
 
-    with patch("rawos.kernel.tools.run_bash",
+    with patch("anima.kernel.tools.run_bash",
                new=AsyncMock(return_value=_ok("/other/repo/.git\n"))):
         result = asyncio.run(_is_rawos_source_tree("/some/worktree"))
     assert result is False
@@ -79,5 +79,5 @@ def test_is_rawos_source_tree_false_for_different_git_dir(monkeypatch):
 def test_rawos_git_common_dir_derived_from_settings_rawos_source_root():
     """Module-level _RAWOS_GIT_COMMON_DIR is settings.rawos_source_root + '/.git',
     proving it is no longer a hardcoded literal."""
-    from rawos.config import settings
+    from anima.config import settings
     assert tools._RAWOS_GIT_COMMON_DIR == settings.rawos_source_root + "/.git"

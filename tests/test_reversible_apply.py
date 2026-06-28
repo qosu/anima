@@ -15,7 +15,7 @@ import subprocess
 
 import pytest
 
-from rawos.kernel.reversible_apply import ReversibleApplyError, reversible_apply
+from anima.kernel.reversible_apply import ReversibleApplyError, reversible_apply
 
 
 def _git(*args: str, cwd: str) -> None:

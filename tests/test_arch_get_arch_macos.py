@@ -7,9 +7,9 @@ independently — no interference with existing Linux backend tests.
 """
 from __future__ import annotations
 
-from rawos.config import Settings
-from rawos.kernel.arch import _build_backend, get_arch
-from rawos.kernel.arch.macos import (
+from anima.config import Settings
+from anima.kernel.arch import _build_backend, get_arch
+from anima.kernel.arch.macos import (
     MacOSLogReader,
     MacOSResourceProbe,
     MacOSServiceManager,

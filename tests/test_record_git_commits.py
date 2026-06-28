@@ -9,9 +9,9 @@ import hashlib
 import os
 import tempfile
 
-import rawos.db as db
-from rawos.models import User
-from rawos.scheduler.proactive import _record_git_commits
+import anima.db as db
+from anima.models import User
+from anima.scheduler.proactive import _record_git_commits
 
 
 class TestRecordGitCommitsRepoRoot:

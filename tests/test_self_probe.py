@@ -1,13 +1,13 @@
 """
 Phase 16 step d — the self-probe loop ships DORMANT (commit 552b752e).
 settings.self_probe_enabled defaults to False; while disabled,
-rawos_self_probe_loop() logs once and returns immediately — no loop,
+anima_self_probe_loop() logs once and returns immediately — no loop,
 no sleep, no worktree side effects. See PLAN.md Pass 2 — IMPLEMENTED.
 """
 import asyncio
 
-from rawos.config import settings
-from rawos.scheduler.proactive import rawos_self_probe_loop
+from anima.config import settings
+from anima.scheduler.proactive import anima_self_probe_loop
 
 
 def test_self_probe_enabled_after_step_c_proof():
@@ -19,7 +19,7 @@ def test_self_probe_loop_returns_immediately_when_disabled(monkeypatch):
     monkeypatch.setattr(settings, "self_probe_enabled", False)
 
     async def _run_with_timeout():
-        await asyncio.wait_for(rawos_self_probe_loop(), timeout=2.0)
+        await asyncio.wait_for(anima_self_probe_loop(), timeout=2.0)
 
     asyncio.run(_run_with_timeout())
 # Self-probe cycle tests — Phase 16 Step B
@@ -30,9 +30,9 @@ from pathlib import Path
 
 import pytest
 
-import rawos.kernel.worktree as _worktree_mod
-import rawos.scheduler.proactive as _proactive_mod
-from rawos.scheduler.proactive import _run_self_probe_cycle
+import anima.kernel.worktree as _worktree_mod
+import anima.scheduler.proactive as _proactive_mod
+from anima.scheduler.proactive import _run_self_probe_cycle
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
@@ -197,20 +197,20 @@ class TestSelfProbeCycle:
 
 def test_billing_event_type_self_probe_valid():
     """BillingEventType must accept self_probe - used by agent_loop in every cycle."""
-    from rawos.models import BillingEventType
+    from anima.models import BillingEventType
     assert BillingEventType("self_probe") == BillingEventType.SELF_PROBE
 
 
 def test_self_probe_tool_set_excludes_git_branch():
     """agent_loop for self-probe must NOT receive git_branch — branch is pre-created."""
-    import rawos.scheduler.proactive as _p
+    import anima.scheduler.proactive as _p
     names = {t["function"]["name"] for t in _p._get_tools_for_self_probe()}
     assert "git_branch" not in names, f"git_branch must not be in self-probe tools: {names}"
 
 
 def test_self_probe_tool_set_includes_write_and_commit():
     """self-probe needs write_file and git_commit to make and commit changes."""
-    import rawos.scheduler.proactive as _p
+    import anima.scheduler.proactive as _p
     names = {t["function"]["name"] for t in _p._get_tools_for_self_probe()}
     assert "write_file" in names
     assert "git_commit" in names
@@ -225,7 +225,7 @@ class TestMaybeAutonomousSelfReload:
 
     def test_returns_immediately_when_flag_false(self, monkeypatch) -> None:
         """I-SR10: self_reload_autonomous_enabled=False → operate_on_self_reload never called."""
-        import rawos.kernel.self_reload as sr_mod
+        import anima.kernel.self_reload as sr_mod
         monkeypatch.setattr(settings, "self_reload_autonomous_enabled", False)
 
         called: list = []
@@ -236,8 +236,8 @@ class TestMaybeAutonomousSelfReload:
 
     def test_calls_operate_when_flag_true(self, monkeypatch) -> None:
         """When enabled, operate_on_self_reload is called with RAWOS_ENTITY_USER_ID."""
-        import rawos.kernel.self_reload as sr_mod
-        from rawos.kernel.self_reload import SelfReloadOperateOutcome
+        import anima.kernel.self_reload as sr_mod
+        from anima.kernel.self_reload import SelfReloadOperateOutcome
         monkeypatch.setattr(settings, "self_reload_autonomous_enabled", True)
 
         called_with: list = []
@@ -257,8 +257,8 @@ class TestMaybeAutonomousSelfReload:
 
     def test_handles_refusal_error_without_propagating(self, monkeypatch) -> None:
         """SelfReloadRefusalError must be caught — must not abort the probe loop."""
-        import rawos.kernel.self_reload as sr_mod
-        from rawos.kernel.self_reload import SelfReloadRefusalError
+        import anima.kernel.self_reload as sr_mod
+        from anima.kernel.self_reload import SelfReloadRefusalError
         monkeypatch.setattr(settings, "self_reload_autonomous_enabled", True)
 
         def _raise(_user_id):
@@ -270,8 +270,8 @@ class TestMaybeAutonomousSelfReload:
 
     def test_handles_preflight_error_without_propagating(self, monkeypatch) -> None:
         """SelfReloadPreflightError must be caught — must not abort the probe loop."""
-        import rawos.kernel.self_reload as sr_mod
-        from rawos.kernel.self_reload import SelfReloadPreflightError
+        import anima.kernel.self_reload as sr_mod
+        from anima.kernel.self_reload import SelfReloadPreflightError
         monkeypatch.setattr(settings, "self_reload_autonomous_enabled", True)
 
         def _raise(_user_id):

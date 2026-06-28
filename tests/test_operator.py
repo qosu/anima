@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from rawos.kernel.arch.linux import LinuxFileOperator
-from rawos.kernel.operator import (
+from anima.kernel.arch.linux import LinuxFileOperator
+from anima.kernel.operator import (
     OperationResult,
     OperatorError,
     ReversibleFileEdit,
@@ -76,7 +76,7 @@ def test_reversible_file_edit_refuses_no_validator_target(tmp_path):
 
 
 def test_reversible_file_edit_apply_propagates_self_protection_refusal():
-    from rawos.kernel.arch.base import FileOperatorRefusalError
+    from anima.kernel.arch.base import FileOperatorRefusalError
 
     operator = LinuxFileOperator()
     edit = ReversibleFileEdit(

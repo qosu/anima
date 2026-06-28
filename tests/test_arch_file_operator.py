@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import pytest
 
-from rawos.kernel.arch.base import FileOperatorRefusalError, FileSnapshot
-from rawos.kernel.arch.linux import LinuxFileOperator
-from rawos.kernel.arch.macos import MacOSFileOperator
-from rawos.kernel.arch.windows import WindowsFileOperator
+from anima.kernel.arch.base import FileOperatorRefusalError, FileSnapshot
+from anima.kernel.arch.linux import LinuxFileOperator
+from anima.kernel.arch.macos import MacOSFileOperator
+from anima.kernel.arch.windows import WindowsFileOperator
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ def test_supports_file_ops_false_on_windows():
 # ---------------------------------------------------------------------------
 
 def test_get_arch_linux_wires_file_operator(monkeypatch):
-    from rawos.kernel.arch import get_arch
+    from anima.kernel.arch import get_arch
 
     monkeypatch.setattr("sys.platform", "linux")
     backend = get_arch()

@@ -13,7 +13,7 @@ import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from rawos.kernel.sandbox import run_bash
+from anima.kernel.sandbox import run_bash
 
 
 def _mock_arch(wrap_return):
@@ -30,7 +30,7 @@ def test_run_bash_calls_shell_policy_wrap_with_workdir_abs(tmp_path):
     fake_proc.communicate = AsyncMock(return_value=(b"out", b""))
     fake_proc.returncode = 0
 
-    with patch("rawos.kernel.sandbox.get_arch", return_value=backend), \
+    with patch("anima.kernel.sandbox.get_arch", return_value=backend), \
          patch("asyncio.create_subprocess_shell", new=AsyncMock(return_value=fake_proc)) as mock_shell:
         result = asyncio.run(run_bash("echo hi", str(tmp_path)))
 
@@ -49,7 +49,7 @@ def test_run_bash_merges_exec_kwargs_from_shell_policy(tmp_path):
     fake_proc.communicate = AsyncMock(return_value=(b"", b""))
     fake_proc.returncode = 0
 
-    with patch("rawos.kernel.sandbox.get_arch", return_value=backend), \
+    with patch("anima.kernel.sandbox.get_arch", return_value=backend), \
          patch("asyncio.create_subprocess_shell", new=AsyncMock(return_value=fake_proc)) as mock_shell:
         asyncio.run(run_bash("echo hi", str(tmp_path)))
 

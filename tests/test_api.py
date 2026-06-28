@@ -11,8 +11,8 @@ os.environ["WORKSPACES_ROOT"] = str(Path(tempfile.mkdtemp()))
 os.environ["JWT_SECRET"] = "test_secret_32chars_minimum_ok"
 os.environ["DEEPSEEK_KEY"] = "test_key"
 
-from rawos.api.app import app
-import rawos.db as db
+from anima.api.app import app
+import anima.db as db
 
 client = TestClient(app)
 
@@ -174,7 +174,7 @@ class TestInternalSelfReload:
         assert r.status_code == 400
 
     def test_preflight_error_returns_409(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         def _raise(*args, **kwargs):
             raise self_reload.SelfReloadPreflightError("boom")
@@ -189,7 +189,7 @@ class TestInternalSelfReload:
         assert "boom" in r.json()["detail"]
 
     def test_state_error_returns_409(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         def _raise(*args, **kwargs):
             raise self_reload.SelfReloadStateError("pending")
@@ -204,7 +204,7 @@ class TestInternalSelfReload:
         assert "pending" in r.json()["detail"]
 
     def test_calls_execute_owner_self_reload(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         calls = []
 
@@ -232,7 +232,7 @@ class TestInternalSelfReloadDebugArmAndSwap:
     """
 
     def test_disabled_by_default_returns_404(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         monkeypatch.setattr(self_reload.settings, "self_reload_debug_endpoint_enabled", False)
         r = client.post(
@@ -243,7 +243,7 @@ class TestInternalSelfReloadDebugArmAndSwap:
         assert r.status_code == 404
 
     def test_refuses_remote_request(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         monkeypatch.setattr(self_reload.settings, "self_reload_debug_endpoint_enabled", True)
         r = client.post(
@@ -254,7 +254,7 @@ class TestInternalSelfReloadDebugArmAndSwap:
         assert r.status_code == 403
 
     def test_missing_new_sha(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         monkeypatch.setattr(self_reload.settings, "self_reload_debug_endpoint_enabled", True)
         r = client.post(
@@ -265,7 +265,7 @@ class TestInternalSelfReloadDebugArmAndSwap:
         assert r.status_code == 400
 
     def test_preflight_error_returns_409(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         monkeypatch.setattr(self_reload.settings, "self_reload_debug_endpoint_enabled", True)
 
@@ -282,7 +282,7 @@ class TestInternalSelfReloadDebugArmAndSwap:
         assert "boom" in r.json()["detail"]
 
     def test_state_error_returns_409(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         monkeypatch.setattr(self_reload.settings, "self_reload_debug_endpoint_enabled", True)
         snap = self_reload.SelfReloadSnapshot(
@@ -305,7 +305,7 @@ class TestInternalSelfReloadDebugArmAndSwap:
         assert "pending" in r.json()["detail"]
 
     def test_calls_arm_and_swap_with_selfprobe_revert_cmd(self, monkeypatch):
-        import rawos.kernel.self_reload as self_reload
+        import anima.kernel.self_reload as self_reload
 
         monkeypatch.setattr(self_reload.settings, "self_reload_debug_endpoint_enabled", True)
         snap = self_reload.SelfReloadSnapshot(

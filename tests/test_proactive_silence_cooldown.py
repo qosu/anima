@@ -15,10 +15,10 @@ import tempfile
 
 import pytest
 
-import rawos.db as db
-import rawos.scheduler.proactive as proactive
-from rawos.inference.intent_engine import InferredIntent
-from rawos.models import User
+import anima.db as db
+import anima.scheduler.proactive as proactive
+from anima.inference.intent_engine import InferredIntent
+from anima.models import User
 
 
 class TestSilenceCooldownMechanism:
@@ -62,7 +62,7 @@ class TestSilenceDecisionCooldown:
 
     def _patch_db_writes(self, monkeypatch):
         """Patch DB writes that require FK-valid project/user rows not in temp DB."""
-        from rawos.models import Intent, Agent, IntentStatus, AgentStatus
+        from anima.models import Intent, Agent, IntentStatus, AgentStatus
         import uuid
 
         def fake_create_intent(intent: Intent) -> Intent:
@@ -89,7 +89,7 @@ class TestSilenceDecisionCooldown:
         After fix: SILENCE records artifact with cooldown_key → gate returns True for
         GOAL_COOLDOWN_S=900s → max ~96 runs/day instead of ~720.
         """
-        import rawos.context.user_model as _um
+        import anima.context.user_model as _um
 
         uid = self.user.id
         trigger_type = "IDLE_OPPORTUNITY"
@@ -141,7 +141,7 @@ class TestSilenceDecisionCooldown:
         When trigger_type is not None these are identical. This test verifies the
         happy path (trigger_type=IDLE_OPPORTUNITY) — the cost-critical scenario.
         """
-        import rawos.context.user_model as _um
+        import anima.context.user_model as _um
 
         uid = self.user.id
         trigger_type = "IDLE_OPPORTUNITY"

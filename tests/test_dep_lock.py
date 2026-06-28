@@ -9,7 +9,7 @@ import textwrap
 
 import pytest
 
-from rawos.kernel.dep_lock import DepDriftResult, verify_dep_lock
+from anima.kernel.dep_lock import DepDriftResult, verify_dep_lock
 
 
 _LOCK_CONTENTS = textwrap.dedent("""\

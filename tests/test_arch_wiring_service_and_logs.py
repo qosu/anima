@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from rawos.context.server_scanner import _check_failed_services, _check_recent_errors, _MONITORED_SERVICES
+from anima.context.server_scanner import _check_failed_services, _check_recent_errors, _MONITORED_SERVICES
 
 
 def _mock_arch(list_failed=(), tail_return="", recent_errors_return=""):
@@ -27,7 +27,7 @@ def _mock_arch(list_failed=(), tail_return="", recent_errors_return=""):
 
 def test_check_failed_services_calls_list_failed_and_tail():
     backend = _mock_arch(list_failed=["foo.service"], tail_return="last log line")
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_failed_services()
 
     backend.service_manager.list_failed.assert_called_once_with()
@@ -43,7 +43,7 @@ def test_check_failed_services_calls_list_failed_and_tail():
 
 def test_check_failed_services_truncates_tail_to_600_chars():
     backend = _mock_arch(list_failed=["foo.service"], tail_return="x" * 1000)
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_failed_services()
 
     assert anomalies[0].last_log == "x" * 600
@@ -51,17 +51,17 @@ def test_check_failed_services_truncates_tail_to_600_chars():
 
 def test_check_failed_services_returns_empty_when_no_failed_units():
     backend = _mock_arch(list_failed=[])
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         assert _check_failed_services() == []
     backend.log_reader.tail.assert_not_called()
 
 
 def test_check_failed_services_maps_known_service_to_repo():
     known_service, known_repo = next(iter(
-        __import__("rawos.context.server_scanner", fromlist=["_SERVICE_TO_REPO"])._SERVICE_TO_REPO.items()
+        __import__("anima.context.server_scanner", fromlist=["_SERVICE_TO_REPO"])._SERVICE_TO_REPO.items()
     ))
     backend = _mock_arch(list_failed=[f"{known_service}.service"], tail_return="")
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_failed_services()
 
     assert anomalies[0].affected_path == known_repo
@@ -69,7 +69,7 @@ def test_check_failed_services_maps_known_service_to_repo():
 
 def test_check_recent_errors_calls_recent_errors_for_each_monitored_service():
     backend = _mock_arch(recent_errors_return="error output")
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_recent_errors()
 
     assert backend.log_reader.recent_errors.call_count == len(_MONITORED_SERVICES)
@@ -85,13 +85,13 @@ def test_check_recent_errors_calls_recent_errors_for_each_monitored_service():
 
 def test_check_recent_errors_skips_services_with_no_output():
     backend = _mock_arch(recent_errors_return="")
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         assert _check_recent_errors() == []
 
 
 def test_check_recent_errors_truncates_to_800_chars():
     backend = _mock_arch(recent_errors_return="y" * 1000)
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_recent_errors()
 
     assert anomalies[0].last_log == "y" * 800

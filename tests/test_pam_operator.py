@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from rawos.kernel.pam_operator import (
+from anima.kernel.pam_operator import (
     PamFileEdit,
     PamInstallError,
     PamRefusalError,

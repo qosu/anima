@@ -30,7 +30,7 @@ def _make_jwt(exp: float) -> str:
 
 class TestDecodeJwtExp:
     def _fn(self, token: str):
-        from rawos.cli.main import _decode_jwt_exp
+        from anima.cli.main import _decode_jwt_exp
         return _decode_jwt_exp(token)
 
     def test_returns_exp_from_valid_jwt(self):
@@ -62,13 +62,13 @@ class TestDecodeJwtExp:
 class TestRefreshIfExpired:
     def _fn(self, creds: dict, *, post_return=None, save_creds=None):
         """Call _refresh_if_expired with mocked httpx.post and _save_creds."""
-        from rawos.cli.main import _refresh_if_expired
+        from anima.cli.main import _refresh_if_expired
 
         post_mock = MagicMock(return_value=post_return or MagicMock(status_code=400))
         save_mock = save_creds or MagicMock()
 
-        with patch("rawos.cli.main.httpx.post", post_mock), \
-             patch("rawos.cli.main._save_creds", save_mock):
+        with patch("anima.cli.main.httpx.post", post_mock), \
+             patch("anima.cli.main._save_creds", save_mock):
             result = _refresh_if_expired(creds)
         return result, post_mock, save_mock
 
@@ -162,9 +162,9 @@ class TestRefreshIfExpired:
             "access_token": _make_jwt(past),
             "refresh_token": "refresh-tok",
         }
-        from rawos.cli.main import _refresh_if_expired
-        with patch("rawos.cli.main.httpx.post", side_effect=Exception("network down")), \
-             patch("rawos.cli.main._save_creds") as save_mock:
+        from anima.cli.main import _refresh_if_expired
+        with patch("anima.cli.main.httpx.post", side_effect=Exception("network down")), \
+             patch("anima.cli.main._save_creds") as save_mock:
             result = _refresh_if_expired(creds)
         assert result == creds
         save_mock.assert_not_called()

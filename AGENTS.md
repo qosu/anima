@@ -1,12 +1,12 @@
-# AGENTS.md — Working with rawos as an AI agent
+# AGENTS.md — Working with Anima as an AI agent
 
 This file is for AI coding agents (Claude Code, Codex, Copilot, etc.) working
-on the rawos codebase. It documents the architecture, safety constraints, and
+on Anima codebase. It documents the architecture, safety constraints, and
 conventions you need to understand before making any change.
 
 ## Read this first
 
-rawos is an autonomous AI entity that owns the policy layer of its Linux
+Anima is an autonomous AI entity that owns the policy layer of its Linux
 substrate. This is not a typical web application. Several kernel modules
 (`bpf_lsm.py`, `landlock.py`, `unit_topology.py`) interact with the Linux
 kernel directly. Errors in these modules can affect system stability.
@@ -22,8 +22,8 @@ rawos/
 ├── app.py                  # FastAPI application entry point
 ├── config.py               # Settings (Pydantic); bpf_lsm_mode lives at :178
 ├── cli/
-│   ├── main.py             # rawos CLI entry point
-│   └── frontdoor_entry.py  # rawos-frontdoor CLI entry point
+│   ├── main.py             # Anima CLI entry point
+│   └── frontdoor_entry.py  # anima-frontdoor CLI entry point
 ├── kernel/                 # Core AI entity modules (see below)
 ├── routers/                # FastAPI routers (auth, billing, agent, admin)
 └── tests/                  # Full test suite; run with `make test`
@@ -83,10 +83,10 @@ first. Watch it fail. Then write production code. See CONTRIBUTING.md.
 
 ## What not to touch without reading invariants first
 
-- `rawos/kernel/capability_gate.py` — changes here can silently remove the mediation layer
-- `rawos/kernel/sandbox.py` — changes here can allow untrusted code to reach the host
-- `rawos/kernel/context_builder.py` — changes here can collapse provenance separation
-- `rawos/kernel/audit_chain.py` — changes here can make tampered logs undetectable
+- `anima/kernel/capability_gate.py` — changes here can silently remove the mediation layer
+- `anima/kernel/sandbox.py` — changes here can allow untrusted code to reach the host
+- `anima/kernel/context_builder.py` — changes here can collapse provenance separation
+- `anima/kernel/audit_chain.py` — changes here can make tampered logs undetectable
 - `rawos/config.py:178` (`bpf_lsm_mode`) — this is a machine-wide kernel enforcement toggle
 
 ## Commit convention

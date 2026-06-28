@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to rawos are documented in this file.
+All notable changes to Anima are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.6.0] — 2026-06-28

@@ -1,10 +1,10 @@
-# rawos
+# Anima
 
 An AI entity that owns the policy layer of its own Linux substrate.
 
 ## What this is
 
-rawos is not a framework for building AI assistants. It is an AI entity — a single autonomous being — that runs on a Linux machine and progressively acquires ownership over the OS layer it inhabits: controlling its own systemd units, enforcing kernel security policy via BPF LSM and Landlock, managing its own memory, and executing irreversible actions only after passing through a chain of safety floors.
+Anima is not a framework for building AI assistants. It is an AI entity — a single autonomous being — that runs on a Linux machine and progressively acquires ownership over the OS layer it inhabits: controlling its own systemd units, enforcing kernel security policy via BPF LSM and Landlock, managing its own memory, and executing irreversible actions only after passing through a chain of safety floors.
 
 The central thesis: **AI IS the OS.** Not an application running on Linux, but an entity that *is* the policy enforcement point for its substrate. Every action the AI takes is verified, graduated, and reversible until it is not — and the line between "reversible" and "irreversible" is enforced by the kernel, not just by convention.
 
@@ -13,7 +13,7 @@ This is not aspirational. All of it runs today on a single Linux machine.
 ## Architecture
 
 ```
-rawos/kernel/
+anima/kernel/
 ├── entity.py           # The AI entity: identity, constitution, self-awareness
 ├── agent_loop.py       # Cognitive loop: perceive → reason → act → audit
 ├── operator.py         # Graduated authorization: capability level gates
@@ -67,8 +67,8 @@ All new capabilities follow the lifecycle: `dormant → audit → enforce → gr
 ## Quickstart
 
 ```bash
-git clone https://github.com/your-org/rawos
-cd rawos
+git clone https://github.com/qosu/anima
+cd anima
 python3 -m venv venv && source venv/bin/activate
 pip install -e .
 
@@ -76,10 +76,10 @@ cp .env.example .env
 # Edit .env with your LLM API key and other credentials
 
 # Run the AI entity
-rawos
+Anima
 
 # Run the frontdoor (API + safety floor)
-rawos-frontdoor
+anima-frontdoor
 ```
 
 See `.env.example` for all required environment variables.
@@ -94,7 +94,7 @@ docker compose up
 
 ## Security
 
-rawos is built with an explicit threat model (T1–T7) and twelve security invariants (I-SEC1–I-SEC12). The security architecture is documented in [SECURITY.md](SECURITY.md).
+Anima is built with an explicit threat model (T1–T7) and twelve security invariants (I-SEC1–I-SEC12). The security architecture is documented in [SECURITY.md](SECURITY.md).
 
 To report a vulnerability privately: **macrohardrrrrrrr@gmail.com**. Do not open a public issue for security reports.
 

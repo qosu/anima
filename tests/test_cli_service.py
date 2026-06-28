@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from rawos.cli.main import cli
+from anima.cli.main import cli
 
 
 def _runner():
@@ -25,7 +25,7 @@ def test_service_install_calls_generate_and_install_unit():
     mock_mgr.generate_unit.return_value = generated_content
 
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+        with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
             result = runner.invoke(cli, [
                 "service", "install",
                 "--name", "rawos",
@@ -48,7 +48,7 @@ def test_service_install_prints_success_message():
     mock_mgr.generate_unit.return_value = "[Unit]\n"
 
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+        with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
             result = runner.invoke(cli, [
                 "service", "install",
                 "--exec-start", "/bin/true",
@@ -66,7 +66,7 @@ def test_service_install_uses_default_name_rawos():
     mock_mgr.generate_unit.return_value = "[Unit]\n"
 
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+        with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
             result = runner.invoke(cli, [
                 "service", "install",
                 "--exec-start", "/bin/true",
@@ -88,7 +88,7 @@ def test_service_uninstall_calls_uninstall_unit():
     mock_mgr = MagicMock()
 
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+        with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
             result = runner.invoke(cli, [
                 "service", "uninstall",
                 "--name", "rawos",
@@ -107,7 +107,7 @@ def test_service_status_shows_active_when_running():
     mock_mgr = MagicMock()
     mock_mgr.is_active.return_value = True
 
-    with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+    with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
         result = runner.invoke(cli, ["service", "status", "--name", "rawos"])
 
     assert result.exit_code == 0
@@ -120,7 +120,7 @@ def test_service_status_shows_inactive_when_stopped():
     mock_mgr = MagicMock()
     mock_mgr.is_active.return_value = False
 
-    with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+    with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
         result = runner.invoke(cli, ["service", "status", "--name", "rawos"])
 
     assert "inactive" in result.output.lower() or "not" in result.output.lower()
@@ -134,7 +134,7 @@ def test_service_restart_calls_restart_and_reports_success():
     mock_mgr = MagicMock()
     mock_mgr.restart.return_value = True
 
-    with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+    with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
         result = runner.invoke(cli, ["service", "restart", "--name", "rawos"])
 
     assert result.exit_code == 0
@@ -147,7 +147,7 @@ def test_service_restart_exits_nonzero_on_failure():
     mock_mgr = MagicMock()
     mock_mgr.restart.return_value = False
 
-    with patch("rawos.cli.main.LinuxServiceManager", return_value=mock_mgr):
+    with patch("anima.cli.main.LinuxServiceManager", return_value=mock_mgr):
         result = runner.invoke(cli, ["service", "restart", "--name", "rawos"])
 
     assert result.exit_code != 0
@@ -161,7 +161,7 @@ def test_service_logs_calls_tail_and_prints():
     mock_log = MagicMock()
     mock_log.tail.return_value = "line1\nline2\n"
 
-    with patch("rawos.cli.main.LinuxLogReader", return_value=mock_log):
+    with patch("anima.cli.main.LinuxLogReader", return_value=mock_log):
         result = runner.invoke(cli, ["service", "logs", "--name", "rawos", "-n", "10"])
 
     assert result.exit_code == 0
@@ -174,7 +174,7 @@ def test_service_logs_default_lines_50():
     mock_log = MagicMock()
     mock_log.tail.return_value = ""
 
-    with patch("rawos.cli.main.LinuxLogReader", return_value=mock_log):
+    with patch("anima.cli.main.LinuxLogReader", return_value=mock_log):
         runner.invoke(cli, ["service", "logs"])
 
     mock_log.tail.assert_called_once_with("rawos", 50)

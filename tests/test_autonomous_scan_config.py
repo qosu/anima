@@ -2,8 +2,8 @@
 not a hardcoded module constant — see proactive.py autonomous_server_scan_loop."""
 import asyncio
 
-from rawos.config import settings
-from rawos.scheduler import proactive
+from anima.config import settings
+from anima.scheduler import proactive
 
 
 def test_autonomous_scan_interval_default_is_600():

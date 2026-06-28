@@ -12,7 +12,7 @@ import hashlib
 from pathlib import Path
 
 import pytest
-from rawos.kernel.audit_chain import _AuditChain, VerifyResult
+from anima.kernel.audit_chain import _AuditChain, VerifyResult
 
 
 @pytest.fixture

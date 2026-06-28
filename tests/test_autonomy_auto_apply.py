@@ -21,13 +21,13 @@ import tempfile
 
 import pytest
 
-import rawos.db as db
-from rawos.context.server_scanner import ServerAnomaly
-from rawos.kernel.reversible_apply import ApplyResult
-from rawos.kernel.track_record import update_track_record
-from rawos.models import User
-from rawos.scheduler import proactive
-from rawos.scheduler.proactive import (
+import anima.db as db
+from anima.context.server_scanner import ServerAnomaly
+from anima.kernel.reversible_apply import ApplyResult
+from anima.kernel.track_record import update_track_record
+from anima.models import User
+from anima.scheduler import proactive
+from anima.scheduler.proactive import (
     AUTO_APPLY_MAX_DIFF_LINES,
     RAWOS_ENTITY_USER_ID,
     _maybe_auto_apply,

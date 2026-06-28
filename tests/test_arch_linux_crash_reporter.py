@@ -1,7 +1,7 @@
 """LinuxCrashReporter — documented stub: server Linux has no desktop crash context."""
 from __future__ import annotations
 
-from rawos.kernel.arch.linux import LinuxCrashReporter
+from anima.kernel.arch.linux import LinuxCrashReporter
 
 
 def test_recent_crashes_returns_empty_list():

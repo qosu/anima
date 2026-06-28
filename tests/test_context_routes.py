@@ -19,9 +19,9 @@ os.environ["WORKSPACES_ROOT"] = str(Path(tempfile.mkdtemp()))
 os.environ["JWT_SECRET"] = "test_secret_32chars_minimum_ok"
 os.environ["DEEPSEEK_KEY"] = "test_key"
 
-from rawos.api.app import app
-from rawos.config import settings
-import rawos.db as db
+from anima.api.app import app
+from anima.config import settings
+import anima.db as db
 
 
 @pytest.fixture(autouse=True)

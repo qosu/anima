@@ -17,8 +17,8 @@ import uuid
 
 import pytest
 
-from rawos.kernel.reversible_apply import reversible_apply
-from rawos.kernel.sandbox import run_bash
+from anima.kernel.reversible_apply import reversible_apply
+from anima.kernel.sandbox import run_bash
 
 
 def _git(*args: str, cwd: str) -> None:

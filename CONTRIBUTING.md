@@ -1,4 +1,4 @@
-# Contributing to rawos
+# Contributing to Anima
 
 ## Before you start
 
@@ -11,7 +11,7 @@ cannot recover.
 
 ```bash
 git clone <repo-url>
-cd rawos
+cd Anima
 python3 -m venv venv && source venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env  # fill in your credentials
@@ -68,13 +68,13 @@ High-consequence modules (changes require extra review):
 
 | Module | Why it is sensitive |
 |---|---|
-| `rawos/kernel/capability_gate.py` | Single mediation point for all privileged actions |
-| `rawos/kernel/sandbox.py` | Container isolation for untrusted code |
-| `rawos/kernel/audit_chain.py` | Tamper-evident log — any bug here is undetectable |
-| `rawos/kernel/reversible_apply.py` | Enforces the reversibility floor |
-| `rawos/kernel/bpf_lsm.py` | Machine-wide kernel enforcement |
-| `rawos/kernel/landlock.py` | Kernel namespace isolation |
-| `rawos/kernel/context_builder.py` | Provenance separation — untrusted vs trusted context |
+| `anima/kernel/capability_gate.py` | Single mediation point for all privileged actions |
+| `anima/kernel/sandbox.py` | Container isolation for untrusted code |
+| `anima/kernel/audit_chain.py` | Tamper-evident log — any bug here is undetectable |
+| `anima/kernel/reversible_apply.py` | Enforces the reversibility floor |
+| `anima/kernel/bpf_lsm.py` | Machine-wide kernel enforcement |
+| `anima/kernel/landlock.py` | Kernel namespace isolation |
+| `anima/kernel/context_builder.py` | Provenance separation — untrusted vs trusted context |
 
 Changes to these modules require the PR description to explicitly state which
 invariants are affected and how they are preserved.

@@ -18,11 +18,11 @@ import tempfile
 
 import pytest
 
-import rawos.db as db
-from rawos.context.server_scanner import ServerAnomaly, ServerStateSnapshot
-from rawos.kernel.track_record import get_track_record
-from rawos.models import User
-from rawos.scheduler.proactive import (
+import anima.db as db
+from anima.context.server_scanner import ServerAnomaly, ServerStateSnapshot
+from anima.kernel.track_record import get_track_record
+from anima.models import User
+from anima.scheduler.proactive import (
     RAWOS_ENTITY_USER_ID,
     _update_earned_autonomy_track_records,
 )

@@ -20,11 +20,11 @@ os.environ["WORKSPACES_ROOT"] = str(Path(tempfile.mkdtemp()))
 os.environ["JWT_SECRET"] = "test_secret_32chars_minimum_ok"
 os.environ["DEEPSEEK_KEY"] = "test_key"
 
-from rawos.api.app import app
-from rawos.config import settings
-import rawos.db as db
-from rawos.auth import hash_password
-from rawos.models import User
+from anima.api.app import app
+from anima.config import settings
+import anima.db as db
+from anima.auth import hash_password
+from anima.models import User
 
 
 @pytest.fixture(autouse=True)
@@ -180,7 +180,7 @@ def test_session_start_schedules_narrative_regeneration():
     with TestClient(app) as client:
         headers, _ = _signup_and_headers(client, "regen@example.com")
 
-        with patch("rawos.api.context_routes.asyncio.create_task") as mock_create_task:
+        with patch("anima.api.context_routes.asyncio.create_task") as mock_create_task:
             r = client.post("/context/session_start", headers=headers)
 
             assert r.status_code == 200

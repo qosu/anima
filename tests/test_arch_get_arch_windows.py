@@ -8,9 +8,9 @@ EXPERIMENTAL: this backend is never live until a Windows host verifies it.
 """
 from __future__ import annotations
 
-from rawos.config import Settings
-from rawos.kernel.arch import _build_backend, get_arch
-from rawos.kernel.arch.windows import (
+from anima.config import Settings
+from anima.kernel.arch import _build_backend, get_arch
+from anima.kernel.arch.windows import (
     WindowsLogReader,
     WindowsResourceProbe,
     WindowsServiceManager,

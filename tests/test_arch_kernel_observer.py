@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import json
 
-from rawos.kernel.arch.linux import LinuxKernelObserver
-from rawos.kernel.arch.macos import MacOSKernelObserver
-from rawos.kernel.arch.windows import WindowsKernelObserver
+from anima.kernel.arch.linux import LinuxKernelObserver
+from anima.kernel.arch.macos import MacOSKernelObserver
+from anima.kernel.arch.windows import WindowsKernelObserver
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,7 @@ def test_parse_event_returns_none_for_non_dict_inner_payload():
 # ---------------------------------------------------------------------------
 
 def test_get_arch_linux_wires_kernel_observer(monkeypatch):
-    from rawos.kernel.arch import get_arch
+    from anima.kernel.arch import get_arch
 
     monkeypatch.setattr("sys.platform", "linux")
     backend = get_arch()

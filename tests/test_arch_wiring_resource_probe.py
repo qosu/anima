@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from rawos.context.server_scanner import _check_resources
+from anima.context.server_scanner import _check_resources
 
 
 def _mock_arch(disk_percent_return):
@@ -23,7 +23,7 @@ def _mock_arch(disk_percent_return):
 
 def test_check_resources_calls_get_arch_disk_percent_root():
     backend = _mock_arch(50)
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend) as mock_get_arch:
+    with patch("anima.context.server_scanner.get_arch", return_value=backend) as mock_get_arch:
         _check_resources()
 
     mock_get_arch.assert_called_once_with()
@@ -32,7 +32,7 @@ def test_check_resources_calls_get_arch_disk_percent_root():
 
 def test_check_resources_critical_at_90_percent():
     backend = _mock_arch(90)
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_resources()
 
     assert len(anomalies) == 1
@@ -44,7 +44,7 @@ def test_check_resources_critical_at_90_percent():
 
 def test_check_resources_warning_at_85_percent():
     backend = _mock_arch(85)
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_resources()
 
     assert len(anomalies) == 1
@@ -56,7 +56,7 @@ def test_check_resources_warning_at_85_percent():
 
 def test_check_resources_no_anomaly_below_85_percent():
     backend = _mock_arch(50)
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_resources()
 
     assert anomalies == []
@@ -64,7 +64,7 @@ def test_check_resources_no_anomaly_below_85_percent():
 
 def test_check_resources_no_anomaly_on_probe_failure():
     backend = _mock_arch(None)
-    with patch("rawos.context.server_scanner.get_arch", return_value=backend):
+    with patch("anima.context.server_scanner.get_arch", return_value=backend):
         anomalies = _check_resources()
 
     assert anomalies == []

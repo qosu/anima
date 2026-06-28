@@ -16,9 +16,9 @@ import hashlib
 import os
 import tempfile
 
-import rawos.db as db
-from rawos.kernel.track_record import GRADUATION_THRESHOLD
-from rawos.models import User
+import anima.db as db
+from anima.kernel.track_record import GRADUATION_THRESHOLD
+from anima.models import User
 
 
 class TestOperatorTrackRecordDB:
@@ -111,7 +111,7 @@ class TestOperatorTrackRecordDB:
             self.user.id, "file_edit", "/etc/target.conf",
             verified=True, now=1000,
         )
-        from rawos.kernel.track_record import get_track_record
+        from anima.kernel.track_record import get_track_record
         state = get_track_record(
             self.user.id, "/root/some-repo", "service_failed:foo.service"
         )

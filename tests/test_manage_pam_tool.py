@@ -15,10 +15,10 @@ from pathlib import Path
 
 import pytest
 
-import rawos.db as db
-from rawos.kernel.billing_context import set_billing_context
-from rawos.kernel.tools import execute
-from rawos.models import User
+import anima.db as db
+from anima.kernel.billing_context import set_billing_context
+from anima.kernel.tools import execute
+from anima.models import User
 
 PAM_TARGET = "rawos-guest"
 

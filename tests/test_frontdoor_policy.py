@@ -19,7 +19,7 @@ import pytest
 
 class TestDecideEntry:
     def _decide(self, ssh_original_command: str, rawos_healthy: bool, has_token: bool):
-        from rawos.kernel.frontdoor import decide_entry, FrontDoorPolicy
+        from anima.kernel.frontdoor import decide_entry, FrontDoorPolicy
         policy = FrontDoorPolicy(
             fail_open=True,
             health_url="http://127.0.0.1:8002/health",
@@ -33,40 +33,40 @@ class TestDecideEntry:
         return decide_entry(ctx, policy)
 
     def test_interactive_healthy_token_launches_chat(self):
-        from rawos.kernel.frontdoor import EntryActionKind
+        from anima.kernel.frontdoor import EntryActionKind
         action = self._decide("", True, True)
         assert action.kind == EntryActionKind.LAUNCH_CHAT
 
     def test_command_present_is_passthrough_regardless_of_health(self):
-        from rawos.kernel.frontdoor import EntryActionKind
+        from anima.kernel.frontdoor import EntryActionKind
         action = self._decide("ls -la", True, True)
         assert action.kind == EntryActionKind.PASSTHROUGH
         assert action.command == "ls -la"
 
     def test_bash_command_is_passthrough_escape_hatch(self):
-        from rawos.kernel.frontdoor import EntryActionKind
+        from anima.kernel.frontdoor import EntryActionKind
         action = self._decide("bash", True, True)
         assert action.kind == EntryActionKind.PASSTHROUGH
         assert action.command == "bash"
 
     def test_interactive_unhealthy_fails_open_to_shell(self):
-        from rawos.kernel.frontdoor import EntryActionKind
+        from anima.kernel.frontdoor import EntryActionKind
         action = self._decide("", False, True)
         assert action.kind == EntryActionKind.FAIL_OPEN_SHELL
 
     def test_interactive_no_token_fails_open_to_shell(self):
-        from rawos.kernel.frontdoor import EntryActionKind
+        from anima.kernel.frontdoor import EntryActionKind
         action = self._decide("", True, False)
         assert action.kind == EntryActionKind.FAIL_OPEN_SHELL
 
     def test_interactive_unhealthy_no_token_fails_open(self):
-        from rawos.kernel.frontdoor import EntryActionKind
+        from anima.kernel.frontdoor import EntryActionKind
         action = self._decide("", False, False)
         assert action.kind == EntryActionKind.FAIL_OPEN_SHELL
 
     def test_command_present_unhealthy_still_passthrough(self):
         """Any explicit command passes through — scp/rsync/git must never be gated."""
-        from rawos.kernel.frontdoor import EntryActionKind
+        from anima.kernel.frontdoor import EntryActionKind
         action = self._decide("rsync --server .", False, False)
         assert action.kind == EntryActionKind.PASSTHROUGH
 
@@ -77,7 +77,7 @@ class TestDecideEntry:
 
 class TestAuditLogging:
     def _decide_with_audit(self, ssh_original_command: str, rawos_healthy: bool, has_token: bool):
-        from rawos.kernel.frontdoor import decide_entry, FrontDoorPolicy
+        from anima.kernel.frontdoor import decide_entry, FrontDoorPolicy
         with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
             audit_path = f.name
         policy = FrontDoorPolicy(
@@ -147,7 +147,7 @@ class _RecordingArch:
         self.calls.append("uninstall")
 
     def state(self):
-        from rawos.kernel.arch.base import FrontDoorState
+        from anima.kernel.arch.base import FrontDoorState
         return FrontDoorState(installed=False, entry_command=None, config_path=None)
 
 
@@ -167,7 +167,7 @@ class _RecordingSystemd:
 class TestInstallWithDeadman:
     def test_happy_path_order(self):
         """snapshot → arm → install → validate → reload — in that exact order."""
-        from rawos.kernel.frontdoor import install_with_deadman
+        from anima.kernel.frontdoor import install_with_deadman
         arch = _RecordingArch(validate_result=True)
         sd = _RecordingSystemd()
         install_with_deadman(
@@ -185,7 +185,7 @@ class TestInstallWithDeadman:
 
     def test_validate_false_aborts_before_reload_and_restores(self):
         """validate()==False → restore called, reload NOT called."""
-        from rawos.kernel.frontdoor import install_with_deadman, FrontDoorInstallError
+        from anima.kernel.frontdoor import install_with_deadman, FrontDoorInstallError
         arch = _RecordingArch(validate_result=False)
         sd = _RecordingSystemd()
         with pytest.raises(FrontDoorInstallError):
@@ -200,7 +200,7 @@ class TestInstallWithDeadman:
         assert any("disarm" in c for c in sd.calls)
 
     def test_commit_disarms_timer(self):
-        from rawos.kernel.frontdoor import commit
+        from anima.kernel.frontdoor import commit
         sd = _RecordingSystemd()
         commit(_systemd=sd)
         assert any("disarm" in c for c in sd.calls)

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from rawos.kernel.arch.linux import LinuxServiceManager
+from anima.kernel.arch.linux import LinuxServiceManager
 
 
 def _mock_run(stdout: str, returncode: int = 0) -> MagicMock:
@@ -27,7 +27,7 @@ def _mock_run(stdout: str, returncode: int = 0) -> MagicMock:
 
 def test_list_failed_runs_systemctl_list_units_failed():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("foo.service loaded failed failed Foo\n")) as mock_run:
         result = mgr.list_failed()
 
@@ -41,35 +41,35 @@ def test_list_failed_runs_systemctl_list_units_failed():
 
 def test_list_failed_skips_not_found_units():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("stale.service not-found failed failed Stale\n")):
         assert mgr.list_failed() == []
 
 
 def test_list_failed_returns_empty_on_nonzero_exit():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert mgr.list_failed() == []
 
 
 def test_list_failed_returns_empty_on_blank_output():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("   \n")):
         assert mgr.list_failed() == []
 
 
 def test_list_failed_returns_empty_on_exception():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                side_effect=OSError("boom")):
         assert mgr.list_failed() == []
 
 
 def test_is_active_true_when_systemctl_reports_active():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("active\n")) as mock_run:
         assert mgr.is_active("rawos.service") is True
 
@@ -81,21 +81,21 @@ def test_is_active_true_when_systemctl_reports_active():
 
 def test_is_active_false_when_systemctl_reports_inactive():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("inactive\n")):
         assert mgr.is_active("rawos.service") is False
 
 
 def test_is_active_false_on_exception():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                side_effect=OSError("boom")):
         assert mgr.is_active("rawos.service") is False
 
 
 def test_restart_runs_systemctl_restart():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         mgr.restart("rawos.service")
 
@@ -107,21 +107,21 @@ def test_restart_runs_systemctl_restart():
 
 def test_restart_returns_true_on_success():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("", returncode=0)):
         assert mgr.restart("rawos.service") is True
 
 
 def test_restart_returns_false_on_failure():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert mgr.restart("rawos.service") is False
 
 
 def test_restart_returns_false_on_exception():
     mgr = LinuxServiceManager()
-    with patch("rawos.kernel.arch.linux.subprocess.run",
+    with patch("anima.kernel.arch.linux.subprocess.run",
                side_effect=OSError("systemd unavailable")):
         assert mgr.restart("rawos.service") is False
 
@@ -193,7 +193,7 @@ def test_generate_unit_default_description_contains_name():
 def test_install_unit_writes_file_to_unit_dir():
     mgr = LinuxServiceManager()
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.kernel.arch.linux.subprocess.run",
+        with patch("anima.kernel.arch.linux.subprocess.run",
                    return_value=_mock_run("")) as mock_run:
             mgr.install_unit("rawos", "[Unit]\nDescription=test\n", unit_dir=unit_dir)
 
@@ -210,7 +210,7 @@ def test_install_unit_calls_daemon_reload_then_enable():
         return _mock_run("")
 
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.kernel.arch.linux.subprocess.run", side_effect=fake_run):
+        with patch("anima.kernel.arch.linux.subprocess.run", side_effect=fake_run):
             mgr.install_unit("rawos", "[Unit]\n", unit_dir=unit_dir)
 
     assert any("daemon-reload" in " ".join(c) for c in calls)
@@ -230,7 +230,7 @@ def test_uninstall_unit_calls_disable_stop_remove_reload():
     with tempfile.TemporaryDirectory() as unit_dir:
         unit_path = os.path.join(unit_dir, "rawos.service")
         open(unit_path, "w").write("[Unit]\n")
-        with patch("rawos.kernel.arch.linux.subprocess.run", side_effect=fake_run):
+        with patch("anima.kernel.arch.linux.subprocess.run", side_effect=fake_run):
             mgr.uninstall_unit("rawos", unit_dir=unit_dir)
 
     assert any("disable" in " ".join(c) for c in calls)
@@ -242,7 +242,7 @@ def test_uninstall_unit_calls_disable_stop_remove_reload():
 def test_uninstall_unit_tolerates_missing_service_file():
     mgr = LinuxServiceManager()
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.kernel.arch.linux.subprocess.run",
+        with patch("anima.kernel.arch.linux.subprocess.run",
                    return_value=_mock_run("")):
             mgr.uninstall_unit("nonexistent", unit_dir=unit_dir)  # must not raise
 
@@ -255,5 +255,5 @@ def test_uninstall_unit_tolerates_systemctl_disable_failure():
         return _mock_run("")
 
     with tempfile.TemporaryDirectory() as unit_dir:
-        with patch("rawos.kernel.arch.linux.subprocess.run", side_effect=fake_run):
+        with patch("anima.kernel.arch.linux.subprocess.run", side_effect=fake_run):
             mgr.uninstall_unit("rawos", unit_dir=unit_dir)  # must not raise

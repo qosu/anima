@@ -18,7 +18,7 @@ EXPERIMENTAL: never live until a Windows host verifies it.
 """
 from __future__ import annotations
 
-from rawos.kernel.arch.windows import WindowsShellPolicy
+from anima.kernel.arch.windows import WindowsShellPolicy
 
 
 def test_wrap_uses_powershell():

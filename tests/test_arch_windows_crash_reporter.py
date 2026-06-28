@@ -11,7 +11,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from rawos.kernel.arch.windows import WindowsCrashReporter
+from anima.kernel.arch.windows import WindowsCrashReporter
 
 
 def _mock_run(stdout: str, returncode: int = 0) -> SimpleNamespace:
@@ -22,7 +22,7 @@ def _mock_run(stdout: str, returncode: int = 0) -> SimpleNamespace:
 
 def test_recent_crashes_returns_list_of_provider_names():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("Chrome\nNotepad\n")):
         result = reporter.recent_crashes("15 minutes ago")
     assert result == ["Chrome", "Notepad"]
@@ -31,7 +31,7 @@ def test_recent_crashes_returns_list_of_provider_names():
 def test_recent_crashes_returns_sorted():
     """Protocol contract: sorted unique process names."""
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("Notepad\nChrome\n")):
         result = reporter.recent_crashes("15 minutes ago")
     assert result == ["Chrome", "Notepad"]
@@ -40,7 +40,7 @@ def test_recent_crashes_returns_sorted():
 def test_recent_crashes_deduplicates_process_names():
     """Same provider appearing multiple times must be collapsed to one entry."""
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("Chrome\nNotepad\nChrome\n")):
         result = reporter.recent_crashes("15 minutes ago")
     assert result == ["Chrome", "Notepad"]
@@ -48,21 +48,21 @@ def test_recent_crashes_deduplicates_process_names():
 
 def test_recent_crashes_returns_empty_on_nonzero_exit():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("", returncode=1)):
         assert reporter.recent_crashes("15 minutes ago") == []
 
 
 def test_recent_crashes_returns_empty_on_exception():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                side_effect=OSError("powershell unavailable")):
         assert reporter.recent_crashes("15 minutes ago") == []
 
 
 def test_recent_crashes_filters_blank_lines():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("Notepad\n\n   \nChrome\n")):
         result = reporter.recent_crashes("15 minutes ago")
     assert "" not in result
@@ -76,7 +76,7 @@ def test_recent_crashes_filters_blank_lines():
 def test_recent_crashes_command_uses_level_1():
     """Level=1 = Critical. Application crashes appear here, not Level=2 (Error)."""
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reporter.recent_crashes("15 minutes ago")
     cmd = " ".join(mock_run.call_args[0][0])
@@ -86,7 +86,7 @@ def test_recent_crashes_command_uses_level_1():
 
 def test_recent_crashes_command_targets_application_log():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reporter.recent_crashes("15 minutes ago")
     cmd = " ".join(mock_run.call_args[0][0])
@@ -95,7 +95,7 @@ def test_recent_crashes_command_targets_application_log():
 
 def test_recent_crashes_command_expands_provider_name():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reporter.recent_crashes("15 minutes ago")
     cmd = " ".join(mock_run.call_args[0][0])
@@ -104,7 +104,7 @@ def test_recent_crashes_command_expands_provider_name():
 
 def test_recent_crashes_uses_addminutes_for_relative_since():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reporter.recent_crashes("15 minutes ago")
     cmd = " ".join(mock_run.call_args[0][0])
@@ -114,7 +114,7 @@ def test_recent_crashes_uses_addminutes_for_relative_since():
 
 def test_recent_crashes_uses_addhours_for_hours_since():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reporter.recent_crashes("2 hours ago")
     cmd = " ".join(mock_run.call_args[0][0])
@@ -124,7 +124,7 @@ def test_recent_crashes_uses_addhours_for_hours_since():
 
 def test_recent_crashes_passes_iso_timestamp_as_quoted_string():
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reporter.recent_crashes("2026-01-15 10:30:00")
     cmd = " ".join(mock_run.call_args[0][0])
@@ -136,7 +136,7 @@ def test_recent_crashes_passes_iso_timestamp_as_quoted_string():
 def test_recent_crashes_uses_powershell_argv_list():
     """Command must be argv list, not shell string — avoids quoting issues."""
     reporter = WindowsCrashReporter()
-    with patch("rawos.kernel.arch.windows.subprocess.run",
+    with patch("anima.kernel.arch.windows.subprocess.run",
                return_value=_mock_run("")) as mock_run:
         reporter.recent_crashes("15 minutes ago")
     args = mock_run.call_args[0][0]

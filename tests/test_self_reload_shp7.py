@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from rawos.kernel.self_reload import (
+from anima.kernel.self_reload import (
     SELF_RELOAD_DEADMAN_UNIT,
     SelfReloadRefusalError,
     SelfReloadSnapshot,
@@ -203,7 +203,7 @@ class TestPreflightAncestryIntegration:
         runner = OrderTrackingRunner({})
         runner.responses = {}
         # monkeypatch _git_head
-        import rawos.kernel.self_reload as sr
+        import anima.kernel.self_reload as sr
         orig = sr._git_head
         sr._git_head = lambda r, cwd: "OLDSHA"
         try:
@@ -229,7 +229,7 @@ class TestArmAndSwapAuditChain:
 
     def test_arm_and_swap_appends_self_reload_arm_event(self, tmp_path, monkeypatch):
         """arm_and_swap must call audit_chain.append('self_reload_arm', ...) before git reset."""
-        import rawos.kernel.audit_chain as ac
+        import anima.kernel.audit_chain as ac
         appended: list[tuple[str, dict]] = []
         monkeypatch.setattr(ac, "append", lambda et, p: appended.append((et, dict(p))) or {})
 
@@ -251,7 +251,7 @@ class TestArmAndSwapAuditChain:
 
     def test_arm_and_swap_audit_record_contains_sha_fields(self, tmp_path, monkeypatch):
         """Audit record payload must include old_sha, new_sha, state_id, autonomous."""
-        import rawos.kernel.audit_chain as ac
+        import anima.kernel.audit_chain as ac
         appended: list[tuple[str, dict]] = []
         monkeypatch.setattr(ac, "append", lambda et, p: appended.append((et, dict(p))) or {})
 
@@ -278,7 +278,7 @@ class TestArmAndSwapAuditChain:
 
     def test_arm_and_swap_audit_failure_does_not_block_swap(self, tmp_path, monkeypatch):
         """If audit_chain.append raises, arm_and_swap must still proceed (fail-open)."""
-        import rawos.kernel.audit_chain as ac
+        import anima.kernel.audit_chain as ac
         monkeypatch.setattr(ac, "append", lambda *a, **k: (_ for _ in ()).throw(IOError("disk full")))
 
         sd = FakeSelfReloadDeadman()
@@ -298,7 +298,7 @@ class TestArmAndSwapAuditChain:
 
     def test_audit_record_written_before_git_reset(self, tmp_path, monkeypatch):
         """Audit record must be written BEFORE git reset (so it's present if reset fails)."""
-        import rawos.kernel.audit_chain as ac
+        import anima.kernel.audit_chain as ac
         order: list[str] = []
 
         def _fake_append(et, p):

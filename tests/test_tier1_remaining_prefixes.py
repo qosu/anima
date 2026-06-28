@@ -5,7 +5,7 @@
 - rawos/timing/   (rawos/timing/benchmark.py)
 """
 
-from rawos.kernel.tools import _in_tier1_allowlist
+from anima.kernel.tools import _in_tier1_allowlist
 
 
 class TestTier1RemainingPrefixes:

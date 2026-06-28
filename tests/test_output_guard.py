@@ -6,7 +6,7 @@ reaches the agent loop / SSE stream (I-SEC7 anti-exfiltration baseline).
 from __future__ import annotations
 
 import pytest
-from rawos.kernel.output_guard import guard_output
+from anima.kernel.output_guard import guard_output
 
 
 class TestSecretPatternRedaction:

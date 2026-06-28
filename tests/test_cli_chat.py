@@ -25,7 +25,7 @@ import pytest
 from click.testing import CliRunner
 from rich.console import Console
 
-from rawos.cli.main import _render_event, _api_stream, _resolve_project_id, cli
+from anima.cli.main import _render_event, _api_stream, _resolve_project_id, cli
 
 
 # ---------------------------------------------------------------------------
@@ -162,10 +162,10 @@ def _make_stream_ctx(lines: list[str], status_code: int = 200):
 
 class TestApiStream:
     def _patch_client(self, mock_client):
-        return patch("rawos.cli.main.httpx.Client", return_value=mock_client)
+        return patch("anima.cli.main.httpx.Client", return_value=mock_client)
 
     def _patch_token(self):
-        return patch("rawos.cli.main._get_token", return_value="tok_test")
+        return patch("anima.cli.main._get_token", return_value="tok_test")
 
     def test_yields_parsed_dicts_from_sse_lines(self):
         ev1 = {"type": "chunk", "text": "hi"}
@@ -259,10 +259,10 @@ def _make_multi_stream_ctx(*responses):
 
 class TestApiStreamResumable:
     def _patch_client(self, mock_client):
-        return patch("rawos.cli.main.httpx.Client", return_value=mock_client)
+        return patch("anima.cli.main.httpx.Client", return_value=mock_client)
 
     def _patch_token(self):
-        return patch("rawos.cli.main._get_token", return_value="tok_test")
+        return patch("anima.cli.main._get_token", return_value="tok_test")
 
     def test_filters_run_started_and_run_complete_control_events(self):
         ev_started = {"type": "run_started", "run_id": "run123"}
@@ -328,7 +328,7 @@ class TestApiStreamResumable:
 
         client = _make_multi_stream_ctx(resp1, resp2)
         with self._patch_client(client), self._patch_token(), \
-                patch("rawos.cli.main.time.sleep"):
+                patch("anima.cli.main.time.sleep"):
             result = list(_api_stream("/intent", {"project_id": "p1", "message": "hi"}))
 
         assert result == [ev1, ev2]
@@ -347,7 +347,7 @@ class TestApiStreamResumable:
 
 class TestResolveProjectId:
     def test_returns_current_project_from_status(self):
-        with patch("rawos.cli.main._api") as mock_api:
+        with patch("anima.cli.main._api") as mock_api:
             mock_api.return_value = {"current_project_id": "proj-abc"}
             result = _resolve_project_id()
         assert result == "proj-abc"
@@ -361,7 +361,7 @@ class TestResolveProjectId:
                 return [{"id": "proj-fallback"}]
             return {}
 
-        with patch("rawos.cli.main._api", side_effect=_api_side):
+        with patch("anima.cli.main._api", side_effect=_api_side):
             result = _resolve_project_id()
         assert result == "proj-fallback"
 
@@ -373,7 +373,7 @@ class TestResolveProjectId:
                 return []
             return {}
 
-        with patch("rawos.cli.main._api", side_effect=_api_side):
+        with patch("anima.cli.main._api", side_effect=_api_side):
             with pytest.raises(SystemExit):
                 _resolve_project_id()
 
@@ -385,8 +385,8 @@ class TestResolveProjectId:
 class TestAskCommand:
     def _run(self, args, stream_events, project_id="proj-test"):
         runner = CliRunner()
-        with patch("rawos.cli.main._resolve_project_id", return_value=project_id), \
-             patch("rawos.cli.main._api_stream", return_value=iter(stream_events)) as mock_stream:
+        with patch("anima.cli.main._resolve_project_id", return_value=project_id), \
+             patch("anima.cli.main._api_stream", return_value=iter(stream_events)) as mock_stream:
             result = runner.invoke(cli, ["ask", *args])
         return result, mock_stream
 
@@ -433,8 +433,8 @@ class TestAskCommand:
 class TestChatCommand:
     def _run(self, input_text: str, stream_events):
         runner = CliRunner()
-        with patch("rawos.cli.main._resolve_project_id", return_value="proj-test"), \
-             patch("rawos.cli.main._api_stream", return_value=iter(stream_events)) as mock_stream:
+        with patch("anima.cli.main._resolve_project_id", return_value="proj-test"), \
+             patch("anima.cli.main._api_stream", return_value=iter(stream_events)) as mock_stream:
             result = runner.invoke(cli, ["chat"], input=input_text)
         return result, mock_stream
 
@@ -463,8 +463,8 @@ class TestChatCommand:
     def test_chat_exits_cleanly_on_eof(self):
         """Ctrl-D / empty input should cause clean exit, not crash."""
         runner = CliRunner()
-        with patch("rawos.cli.main._resolve_project_id", return_value="proj-test"), \
-             patch("rawos.cli.main._api_stream", return_value=iter([])):
+        with patch("anima.cli.main._resolve_project_id", return_value="proj-test"), \
+             patch("anima.cli.main._api_stream", return_value=iter([])):
             result = runner.invoke(cli, ["chat"], input="")
         assert result.exit_code == 0
 
@@ -477,8 +477,8 @@ class TestGoalRegression:
     def test_goal_calls_api_stream(self):
         runner = CliRunner()
         events = [{"type": "chunk", "text": "working on it"}]
-        with patch("rawos.cli.main._resolve_project_id", return_value="proj-rg"), \
-             patch("rawos.cli.main._api_stream", return_value=iter(events)) as mock_stream:
+        with patch("anima.cli.main._resolve_project_id", return_value="proj-rg"), \
+             patch("anima.cli.main._api_stream", return_value=iter(events)) as mock_stream:
             result = runner.invoke(cli, ["goal", "fix nginx"])
         assert result.exit_code == 0
         mock_stream.assert_called_once_with(
@@ -489,8 +489,8 @@ class TestGoalRegression:
     def test_goal_renders_streamed_output(self):
         runner = CliRunner()
         events = [{"type": "chunk", "text": "Restarting nginx now."}]
-        with patch("rawos.cli.main._resolve_project_id", return_value="proj-rg"), \
-             patch("rawos.cli.main._api_stream", return_value=iter(events)):
+        with patch("anima.cli.main._resolve_project_id", return_value="proj-rg"), \
+             patch("anima.cli.main._api_stream", return_value=iter(events)):
             result = runner.invoke(cli, ["goal", "restart nginx"])
         assert "Restarting nginx now." in result.output
 
@@ -498,8 +498,8 @@ class TestGoalRegression:
         """Regression: the old no-op said 'Goal submitted … Use rawos show'. Gone."""
         runner = CliRunner()
         events = []
-        with patch("rawos.cli.main._resolve_project_id", return_value="proj-rg"), \
-             patch("rawos.cli.main._api_stream", return_value=iter(events)):
+        with patch("anima.cli.main._resolve_project_id", return_value="proj-rg"), \
+             patch("anima.cli.main._api_stream", return_value=iter(events)):
             result = runner.invoke(cli, ["goal", "do something"])
         assert "Use `rawos show`" not in result.output
         assert "Full streaming available" not in result.output
@@ -513,9 +513,9 @@ class TestGoalRegression:
 class TestChatDigestGreeting:
     def _run(self, input_text: str, session_response: dict, stream_events=None):
         runner = CliRunner()
-        with patch("rawos.cli.main._resolve_project_id", return_value="proj-test"), \
-             patch("rawos.cli.main._api_stream", return_value=iter(stream_events or [])), \
-             patch("rawos.cli.main._api", return_value=session_response) as mock_api:
+        with patch("anima.cli.main._resolve_project_id", return_value="proj-test"), \
+             patch("anima.cli.main._api_stream", return_value=iter(stream_events or [])), \
+             patch("anima.cli.main._api", return_value=session_response) as mock_api:
             result = runner.invoke(cli, ["chat"], input=input_text)
         return result, mock_api
 
@@ -555,9 +555,9 @@ class TestChatDigestGreeting:
     def test_chat_continues_to_repl_after_digest(self):
         session = {"last_chat_at": 0, "artifacts": []}
         events = [{"type": "chunk", "text": "hello from rawos"}]
-        with patch("rawos.cli.main._resolve_project_id", return_value="proj-test"), \
-             patch("rawos.cli.main._api_stream", return_value=iter(events)), \
-             patch("rawos.cli.main._api", return_value=session):
+        with patch("anima.cli.main._resolve_project_id", return_value="proj-test"), \
+             patch("anima.cli.main._api_stream", return_value=iter(events)), \
+             patch("anima.cli.main._api", return_value=session):
             runner = CliRunner()
             result = runner.invoke(cli, ["chat"], input="hi\n:q\n")
         assert "hello from rawos" in result.output

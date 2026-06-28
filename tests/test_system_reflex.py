@@ -20,10 +20,10 @@ import time
 
 import pytest
 
-import rawos.db as db
-import rawos.scheduler.system_reflex as system_reflex
-from rawos.config import settings
-from rawos.kernel.entity import RAWOS_ENTITY_USER_ID
+import anima.db as db
+import anima.scheduler.system_reflex as system_reflex
+from anima.config import settings
+from anima.kernel.entity import RAWOS_ENTITY_USER_ID
 
 THRESHOLD = system_reflex.SYSTEM_FS_REFLEX_THRESHOLD
 COOLDOWN_S = system_reflex.SYSTEM_FS_REFLEX_COOLDOWN_S

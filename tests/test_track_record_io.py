@@ -11,14 +11,14 @@ import tempfile
 
 import pytest
 
-import rawos.db as db
-from rawos.kernel.track_record import (
+import anima.db as db
+from anima.kernel.track_record import (
     GRADUATION_THRESHOLD,
     get_track_record,
     is_branch_merged,
     update_track_record,
 )
-from rawos.models import User
+from anima.models import User
 
 
 def _git(*args: str, cwd: str) -> None:

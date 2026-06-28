@@ -8,7 +8,7 @@ from __future__ import annotations
 
 
 import pytest
-from rawos.kernel.capability_gate import (
+from anima.kernel.capability_gate import (
     CapabilityTier,
     classify_tier,
     pre_execute_gate,
@@ -85,8 +85,8 @@ class TestGateAudit:
     """Every tool call must generate a structured audit record in the chain."""
 
     def test_audit_record_written_for_tool_call(self, tmp_path, monkeypatch):
-        import rawos.kernel.audit_chain as ac
-        from rawos.kernel.audit_chain import _AuditChain
+        import anima.kernel.audit_chain as ac
+        from anima.kernel.audit_chain import _AuditChain
 
         chain_inst = _AuditChain(
             chain_path=tmp_path / "chain.jsonl",
@@ -107,8 +107,8 @@ class TestGateAudit:
 
     def test_audit_records_tier3_call(self, tmp_path, monkeypatch):
         """TIER3 audit record must be present with tier=3."""
-        import rawos.kernel.audit_chain as ac
-        from rawos.kernel.audit_chain import _AuditChain
+        import anima.kernel.audit_chain as ac
+        from anima.kernel.audit_chain import _AuditChain
 
         chain_inst = _AuditChain(
             chain_path=tmp_path / "chain.jsonl",
@@ -125,7 +125,7 @@ class TestGateAudit:
 
     def test_audit_failure_does_not_propagate(self, monkeypatch):
         """Audit chain failure must never block tool execution."""
-        import rawos.kernel.audit_chain as ac
+        import anima.kernel.audit_chain as ac
 
         def _fail(*args, **kwargs):
             raise IOError("disk full")

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from rawos.kernel import llm_client
+from anima.kernel import llm_client
 
 
 def _mock_async_client(resp):

@@ -10,9 +10,9 @@ from unittest.mock import AsyncMock, patch
 
 
 def test_write_self_narrative_calls_llm_with_prior_and_context():
-    from rawos.kernel.self_narrative import write_self_narrative
+    from anima.kernel.self_narrative import write_self_narrative
 
-    with patch("rawos.kernel.self_narrative._complete", new=AsyncMock(return_value="I am rawos, still mid checkout flow.")) as mock_complete:
+    with patch("anima.kernel.self_narrative._complete", new=AsyncMock(return_value="I am rawos, still mid checkout flow.")) as mock_complete:
         result = asyncio.run(write_self_narrative(
             prior_narrative="I am rawos, just starting the checkout flow.",
             user_model={"inferred_goal": "Ship the checkout flow", "active_domains": ["feature"]},
@@ -30,9 +30,9 @@ def test_write_self_narrative_calls_llm_with_prior_and_context():
 
 
 def test_write_self_narrative_returns_prior_when_llm_returns_empty():
-    from rawos.kernel.self_narrative import write_self_narrative
+    from anima.kernel.self_narrative import write_self_narrative
 
-    with patch("rawos.kernel.self_narrative._complete", new=AsyncMock(return_value="")):
+    with patch("anima.kernel.self_narrative._complete", new=AsyncMock(return_value="")):
         result = asyncio.run(write_self_narrative(
             prior_narrative="I am rawos, just starting the checkout flow.",
             user_model={"inferred_goal": "Ship the checkout flow"},
@@ -43,9 +43,9 @@ def test_write_self_narrative_returns_prior_when_llm_returns_empty():
 
 
 def test_write_self_narrative_returns_empty_when_no_prior_and_llm_empty():
-    from rawos.kernel.self_narrative import write_self_narrative
+    from anima.kernel.self_narrative import write_self_narrative
 
-    with patch("rawos.kernel.self_narrative._complete", new=AsyncMock(return_value="")):
+    with patch("anima.kernel.self_narrative._complete", new=AsyncMock(return_value="")):
         result = asyncio.run(write_self_narrative(
             prior_narrative=None,
             user_model={"inferred_goal": "Ship the checkout flow"},

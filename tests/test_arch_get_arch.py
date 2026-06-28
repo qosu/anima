@@ -4,8 +4,8 @@ entry point into the ABI (kernel/arch/base.py Protocols).
 """
 from __future__ import annotations
 
-from rawos.kernel.arch import get_arch
-from rawos.kernel.arch.linux import (
+from anima.kernel.arch import get_arch
+from anima.kernel.arch.linux import (
     LinuxLogReader,
     LinuxResourceProbe,
     LinuxServiceManager,

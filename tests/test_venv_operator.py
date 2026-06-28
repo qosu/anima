@@ -24,10 +24,10 @@ from typing import Callable
 
 import pytest
 
-import rawos.db as db
-from rawos.models import User
+import anima.db as db
+from anima.models import User
 
-from rawos.kernel.venv_operator import (
+from anima.kernel.venv_operator import (
     VENV_DEADMAN_UNIT,
     _VenvDeadmanSystemd,
     VENV_STATE_FILENAME,
@@ -488,7 +488,7 @@ class TestVenvGate:
 
     def _seed_graduation(self, user_id: str, venv_root: str) -> None:
         import time as _time
-        from rawos.kernel.track_record import GRADUATION_THRESHOLD
+        from anima.kernel.track_record import GRADUATION_THRESHOLD
 
         for _ in range(GRADUATION_THRESHOLD * 2):
             db.update_operator_track_record(
@@ -502,7 +502,7 @@ class TestVenvGate:
     def test_propose_when_flag_disabled(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import rawos.config as _cfg
+        import anima.config as _cfg
 
         monkeypatch.setattr(_cfg.settings, "operator_venv_enabled", False)
         user = db.create_user(User(email="venv-gate-a@test.com", password_hash="x"))
@@ -519,7 +519,7 @@ class TestVenvGate:
     def test_propose_when_not_graduated(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import rawos.config as _cfg
+        import anima.config as _cfg
 
         monkeypatch.setattr(_cfg.settings, "operator_venv_enabled", True)
         user = db.create_user(User(email="venv-gate-b@test.com", password_hash="x"))
@@ -536,7 +536,7 @@ class TestVenvGate:
     def test_auto_applies_when_enabled_and_graduated(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import rawos.config as _cfg
+        import anima.config as _cfg
 
         monkeypatch.setattr(_cfg.settings, "operator_venv_enabled", True)
         # Set up dirs for rename-swap
@@ -568,7 +568,7 @@ class TestVenvGate:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """execute_approved_venv_op bypasses flag + graduation, keeps preflight."""
-        import rawos.config as _cfg
+        import anima.config as _cfg
 
         monkeypatch.setattr(_cfg.settings, "operator_venv_enabled", False)
         (tmp_path / "venv").mkdir()
@@ -596,7 +596,7 @@ class TestVenvGate:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """owner-path bypass does NOT bypass preflight (I-VENV2 unbypassable)."""
-        import rawos.config as _cfg
+        import anima.config as _cfg
 
         monkeypatch.setattr(_cfg.settings, "operator_venv_enabled", False)
         user = db.create_user(User(email="venv-gate-e@test.com", password_hash="x"))
@@ -625,7 +625,7 @@ class TestVenvAuditDb:
         db.init(str(tmp_path / "audit_test.db"))
 
     def test_record_and_retrieve(self) -> None:
-        from rawos.db import record_venv_op_outcome, list_venv_op_history
+        from anima.db import record_venv_op_outcome, list_venv_op_history
 
         record_venv_op_outcome(
             op_type="dep_update",
@@ -642,7 +642,7 @@ class TestVenvAuditDb:
         assert rows[0]["autonomous"] == 0
 
     def test_autonomous_flag_stored(self) -> None:
-        from rawos.db import record_venv_op_outcome, list_venv_op_history
+        from anima.db import record_venv_op_outcome, list_venv_op_history
 
         record_venv_op_outcome(
             op_type="dep_update",
@@ -655,7 +655,7 @@ class TestVenvAuditDb:
         assert rows[0]["autonomous"] == 1
 
     def test_multiple_rows_newest_first(self) -> None:
-        from rawos.db import record_venv_op_outcome, list_venv_op_history
+        from anima.db import record_venv_op_outcome, list_venv_op_history
 
         record_venv_op_outcome("dep_update", "h1", "h2", "proposed")
         record_venv_op_outcome("dep_update", "h3", "h4", "applied")
@@ -667,7 +667,7 @@ class TestVenvAuditDb:
         assert rows.index(applied[0]) < rows.index(proposed[0])
 
     def test_outcome_check_constraint(self) -> None:
-        from rawos.db import record_venv_op_outcome
+        from anima.db import record_venv_op_outcome
         import sqlite3
 
         with pytest.raises(sqlite3.IntegrityError):

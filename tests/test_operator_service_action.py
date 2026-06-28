@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from rawos.kernel.operator import (
+from anima.kernel.operator import (
     OperationResult,
     OperatorError,
     ReversibleServiceAction,

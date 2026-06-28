@@ -6,11 +6,11 @@ three without a platform constraint.
 """
 from __future__ import annotations
 
-from rawos.config import Settings
-from rawos.kernel.arch import _build_backend, get_arch
-from rawos.kernel.arch.linux import LinuxCrashReporter
-from rawos.kernel.arch.macos import MacOSCrashReporter
-from rawos.kernel.arch.windows import WindowsCrashReporter
+from anima.config import Settings
+from anima.kernel.arch import _build_backend, get_arch
+from anima.kernel.arch.linux import LinuxCrashReporter
+from anima.kernel.arch.macos import MacOSCrashReporter
+from anima.kernel.arch.windows import WindowsCrashReporter
 
 
 def test_get_arch_linux_has_linux_crash_reporter():

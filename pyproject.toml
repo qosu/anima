@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rawos"
+name = "anima"
 version = "0.6.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -60,8 +60,8 @@ markers = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["rawos*"]
+include = ["anima*"]
 
 [project.scripts]
-rawos = "rawos.cli.main:main"
-rawos-frontdoor = "rawos.cli.frontdoor_entry:main"
+anima = "anima.cli.main:main"
+anima-frontdoor = "anima.cli.frontdoor_entry:main"

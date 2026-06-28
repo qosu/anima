@@ -12,9 +12,9 @@ import subprocess
 
 import pytest
 
-from rawos.kernel.arch.linux import LinuxServiceManager
-from rawos.kernel.arch.macos import MacOSServiceManager
-from rawos.kernel.arch.windows import WindowsServiceManager
+from anima.kernel.arch.linux import LinuxServiceManager
+from anima.kernel.arch.macos import MacOSServiceManager
+from anima.kernel.arch.windows import WindowsServiceManager
 
 
 class TestLinuxServiceManagerStartStop:

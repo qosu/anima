@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rawos.config import settings
-from rawos.kernel.worktree import WORKTREE_ROOT
+from anima.config import settings
+from anima.kernel.worktree import WORKTREE_ROOT
 
 
 def test_worktree_root_matches_settings():

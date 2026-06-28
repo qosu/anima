@@ -21,11 +21,11 @@ import time
 
 import pytest
 
-import rawos.db as db
-import rawos.scheduler.proactive as proactive
-from rawos.config import settings
-from rawos.kernel.track_record import GRADUATION_THRESHOLD
-from rawos.models import User
+import anima.db as db
+import anima.scheduler.proactive as proactive
+from anima.config import settings
+from anima.kernel.track_record import GRADUATION_THRESHOLD
+from anima.models import User
 
 OPERATOR_CLASS = "file_edit"
 
@@ -322,7 +322,7 @@ class TestRunOperatorScanCycle:
 
 
 # ---------------------------------------------------------------------------
-# rawos_operator_scan_loop — gating
+# anima_operator_scan_loop — gating
 # ---------------------------------------------------------------------------
 
 class TestOperatorScanLoop:
@@ -335,6 +335,6 @@ class TestOperatorScanLoop:
 
         monkeypatch.setattr(proactive, "_run_operator_scan_cycle", fake_cycle)
 
-        await proactive.rawos_operator_scan_loop()
+        await proactive.anima_operator_scan_loop()
 
         assert calls["n"] == 0

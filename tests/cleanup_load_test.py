@@ -18,8 +18,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("RAWOS_SANDBOX_DOCKER", "false")
 
-from rawos.config import settings  # noqa: E402
-import rawos.db as db  # noqa: E402
+from anima.config import settings  # noqa: E402
+import anima.db as db  # noqa: E402
 
 DOMAIN = "rawos.internal"
 POOL_FILE = Path("/tmp/rawos_loadtest_users.json")

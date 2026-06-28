@@ -33,7 +33,7 @@ def owned_roots(tmp_path):
 @pytest.fixture()
 def kernel(owned_roots):
     """OwnedResourceKernel with injectable test roots."""
-    from rawos.kernel.owned_resource import OwnedResourceKernel
+    from anima.kernel.owned_resource import OwnedResourceKernel
     return OwnedResourceKernel(
         workspaces_root=owned_roots["workspaces_root"],
         rawos_source_root=owned_roots["rawos_source_root"],
@@ -64,20 +64,20 @@ class TestOwnedBoundary:
         assert kernel.is_owned_path("/etc/passwd") is False
 
     def test_path_outside_raises_refusal_error(self, kernel):
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         with pytest.raises(OwnedResourceRefusalError):
             kernel.assert_owned("/etc/passwd")
 
     def test_parent_traversal_refused(self, kernel, owned_roots):
         """Path using .. to escape owned root must be refused."""
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         traversal = owned_roots["workspaces_root"] + "/../../../etc"
         with pytest.raises(OwnedResourceRefusalError):
             kernel.assert_owned(traversal)
 
     def test_symlink_escape_refused(self, kernel, owned_roots):
         """Symlink inside owned root pointing outside must be refused."""
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         link = Path(owned_roots["workspaces_root"]) / "evil-link"
         link.symlink_to("/etc")
         with pytest.raises(OwnedResourceRefusalError):
@@ -90,28 +90,28 @@ class TestOwnedBoundary:
 
 class TestInnerFloor:
     def test_live_db_file_refused(self, kernel, owned_roots):
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         db_file = Path(owned_roots["rawos_source_root"]) / "data" / "rawos.db"
         db_file.touch()
         with pytest.raises(OwnedResourceRefusalError, match="protected"):
             kernel.assert_owned_and_not_floored(str(db_file), active_workspace_dirs=frozenset())
 
     def test_db_wal_refused(self, kernel, owned_roots):
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         wal = Path(owned_roots["rawos_source_root"]) / "data" / "rawos.db-wal"
         wal.touch()
         with pytest.raises(OwnedResourceRefusalError, match="protected"):
             kernel.assert_owned_and_not_floored(str(wal), active_workspace_dirs=frozenset())
 
     def test_db_shm_refused(self, kernel, owned_roots):
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         shm = Path(owned_roots["rawos_source_root"]) / "data" / "rawos.db-shm"
         shm.touch()
         with pytest.raises(OwnedResourceRefusalError, match="protected"):
             kernel.assert_owned_and_not_floored(str(shm), active_workspace_dirs=frozenset())
 
     def test_git_dir_refused(self, kernel, owned_roots):
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         git_dir = Path(owned_roots["rawos_source_root"]) / ".git"
         git_dir.mkdir()
         with pytest.raises(OwnedResourceRefusalError, match="protected"):
@@ -119,7 +119,7 @@ class TestInnerFloor:
 
     def test_source_py_file_refused(self, kernel, owned_roots):
         """Source code under rawos_source_root (non-data) must be inner-floored."""
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         src = Path(owned_roots["rawos_source_root"]) / "rawos" / "kernel"
         src.mkdir(parents=True)
         py = src / "foo.py"
@@ -136,7 +136,7 @@ class TestInnerFloor:
 
     def test_active_intent_workspace_refused(self, kernel, owned_roots):
         """Workspace bound to active intent must be inner-floored."""
-        from rawos.kernel.owned_resource import OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedResourceRefusalError
         ws = Path(owned_roots["workspaces_root"]) / "active-ws"
         ws.mkdir()
         with pytest.raises(OwnedResourceRefusalError, match="active intent"):
@@ -249,7 +249,7 @@ class TestWorkspaceGC:
 class TestOperateGate:
     @pytest.fixture(autouse=True)
     def _db(self, tmp_path):
-        import rawos.db as db
+        import anima.db as db
         db.init(str(tmp_path / "gate_test.db"))
 
     def _make_stale_workspace(self, workspaces_root: str, name: str, age_days: float = 30) -> str:
@@ -260,8 +260,8 @@ class TestOperateGate:
         return str(ws)
 
     def test_propose_when_flag_false(self, kernel, owned_roots, monkeypatch):
-        from rawos.config import settings
-        from rawos.kernel.owned_resource import OwnedOpSpec
+        from anima.config import settings
+        from anima.kernel.owned_resource import OwnedOpSpec
 
         monkeypatch.setattr(settings, "operator_owned_enabled", False)
         ws = self._make_stale_workspace(owned_roots["workspaces_root"], "stale-flag")
@@ -276,8 +276,8 @@ class TestOperateGate:
         assert outcome.proposed is True
 
     def test_propose_when_ungraduated(self, kernel, owned_roots, monkeypatch):
-        from rawos.config import settings
-        from rawos.kernel.owned_resource import OwnedOpSpec
+        from anima.config import settings
+        from anima.kernel.owned_resource import OwnedOpSpec
 
         monkeypatch.setattr(settings, "operator_owned_enabled", True)
         ws = self._make_stale_workspace(owned_roots["workspaces_root"], "stale-grad")
@@ -294,10 +294,10 @@ class TestOperateGate:
 
     def test_auto_applies_when_enabled_and_graduated(self, kernel, owned_roots, monkeypatch):
         import hashlib
-        from rawos.config import settings
-        from rawos.kernel.owned_resource import OwnedOpSpec
-        from rawos.models import User
-        import rawos.db as db
+        from anima.config import settings
+        from anima.kernel.owned_resource import OwnedOpSpec
+        from anima.models import User
+        import anima.db as db
 
         monkeypatch.setattr(settings, "operator_owned_enabled", True)
 
@@ -310,7 +310,7 @@ class TestOperateGate:
         # Seed 3 verified successes (GRADUATION_THRESHOLD=3).
         # _advance_state uses a 2-call window per verified success:
         # call A starts the window, call B confirms it → 6 calls total.
-        from rawos.kernel.track_record import GRADUATION_THRESHOLD
+        from anima.kernel.track_record import GRADUATION_THRESHOLD
         for i in range(GRADUATION_THRESHOLD * 2):
             db.update_operator_track_record(
                 user.id, "owned_workspace_gc", owned_roots["workspaces_root"],
@@ -331,8 +331,8 @@ class TestOperateGate:
 
     def test_non_owned_target_refused(self, kernel, owned_roots, monkeypatch):
         """Target outside owned namespace → OwnedResourceRefusalError (I-OWN1 unbypassable)."""
-        from rawos.config import settings
-        from rawos.kernel.owned_resource import OwnedOpSpec, OwnedResourceRefusalError
+        from anima.config import settings
+        from anima.kernel.owned_resource import OwnedOpSpec, OwnedResourceRefusalError
 
         monkeypatch.setattr(settings, "operator_owned_enabled", True)
         spec = OwnedOpSpec(op_type="workspace_gc", target_path="/etc")
@@ -344,8 +344,8 @@ class TestOperateGate:
 
     def test_owner_path_bypasses_flag_and_graduation(self, kernel, owned_roots, monkeypatch):
         """execute_approved_owned_op applies immediately; ignores flag + graduation."""
-        from rawos.config import settings
-        from rawos.kernel.owned_resource import OwnedOpSpec
+        from anima.config import settings
+        from anima.kernel.owned_resource import OwnedOpSpec
 
         monkeypatch.setattr(settings, "operator_owned_enabled", False)  # flag OFF
         ws = self._make_stale_workspace(owned_roots["workspaces_root"], "owner-bypass")
@@ -361,7 +361,7 @@ class TestOperateGate:
 
     def test_owner_path_still_enforces_boundary(self, kernel, owned_roots):
         """execute_approved_owned_op must still enforce I-OWN1 boundary."""
-        from rawos.kernel.owned_resource import OwnedOpSpec, OwnedResourceRefusalError
+        from anima.kernel.owned_resource import OwnedOpSpec, OwnedResourceRefusalError
 
         spec = OwnedOpSpec(op_type="workspace_gc", target_path="/etc")
         with pytest.raises(OwnedResourceRefusalError):
@@ -377,11 +377,11 @@ class TestOperateGate:
 class TestAudit:
     @pytest.fixture(autouse=True)
     def _db(self, tmp_path):
-        import rawos.db as db
+        import anima.db as db
         db.init(str(tmp_path / "audit_test.db"))
 
     def test_history_records_autonomous_true(self):
-        import rawos.db as db
+        import anima.db as db
         db.record_owned_op_outcome(
             op_type="workspace_gc",
             target_summary="/root/rawos/workspaces/abc",
@@ -392,7 +392,7 @@ class TestAudit:
         assert rows[0]["autonomous"] == 1
 
     def test_history_records_autonomous_false(self):
-        import rawos.db as db
+        import anima.db as db
         db.record_owned_op_outcome(
             op_type="workspace_gc",
             target_summary="/root/rawos/workspaces/def",
@@ -403,15 +403,15 @@ class TestAudit:
         assert rows[0]["autonomous"] == 0
 
     def test_history_has_correct_fields(self):
-        import rawos.db as db
+        import anima.db as db
         db.record_owned_op_outcome(
             op_type="db_vacuum",
-            target_summary="rawos.db",
+            target_summary="anima.db",
             outcome="applied",
         )
         rows = db.list_owned_resource_history()
         row = rows[0]
         assert row["op_type"] == "db_vacuum"
-        assert row["target_summary"] == "rawos.db"
+        assert row["target_summary"] == "anima.db"
         assert row["outcome"] == "applied"
         assert "created_at" in row

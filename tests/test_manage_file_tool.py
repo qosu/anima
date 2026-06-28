@@ -14,11 +14,11 @@ import time
 
 import pytest
 
-import rawos.db as db
-import rawos.kernel.operator as operator_module
-from rawos.kernel.billing_context import set_billing_context
-from rawos.kernel.tools import execute
-from rawos.models import User
+import anima.db as db
+import anima.kernel.operator as operator_module
+from anima.kernel.billing_context import set_billing_context
+from anima.kernel.tools import execute
+from anima.models import User
 
 
 class TestManageFileTool:

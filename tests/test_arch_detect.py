@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from rawos.kernel.arch.detect import OS, current_os
+from anima.kernel.arch.detect import OS, current_os
 
 
 def test_current_os_returns_linux_on_linux_platform(monkeypatch):
@@ -31,7 +31,7 @@ def test_current_os_returns_windows_on_win32_platform(monkeypatch):
 def test_arch_override_setting_takes_precedence(monkeypatch):
     monkeypatch.setattr("sys.platform", "linux")
     monkeypatch.setenv("ARCH_OVERRIDE", "macos")
-    from rawos.config import Settings
+    from anima.config import Settings
     assert current_os(Settings()) == OS.MACOS
 
 

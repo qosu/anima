@@ -19,17 +19,17 @@ import time
 
 import pytest
 
-import rawos.db as db
-import rawos.kernel.operator as operator_module
-from rawos.kernel.arch.base import FileOperatorRefusalError
-from rawos.kernel.arch.linux import LinuxFileOperator
-from rawos.kernel.operator import (
+import anima.db as db
+import anima.kernel.operator as operator_module
+from anima.kernel.arch.base import FileOperatorRefusalError
+from anima.kernel.arch.linux import LinuxFileOperator
+from anima.kernel.operator import (
     OperateOutcome,
     OperatorError,
     execute_approved_file_edit,
     operate_on_file,
 )
-from rawos.models import User
+from anima.models import User
 
 OPERATOR_CLASS = "file_edit"
 
@@ -50,7 +50,7 @@ class TestOperateOnFileGate:
 
     def _graduate(self, target_path: str) -> None:
         """Drive 6 verified=True updates to reach GRADUATION_THRESHOLD=3 verified_successes."""
-        from rawos.kernel.track_record import GRADUATION_THRESHOLD
+        from anima.kernel.track_record import GRADUATION_THRESHOLD
         now = int(time.time())
         for _ in range(GRADUATION_THRESHOLD * 2):
             db.update_operator_track_record(

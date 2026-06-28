@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from rawos.context.server_scanner import ServerAnomaly
-from rawos.kernel.worktree import create_worktree, remove_worktree
+from anima.context.server_scanner import ServerAnomaly
+from anima.kernel.worktree import create_worktree, remove_worktree
 
 
 def _git(*args: str, cwd: str) -> None:
@@ -84,7 +84,7 @@ async def toy_repo_worktree(tmp_path):
 class TestVerifyFixKindGuard:
     @pytest.mark.asyncio
     async def test_disk_anomaly_raises(self, tmp_path):
-        from rawos.kernel.anomaly_verifier import verify_fix
+        from anima.kernel.anomaly_verifier import verify_fix
 
         anomaly = _make_anomaly("/", kind="disk_critical")
         with pytest.raises(ValueError):
@@ -94,7 +94,7 @@ class TestVerifyFixKindGuard:
 class TestVerifyFixOutcomes:
     @pytest.mark.asyncio
     async def test_fail_to_pass_resolved_true(self, toy_repo_worktree):
-        from rawos.kernel.anomaly_verifier import verify_fix
+        from anima.kernel.anomaly_verifier import verify_fix
 
         repo, worktree_path, sha0 = toy_repo_worktree
         worktree = Path(worktree_path)
@@ -113,7 +113,7 @@ class TestVerifyFixOutcomes:
 
     @pytest.mark.asyncio
     async def test_fail_to_fail_resolved_false(self, toy_repo_worktree):
-        from rawos.kernel.anomaly_verifier import verify_fix
+        from anima.kernel.anomaly_verifier import verify_fix
 
         repo, worktree_path, sha0 = toy_repo_worktree
         worktree = Path(worktree_path)
@@ -131,7 +131,7 @@ class TestVerifyFixOutcomes:
 
     @pytest.mark.asyncio
     async def test_pass_to_fail_regression_resolved_false(self, toy_repo_worktree):
-        from rawos.kernel.anomaly_verifier import verify_fix
+        from anima.kernel.anomaly_verifier import verify_fix
 
         repo, worktree_path, _sha0 = toy_repo_worktree
         worktree = Path(worktree_path)
@@ -157,7 +157,7 @@ class TestVerifyFixOutcomes:
 
     @pytest.mark.asyncio
     async def test_pass_to_pass_inconclusive(self, toy_repo_worktree):
-        from rawos.kernel.anomaly_verifier import verify_fix
+        from anima.kernel.anomaly_verifier import verify_fix
 
         repo, worktree_path, _sha0 = toy_repo_worktree
         worktree = Path(worktree_path)
@@ -181,7 +181,7 @@ class TestVerifyFixOutcomes:
 
     @pytest.mark.asyncio
     async def test_no_test_suite_returns_none(self, tmp_path):
-        from rawos.kernel.anomaly_verifier import verify_fix
+        from anima.kernel.anomaly_verifier import verify_fix
 
         repo = tmp_path / "no-tests-repo"
         repo.mkdir()
@@ -210,7 +210,7 @@ class TestVerifyFixOutcomes:
 
 class TestInterpreterDiscovery:
     def test_prefers_repo_venv(self, tmp_path):
-        from rawos.kernel.anomaly_verifier import _discover_python_interpreter
+        from anima.kernel.anomaly_verifier import _discover_python_interpreter
 
         repo = tmp_path / "repo-with-venv"
         (repo / "venv" / "bin").mkdir(parents=True)
@@ -221,7 +221,7 @@ class TestInterpreterDiscovery:
         assert _discover_python_interpreter(repo) == str(py)
 
     def test_falls_back_to_system_python(self, tmp_path):
-        from rawos.kernel.anomaly_verifier import _discover_python_interpreter
+        from anima.kernel.anomaly_verifier import _discover_python_interpreter
 
         repo = tmp_path / "repo-no-venv"
         repo.mkdir()
@@ -232,13 +232,13 @@ class TestInterpreterDiscovery:
 class TestPytestAvailability:
     @pytest.mark.asyncio
     async def test_pytest_available_with_rawos_venv(self):
-        from rawos.kernel.anomaly_verifier import _pytest_available
+        from anima.kernel.anomaly_verifier import _pytest_available
 
         assert await _pytest_available("/root/rawos/venv/bin/python3", dict(os.environ)) is True
 
     @pytest.mark.asyncio
     async def test_pytest_unavailable_with_broken_interpreter(self):
-        from rawos.kernel.anomaly_verifier import _pytest_available
+        from anima.kernel.anomaly_verifier import _pytest_available
 
         assert await _pytest_available("/usr/bin/false", dict(os.environ)) is False
 
@@ -252,7 +252,7 @@ class TestVerifyFixPytestUnavailable:
         fail identically with "No module named pytest", exit code 1, which
         is indistinguishable from a real failing test by exit code alone).
         """
-        from rawos.kernel.anomaly_verifier import verify_fix
+        from anima.kernel.anomaly_verifier import verify_fix
 
         repo = tmp_path / "repo-broken-venv"
         repo.mkdir()

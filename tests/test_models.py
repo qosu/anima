@@ -1,6 +1,6 @@
 """Tests for all 8 rawos core primitives."""
 import pytest
-from rawos.models import (
+from anima.models import (
     User, UserTier,
     Project,
     Agent, AgentStatus,
@@ -30,7 +30,7 @@ class TestUser:
             User(email="notanemail", password_hash="x")
 
     def test_no_password_hash_in_public(self):
-        from rawos.models import UserPublic
+        from anima.models import UserPublic
         u = User(email="a@b.com", password_hash="secret")
         pub = UserPublic(**u.model_dump(exclude={"password_hash"}))
         assert not hasattr(pub, "password_hash")

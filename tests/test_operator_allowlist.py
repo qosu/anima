@@ -9,8 +9,8 @@ import hashlib
 import os
 import tempfile
 
-import rawos.db as db
-from rawos.models import User
+import anima.db as db
+from anima.models import User
 
 
 class TestManagedFileTargetsDB:
@@ -76,5 +76,5 @@ class TestManagedFileTargetsDB:
 
 
 def test_operator_enabled_defaults_false():
-    from rawos.config import settings
+    from anima.config import settings
     assert settings.operator_enabled is False

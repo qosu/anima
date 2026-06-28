@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pytest
-import rawos.db as db
+import anima.db as db
 
 
 @pytest.fixture()
@@ -32,7 +32,7 @@ class TestOwnedResourceHistoryTable:
     def test_autonomous_column_true(self, _db) -> None:
         db.record_owned_op_outcome(
             op_type="db_vacuum",
-            target_summary="rawos.db",
+            target_summary="anima.db",
             outcome="applied",
             autonomous=True,
         )
@@ -50,7 +50,7 @@ class TestOwnedResourceHistoryTable:
 
     def test_multiple_rows_newest_first(self, _db) -> None:
         db.record_owned_op_outcome("workspace_gc", "ws1", "applied", autonomous=False)
-        db.record_owned_op_outcome("db_vacuum", "rawos.db", "applied", autonomous=True)
+        db.record_owned_op_outcome("db_vacuum", "anima.db", "applied", autonomous=True)
         rows = db.list_owned_resource_history()
         assert rows[0]["op_type"] == "db_vacuum"
         assert rows[1]["op_type"] == "workspace_gc"

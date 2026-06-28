@@ -52,7 +52,7 @@ def _make_voice_update(chat_id: int, file_id: str) -> MagicMock:
 
 class TestTelegramConfig:
     def test_config_telegram_fields_exist(self):
-        from rawos.config import Settings
+        from anima.config import Settings
         s = Settings(_env_file="/dev/null")
         assert hasattr(s, "telegram_bot_token")
         assert hasattr(s, "telegram_owner_chat_id")
@@ -61,7 +61,7 @@ class TestTelegramConfig:
         assert hasattr(s, "telegram_project_id")
 
     def test_config_telegram_defaults(self):
-        from rawos.config import Settings
+        from anima.config import Settings
         s = Settings(_env_file="/dev/null")
         assert s.telegram_enabled is False
         assert s.telegram_bot_token == ""
@@ -77,7 +77,7 @@ class TestTelegramConfig:
 class TestTelegramGateAuth:
     @pytest.mark.asyncio
     async def test_non_owner_chat_id_silently_rejected(self):
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate(
             bot_token="token",
             owner_chat_id=12345,
@@ -99,7 +99,7 @@ class TestTelegramGateAuth:
 
     @pytest.mark.asyncio
     async def test_owner_chat_id_accepted(self):
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate(
             bot_token="token",
             owner_chat_id=12345,
@@ -125,7 +125,7 @@ class TestTelegramGateAuth:
 class TestTelegramGateTextDispatch:
     @pytest.mark.asyncio
     async def test_text_dispatched_to_run_turn_with_correct_args(self):
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate("token", 12345, "owner@test.com", "proj-1")
         gate._user_id = "user-1"
         gate._resolved_project_id = "proj-1"
@@ -142,7 +142,7 @@ class TestTelegramGateTextDispatch:
 
     @pytest.mark.asyncio
     async def test_response_sent_via_reply_text(self):
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate("token", 12345, "owner@test.com", "proj-1")
         gate._user_id = "user-1"
         gate._resolved_project_id = "proj-1"
@@ -157,7 +157,7 @@ class TestTelegramGateTextDispatch:
 
     @pytest.mark.asyncio
     async def test_empty_response_sends_fallback(self):
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate("token", 12345, "owner@test.com", "proj-1")
         gate._user_id = "user-1"
         gate._resolved_project_id = "proj-1"
@@ -178,7 +178,7 @@ class TestTelegramGateTextDispatch:
 class TestRunTurn:
     @pytest.mark.asyncio
     async def test_run_turn_collects_chunks(self, monkeypatch):
-        import rawos.db as db
+        import anima.db as db
         tmp = tempfile.mkdtemp()
         db.init(os.path.join(tmp, "test.db"))
 
@@ -188,20 +188,20 @@ class TestRunTurn:
             yield {"type": "chunk", "text": "world"}
             yield {"type": "run_done"}
 
-        monkeypatch.setattr("rawos.kernel.orchestrator.run", mock_orch_run)
+        monkeypatch.setattr("anima.kernel.orchestrator.run", mock_orch_run)
         monkeypatch.setattr(
-            "rawos.kernel.context_builder.build_context",
+            "anima.kernel.context_builder.build_context",
             lambda user_id, project_id, text: ([], ""),
         )
 
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate("token", 12345, "owner@test.com", "proj-1")
         result = await gate._run_turn("user-1", "proj-1", "query text", "/tmp/w")
         assert result == "hello world"
 
     @pytest.mark.asyncio
     async def test_run_turn_ignores_non_chunk_events(self, monkeypatch):
-        import rawos.db as db
+        import anima.db as db
         tmp = tempfile.mkdtemp()
         db.init(os.path.join(tmp, "test.db"))
 
@@ -211,13 +211,13 @@ class TestRunTurn:
             yield {"type": "chunk", "text": "answer"}
             yield {"type": "run_done"}
 
-        monkeypatch.setattr("rawos.kernel.orchestrator.run", mock_orch_run)
+        monkeypatch.setattr("anima.kernel.orchestrator.run", mock_orch_run)
         monkeypatch.setattr(
-            "rawos.kernel.context_builder.build_context",
+            "anima.kernel.context_builder.build_context",
             lambda user_id, project_id, text: ([], ""),
         )
 
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate("token", 12345, "owner@test.com", "proj-1")
         result = await gate._run_turn("user-1", "proj-1", "q", "/tmp/w")
         assert result == "answer"
@@ -230,7 +230,7 @@ class TestRunTurn:
 class TestVoicePipeline:
     @pytest.mark.asyncio
     async def test_voice_message_transcribed_then_dispatched(self):
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate("token", 12345, "owner@test.com", "proj-1")
         gate._user_id = "user-1"
         gate._resolved_project_id = "proj-1"
@@ -265,11 +265,11 @@ class TestVoicePipeline:
         mock_client.audio.transcriptions.create = AsyncMock(return_value=mock_transcription)
 
         monkeypatch.setattr(
-            "rawos.kernel.telegram_gate.AsyncOpenAI",
+            "anima.kernel.telegram_gate.AsyncOpenAI",
             lambda: mock_client,
         )
 
-        from rawos.kernel.telegram_gate import TelegramGate
+        from anima.kernel.telegram_gate import TelegramGate
         gate = TelegramGate("token", 12345, "owner@test.com", "proj-1")
         result = await gate._transcribe_voice(b"ogg_bytes_here")
         assert result == "hello from voice"
@@ -283,8 +283,8 @@ class TestVoicePipeline:
 class TestResolveOwner:
     @pytest.mark.asyncio
     async def test_resolve_owner_raises_if_user_not_found(self, monkeypatch):
-        monkeypatch.setattr("rawos.db.get_user_by_email", lambda email: None)
-        from rawos.kernel.telegram_gate import TelegramGate, TelegramGateError
+        monkeypatch.setattr("anima.db.get_user_by_email", lambda email: None)
+        from anima.kernel.telegram_gate import TelegramGate, TelegramGateError
         gate = TelegramGate("token", 12345, "missing@test.com", "")
         with pytest.raises(TelegramGateError):
             await gate._resolve_owner()
@@ -293,9 +293,9 @@ class TestResolveOwner:
     async def test_resolve_owner_raises_if_project_not_found(self, monkeypatch):
         user = MagicMock()
         user.id = "user-1"
-        monkeypatch.setattr("rawos.db.get_user_by_email", lambda email: user)
-        monkeypatch.setattr("rawos.db.get_project", lambda uid, pid: None)
-        from rawos.kernel.telegram_gate import TelegramGate, TelegramGateError
+        monkeypatch.setattr("anima.db.get_user_by_email", lambda email: user)
+        monkeypatch.setattr("anima.db.get_project", lambda uid, pid: None)
+        from anima.kernel.telegram_gate import TelegramGate, TelegramGateError
         gate = TelegramGate("token", 12345, "owner@test.com", "nonexistent-proj")
         with pytest.raises(TelegramGateError):
             await gate._resolve_owner()

@@ -5,8 +5,8 @@ sys.path.insert(0, '/root/rawos')
 
 import datetime
 import logging
-import rawos.db as db
-from rawos.config import settings
+import anima.db as db
+from anima.config import settings
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 log = logging.getLogger('rawos.reset_daily_budgets')

@@ -7,7 +7,7 @@ never matches a row.
 """
 from __future__ import annotations
 
-from rawos.context.server_scanner import ServerAnomaly
+from anima.context.server_scanner import ServerAnomaly
 
 
 def test_domain_includes_service_when_present():
